@@ -423,7 +423,6 @@ body.keyboard-opened{
   align-items:center;
   justify-content:center;
   z-index:9999;
-  /* 新增两行阻止页面滚动穿透 */
   overflow: hidden;
   touch-action: none;
 }
@@ -436,10 +435,9 @@ body.keyboard-opened{
   border-radius:12px;
   padding:12px;
   backdrop-filter: blur(6px);
-  position: absolute; /* 这里改成absolute，不要relative */
+  position: absolute;
   cursor: move;
 }
-
 
 .find-replace-top{
   display:flex;
@@ -2127,11 +2125,21 @@ replaceSingleBtn.addEventListener('click', () => {
   }
   searchIndex = 0;
 });
+
 // 弹窗拖拽 修复滚动穿透+触屏兼容
 const mask = findReplaceMask;
 const box = document.querySelector('.find-replace-box');
 let drag = false;
 let offsetX, offsetY;
+
+// 统一居中方法
+function resetBoxPos(){
+  box.style.left = '50%';
+  box.style.top = '50%';
+  box.style.transform = 'translate(-50%, -50%)';
+}
+// 页面加载先重置居中
+resetBoxPos();
 
 // 鼠标按下
 box.addEventListener('mousedown', (e) => {
@@ -2166,6 +2174,7 @@ document.addEventListener('mousemove', (e) => {
   const y = e.clientY - offsetY;
   box.style.left = x + 'px';
   box.style.top = y + 'px';
+  box.style.transform = 'unset';
 });
 
 // 触屏移动
@@ -2177,6 +2186,7 @@ document.addEventListener('touchmove', (e) => {
   const y = touch.clientY - offsetY;
   box.style.left = x + 'px';
   box.style.top = y + 'px';
+  box.style.transform = 'unset';
 });
 
 // 松开结束拖拽
@@ -2190,17 +2200,7 @@ document.addEventListener('mouseup', endDrag);
 document.addEventListener('touchend', endDrag);
 
 // 重新打开弹窗复位居中
-findReplaceBtn.addEventListener('click', () => {
-  box.style.left = '50%';
-  box.style.top = '50%';
-  box.style.transform = 'translate(-50%, -50%)';
-});
-// 初始打开自动居中
-box.style.left = '50%';
-box.style.top = '50%';
-box.style.transform = 'translate(-50%, -50%)';
-
-
+findReplaceBtn.addEventListener('click', resetBoxPos);
 
 </script>
 
