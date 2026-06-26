@@ -138,14 +138,18 @@ padding:0;
   margin-top: -2px;
 }
 
-/* 完全移除-webkit-line-clamp，换行属性直接写外层，QQ浏览器100%生效 */
+/* 外层：负责3行省略+末尾... */
 .card-preview{
   font-size: 13px;
   color: #6b7280;
   line-height: 1.35;
-  max-height: 4.05em;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  /* QQ强制换行全套属性，无任何省略样式冲突 */
+}
+/* 内层：单独强制换行，不受省略容器限制 */
+.preview-inner{
   white-space: normal !important;
   word-break: break-all !important;
   word-wrap: break-word !important;
@@ -346,8 +350,10 @@ function renderNotes(){
           <span class="tag ${tagClass}">${tagText}</span>
         </div>
         <div class="card-date">发布时间：${item.date}</div>
-        <!-- 直接单层文本，无嵌套冲突 -->
-        <div class="card-preview">${previewText}</div>
+        <!-- 双层结构：外层省略，内层强制换行 -->
+        <div class="card-preview">
+          <div class="preview-inner">${previewText}</div>
+        </div>
       </div>
     </div>
     `;
