@@ -509,8 +509,9 @@ body.keyboard-opened{
   padding:2px;
   font-size:11px;
   height:24px;
-  width:46px;
+  width:38px;
 }
+
 /* 过渡动画 */
 .rich-editor, .md-editor, .md-preview {
   transition: background 0.25s, color 0.25s, border-color 0.25s;
@@ -679,10 +680,11 @@ body.bg-dark .md-preview{
     <button class="icon-btn" data-tip="已完成复选框" onclick="insertCheckedCheckbox()">[✓]</button>    
     <button class="icon-btn" data-tip="块级公式" onclick="insertBlockLatex()">√∑</button>
     <button class="icon-btn" data-tip="取色器" onclick="openColorPicker()">🎨</button>
-    <select onchange="setEditorBg(this.value)">
+    <select class="editor-bg-select" onchange="changeEditorBg(this.value)">
   <option value="white">默认白色</option>
-  <option value="dark">深色黑底</option>
   <option value="cream">米黄护眼</option>
+  <option value="gray">浅灰</option>
+  <option value="dark">深色黑底</option>
 </select>
 
     <button class="icon-btn" data-tip="长分割线" onclick="splitLine2()">===</button>
