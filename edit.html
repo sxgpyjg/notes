@@ -437,7 +437,10 @@ body.keyboard-opened{
   backdrop-filter: blur(6px);
   position: absolute;
   cursor: move;
+  /* 提升渲染顺滑度 */
+  will-change: left, top;
 }
+
 
 .find-replace-top{
   display:flex;
@@ -2126,19 +2129,19 @@ replaceSingleBtn.addEventListener('click', () => {
   searchIndex = 0;
 });
 
-// 弹窗拖拽 修复滚动穿透+触屏兼容
+// 弹窗拖拽 修复偏移、卡顿、触屏穿透
 const mask = findReplaceMask;
 const box = document.querySelector('.find-replace-box');
 let drag = false;
-let offsetX, offsetY;
+let startX, startY;
+let boxStartX, boxStartY;
 
-// 统一居中方法
-function resetBoxPos(){
+// 重置居中
+function resetBoxPos() {
   box.style.left = '50%';
   box.style.top = '50%';
   box.style.transform = 'translate(-50%, -50%)';
 }
-// 页面加载先重置居中
 resetBoxPos();
 
 // 鼠标按下
@@ -2147,10 +2150,16 @@ box.addEventListener('mousedown', (e) => {
   if (tag === 'INPUT' || tag === 'BUTTON') return;
   e.preventDefault();
   drag = true;
+  // 先把transform取消，统一用left/top定位，不再混用两套坐标
   const rect = box.getBoundingClientRect();
-  offsetX = e.clientX - rect.left;
-  offsetY = e.clientY - rect.top;
+  box.style.transform = 'unset';
+  box.style.left = rect.left + 'px';
+  box.style.top = rect.top + 'px';
   box.style.transition = 'none';
+  startX = e.clientX;
+  startY = e.clientY;
+  boxStartX = rect.left;
+  boxStartY = rect.top;
 });
 
 // 触屏按下
@@ -2161,20 +2170,24 @@ box.addEventListener('touchstart', (e) => {
   drag = true;
   const touch = e.touches[0];
   const rect = box.getBoundingClientRect();
-  offsetX = touch.clientX - rect.left;
-  offsetY = touch.clientY - rect.top;
+  box.style.transform = 'unset';
+  box.style.left = rect.left + 'px';
+  box.style.top = rect.top + 'px';
   box.style.transition = 'none';
+  startX = touch.clientX;
+  startY = touch.clientY;
+  boxStartX = rect.left;
+  boxStartY = rect.top;
 });
 
 // 鼠标移动
 document.addEventListener('mousemove', (e) => {
   if (!drag) return;
   e.preventDefault();
-  const x = e.clientX - offsetX;
-  const y = e.clientY - offsetY;
-  box.style.left = x + 'px';
-  box.style.top = y + 'px';
-  box.style.transform = 'unset';
+  const dx = e.clientX - startX;
+  const dy = e.clientY - startY;
+  box.style.left = boxStartX + dx + 'px';
+  box.style.top = boxStartY + dy + 'px';
 });
 
 // 触屏移动
@@ -2182,27 +2195,26 @@ document.addEventListener('touchmove', (e) => {
   if (!drag) return;
   e.preventDefault();
   const touch = e.touches[0];
-  const x = touch.clientX - offsetX;
-  const y = touch.clientY - offsetY;
-  box.style.left = x + 'px';
-  box.style.top = y + 'px';
-  box.style.transform = 'unset';
+  const dx = touch.clientX - startX;
+  const dy = touch.clientY - startY;
+  box.style.left = boxStartX + dx + 'px';
+  box.style.top = boxStartY + dy + 'px';
 });
 
-// 松开结束拖拽
-function endDrag(){
-  if(drag){
+// 松开
+function endDrag() {
+  if (drag) {
     drag = false;
-    box.style.transition = '0.15s ease';
+    box.style.transition = '0.12s ease';
   }
 }
 document.addEventListener('mouseup', endDrag);
 document.addEventListener('touchend', endDrag);
 
-// 重新打开弹窗复位居中
+// 打开弹窗复位居中
 findReplaceBtn.addEventListener('click', resetBoxPos);
 
-</script>
 
+</script>
 </body>
 </html>
