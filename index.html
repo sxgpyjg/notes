@@ -35,6 +35,8 @@ h1{
   cursor: pointer;
   user-select: none;
   letter-spacing: 0.5px;
+  /* 禁止长按文字选中，优化长按体验 */
+  -webkit-user-select:none;
 }
 /* 全屏按钮 SVG 新版 */
 #fullPageBtn{
@@ -250,6 +252,10 @@ let timer = null;
 let currentFilter = "";
 let allTypes = new Set();
 
+// 长按计时器
+let longPressTimer = null;
+const LONG_PRESS_DELAY = 2000;
+
 // 全屏切换逻辑，切换SVG path实现内外线条切换
 fullBtn.addEventListener('click',()=>{
   if(!document.fullscreenElement){
@@ -273,9 +279,21 @@ fullBtn.addEventListener('click',()=>{
   }
 })
 
+// 鼠标/触摸按下，启动长按计时
+trigger.addEventListener('mousedown', startLongPress);
+trigger.addEventListener('touchstart', startLongPress);
+
+// 松开/滑动，取消长按
+trigger.addEventListener('mouseup', cancelLongPress);
+trigger.addEventListener('mouseleave', cancelLongPress);
+trigger.addEventListener('touchend', cancelLongPress);
+trigger.addEventListener('touchmove', cancelLongPress);
+
+// 单击逻辑（5连击进管理后台）
 trigger.addEventListener('click', ()=>{
-  clickCount++;
   clearTimeout(timer);
+  clearTimeout(longPressTimer);
+  clickCount++;
   timer = setTimeout(()=>{
     clickCount = 0;
   }, 2000);
@@ -295,6 +313,447 @@ trigger.addEventListener('click', ()=>{
     }
   }
 });
+
+// 开启长按计时
+function startLongPress(e){
+  // 阻止触摸冒泡
+  if(e.type === 'touchstart') e.preventDefault();
+  longPressTimer = setTimeout(()=>{
+    // 长按2秒跳转编辑页
+    location.href = "edit.html";
+  }, LONG_PRESS_DELAY);
+}
+
+// 取消长按
+function cancelLongPress(){
+  clearTimeout(longPressTimer);
+}
+
+function toggleFilterPanel(){
+  const body = document.getElementById('filterBody');
+  const arrow = document.getElementById('filterArrow');
+  body.classList.toggle('show');
+  arrow.classList.toggle('rotate');
+}
+
+function getFirstImgFromHtml(html){
+  const reg = /<img[^>]+src=['"]([^'"]+)['"][^>]*>/;
+  const match = html.match(reg);
+  return match ? match[1] : '';
+}
+
+function getPureTextPreview(rawContent){
+  let text = rawContent.replace(/```[\s\S]*?```/g,"");
+  text = text.replace(/<img[^>]*>/g,"");
+  return text;
+}
+
+function renderFilter(){
+  allTypes.clear();
+  dataList.forEach(item=>{
+    if(item.type) allTypes.add(item.type);
+  })
+  const filterBody = document.getElementById('filterBody');
+  let html = `<button class="filter-btn ${currentFilter===''?'active':''}" onclick="filterByType('')">全部</button>`;
+  allTypes.forEach(t=>{
+    html += `<button class="filter-btn ${currentFilter===t?'active':''}" onclick="filterByType('${t}')">${t}</button>`;
+  })
+  filterBody.innerHTML = html;
+}
+
+function filterByType(type){
+  currentFilter = type;
+  renderFilter();
+  renderNotes();
+}
+
+function openRead(noteId){
+  localStorage.setItem('readNoteId', noteId);
+  location.href = "read.html";
+}
+
+function renderNotes(){
+  let list = [...dataList];
+  if(currentFilter) list = list.filter(item=>item.type === currentFilter);
+  const sorted = list.sort((a,b)=>new Date(b.date.replace(" ","T")) - new Date(a.date.replace(" ","T")));
+  if(sorted.length === 0){
+    wrap.innerHTML = `<div class="empty-tip">暂无笔记</div>`;
+    return;
+  }
+  let html = '';
+  sorted.forEach((item)=>{
+    let tagClass = 'tag-custom';
+    if(item.type === 'note') tagClass = 'tag-note';
+    if(item.type === 'doc') tagClass = 'tag-doc';
+    let tagText = item.type;
+    if(item.type === 'note') tagText = '开发笔记';
+    if(item.type === 'doc') tagText = '实操教程';
+    
+    const previewHtml = getPureTextPreview(item.content);
+    
+    let leftImgSrc = '';
+    if(item.cover){
+      leftImgSrc = item.cover;
+    }else{
+      leftImgSrc = getFirstImgFromHtml(item.content);
+    }
+    let imgBoxHtml = '';
+    if(leftImgSrc){
+      imgBoxHtml = `<div class="card-img-box"><img src="${leftImgSrc}" alt=""></div>`;
+    }
+
+    html += `
+    <div class="note-card" onclick="openRead('${item.id}')">
+      ${imgBoxHtml}
+      <div class="card-right-wrap">
+        <div class="card-head">
+          <div class="card-title">${item.title}</div>
+          <span class="tag ${tagClass}">${tagText}</span>
+        </div>
+        <div class="card-date">发布时间：${item.date}</div>
+        <div class="card-preview">${previewHtml}</div>
+      </div>
+    </div>
+    `;
+  })
+  wrap.innerHTML = html;
+}
+
+renderFilter();
+renderNotes();
+</script>
+</body>
+</html>
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>笔记目录</title>
+<script src="./data.js"></script>
+<style>
+*{
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+body{
+  background: #ffffff;
+  padding: 0 4px;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+header{
+  /* 缩小头部上下空白 */
+  margin-bottom: 8px;
+  padding: 8px 6px;
+  border-bottom: 1px solid #e4e7f3;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+h1{
+  font-size: 17px;
+  color: #1d2133;
+  font-weight: 600;
+  cursor: pointer;
+  user-select: none;
+  letter-spacing: 0.5px;
+  /* 禁止长按文字选中，优化长按体验 */
+  -webkit-user-select:none;
+}
+/* 全屏按钮 SVG 新版 */
+#fullPageBtn{
+width:40px;height:40px;
+border:none;background:transparent;
+display:flex;align-items:center;justify-content:center;
+-webkit-tap-highlight-color:transparent;
+transition:all 0.12s;
+padding:0;
+}
+#fullPageBtn:active{transform:scale(0.92);}
+#fullPageBtn svg{
+  width:22px;height:22px;
+}
+#fullPageBtn path{
+  fill:none;
+  stroke:#9ca3af;
+  stroke-width:2;
+  stroke-linecap:round;
+  stroke-linejoin:round;
+}
+
+.empty-tip{
+  text-align: center;
+  padding: 80px 4px;
+  color: #888;
+  font-size: 16px;
+}
+.note-list{
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.note-card{
+  background: #fff;
+  padding: 12px;
+  cursor: pointer;
+  display: flex;
+  gap: 14px;
+  border-radius: 16px;
+  align-items: center;
+}
+
+.note-card:active{
+  background: #f7f8fc;
+}
+.card-img-box{
+  width: 100px;
+  height: 75px;
+  flex-shrink: 0;
+  border-radius: 7px;
+  overflow: hidden;
+  background: #f2f5fc;
+}
+.card-img-box img{
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.card-right-wrap{
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 3px 0;
+}
+
+.card-head{
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+.card-title{
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tag{
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 99px;
+  flex-shrink: 0;
+  max-width: 80px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tag-note{
+  background: #e8eaff;
+  color: #3950cc;
+}
+.tag-doc{
+  background: #e6f8ee;
+  color: #148246;
+}
+.tag-custom{
+  background: #fff0e6;
+  color: #b8460c;
+}
+
+.card-date{
+  font-size: 10px;
+  color: #6b7280;
+  margin-top: -2px;
+}
+
+/* 核心修复：QQ浏览器超长代码强制换行 */
+.card-preview{
+  font-size: 13px;
+  color: #6b7280;
+  line-height: 1.35;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  /* 兼容老旧QQ浏览器强制断行 */
+  white-space: normal !important;
+  word-break: break-all !important;
+  word-wrap: break-word !important;
+  overflow-wrap: break-word !important;
+}
+.filter-collapse{
+  border:1px solid #dbeafe;
+  border-radius:12px;
+  margin:0 2px 12px;
+  overflow:hidden;
+}
+.filter-header{
+  padding:10px 16px;
+  background:#eff6ff;
+  cursor:pointer;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  font-weight:500;
+  font-size:15px;
+}
+.filter-body{
+  padding:12px;
+  display:none;
+  background:#fff;
+}
+.filter-body.show{
+  display:block;
+}
+.arrow{
+  transition:transform 0.24s ease;
+  font-size:14px;
+}
+.arrow.rotate{
+  transform:rotate(180deg);
+}
+.filter-btn{
+  padding:6px 11px;
+  border:none;
+  border-radius:8px;
+  margin:4px;
+  background:#e0e7ff;
+  color:#334155;
+  font-size:13px;
+  transition:0.2s;
+}
+.filter-btn.active{
+  background:#6366F1;
+  color:#fff;
+}
+.filter-btn:active{
+  opacity:0.85;
+}
+</style>
+</head>
+<body>
+<header>
+  <h1 id="secretTrigger">笔记目录</h1>
+  <!-- 全屏SVG按钮 朝外展开初始 -->
+  <button id="fullPageBtn">
+    <svg viewBox="0 0 24 24" id="fullSvg">
+      <path d="M10 7 H7 V10"/>
+      <path d="M14 7 H17 V10"/>
+      <path d="M14 17 H17 V14"/>
+      <path d="M10 17 H7 V14"/>
+    </svg>
+  </button>
+</header>
+
+<div class="filter-collapse">
+  <div class="filter-header" onclick="toggleFilterPanel()">
+    <span>笔记分类筛选</span>
+    <span class="arrow" id="filterArrow">▼</span>
+  </div>
+  <div class="filter-body" id="filterBody">
+    <button class="filter-btn active" onclick="filterByType('')">全部</button>
+  </div>
+</div>
+
+<div class="note-list" id="noteWrap"></div>
+
+<script>
+const wrap = document.getElementById('noteWrap');
+const dataList = window.NOTE_DATA || [];
+const trigger = document.getElementById('secretTrigger');
+const fullBtn = document.getElementById('fullPageBtn');
+const fullSvg = document.getElementById('fullSvg');
+let clickCount = 0;
+let timer = null;
+let currentFilter = "";
+let allTypes = new Set();
+
+// 长按计时器
+let longPressTimer = null;
+const LONG_PRESS_DELAY = 2000;
+
+// 全屏切换逻辑，切换SVG path实现内外线条切换
+fullBtn.addEventListener('click',()=>{
+  if(!document.fullscreenElement){
+    document.documentElement.requestFullscreen();
+    // 进入全屏：向内收拢线条
+    fullSvg.innerHTML = `
+      <path d="M7 10 H10 V7"/>
+      <path d="M17 10 H14 V7"/>
+      <path d="M17 14 H14 V17"/>
+      <path d="M7 14 H10 V17"/>
+    `;
+  }else{
+    document.exitFullscreen();
+    // 退出全屏：朝外展开线条
+    fullSvg.innerHTML = `
+      <path d="M10 7 H7 V10"/>
+      <path d="M14 7 H17 V10"/>
+      <path d="M14 17 H17 V14"/>
+      <path d="M10 17 H7 V14"/>
+    `;
+  }
+})
+
+// 鼠标/触摸按下，启动长按计时
+trigger.addEventListener('mousedown', startLongPress);
+trigger.addEventListener('touchstart', startLongPress);
+
+// 松开/滑动，取消长按
+trigger.addEventListener('mouseup', cancelLongPress);
+trigger.addEventListener('mouseleave', cancelLongPress);
+trigger.addEventListener('touchend', cancelLongPress);
+trigger.addEventListener('touchmove', cancelLongPress);
+
+// 单击逻辑（5连击进管理后台）
+trigger.addEventListener('click', ()=>{
+  clearTimeout(timer);
+  clearTimeout(longPressTimer);
+  clickCount++;
+  timer = setTimeout(()=>{
+    clickCount = 0;
+  }, 2000);
+  if(clickCount >= 5){
+    const savedPwd = localStorage.getItem("admin_save_pwd");
+    if(savedPwd === "admin123"){
+      location.href = "admin-list.html";
+    }else{
+      const inputPwd = prompt("请输入管理员密码：");
+      if(inputPwd === "admin123"){
+        localStorage.setItem("admin_save_pwd", inputPwd);
+        location.href = "admin-list.html";
+      }else if(inputPwd !== null){
+        alert("密码错误，无法进入管理页面");
+      }
+      clickCount = 0;
+    }
+  }
+});
+
+// 开启长按计时
+function startLongPress(e){
+  // 阻止触摸冒泡
+  if(e.type === 'touchstart') e.preventDefault();
+  longPressTimer = setTimeout(()=>{
+    // 长按2秒跳转编辑页
+    location.href = "edit.html";
+  }, LONG_PRESS_DELAY);
+}
+
+// 取消长按
+function cancelLongPress(){
+  clearTimeout(longPressTimer);
+}
 
 function toggleFilterPanel(){
   const body = document.getElementById('filterBody');
