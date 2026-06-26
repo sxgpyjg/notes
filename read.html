@@ -136,12 +136,24 @@ padding:0;
   margin: 12px 0;
 }
 
-/* 关键：不覆盖pre自带背景，只强制relative用于按钮定位 */
+/* 修复QQ浏览器代码块不换行核心样式 */
 .card-content pre {
   position: relative !important;
   margin:14px 0;
-  padding-top: 10px !important;
+  padding: 10px 12px !important;
+  white-space: pre-wrap !important;
+  word-wrap: break-word !important;
+  overflow-wrap: break-word !important;
+  word-break: break-all !important;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
+.card-content pre code {
+  white-space: inherit !important;
+  word-break: inherit !important;
+}
+
 .copy-code-btn{
   position:absolute;
   top:6px;
