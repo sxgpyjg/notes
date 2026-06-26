@@ -293,7 +293,7 @@ function toggleFilterPanel(){
   arrow.classList.toggle('rotate');
 }
 function getFirstImgFromHtml(html){
-  const reg = /<img[^>]+src=['"][^>]*>/;
+  const reg = /<img[^>]+src=['"]([^'"]+)['"][^>]*>/;
   const match = html.match(reg);
   return match ? match[1] : '';
 }
