@@ -605,6 +605,28 @@ body.keyboard-opened{
   <div class="md-preview" id="mdPreview" style="display:none"></div>
 </div>
 </div>
+<!-- 查找替换弹窗 -->
+<div class="find-replace-mask" id="findReplaceMask">
+  <div class="find-replace-box">
+    <div class="find-replace-top">
+      <div class="find-replace-title">查找与替换</div>
+      <button class="find-replace-close" id="findReplaceClose">×</button>
+    </div>
+    <div class="find-replace-item">
+      <label>查找内容</label>
+      <input type="text" id="findInput" placeholder="输入要查找的文字">
+    </div>
+    <div class="find-replace-item">
+      <label>替换为</label>
+      <input type="text" id="replaceInput" placeholder="替换后的文字">
+    </div>
+    <div class="find-replace-btns">
+      <button class="btn-find" id="findNextBtn">查找下一个</button>
+      <button class="btn-replace-all" id="replaceAllBtn">全部替换</button>
+    </div>
+  </div>
+</div>
+
 <script>
 let globalImgSerial = 0;
 const CACHE_KEY = "note_temp_data";
@@ -2062,27 +2084,6 @@ replaceAllBtn.addEventListener('click', ()=>{
 });
 
 </script>
-<!-- 查找替换弹窗 -->
-<div class="find-replace-mask" id="findReplaceMask">
-  <div class="find-replace-box">
-    <div class="find-replace-top">
-      <div class="find-replace-title">查找与替换</div>
-      <button class="find-replace-close" id="findReplaceClose">×</button>
-    </div>
-    <div class="find-replace-item">
-      <label>查找内容</label>
-      <input type="text" id="findInput" placeholder="输入要查找的文字">
-    </div>
-    <div class="find-replace-item">
-      <label>替换为</label>
-      <input type="text" id="replaceInput" placeholder="替换后的文字">
-    </div>
-    <div class="find-replace-btns">
-      <button class="btn-find" id="findNextBtn">查找下一个</button>
-      <button class="btn-replace-all" id="replaceAllBtn">全部替换</button>
-    </div>
-  </div>
-</div>
 
 </body>
 </html>
