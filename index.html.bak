@@ -191,6 +191,35 @@ padding:0;
 }
 .filter-btn.active{background:#6366F1;color:#fff;}
 .filter-btn:active{opacity:0.85;}
+
+/* =======================
+   ✅ 修复 QQ 浏览器代码块横向溢出
+   ======================= */
+.preview-inner,
+.card-preview pre,
+.card-preview code,
+.card-preview .preview-inner pre,
+.card-preview .preview-inner code {
+  white-space: pre-wrap !important;
+  word-break: break-word !important;
+  overflow-wrap: break-word !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.card-preview pre {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  font-size: 13px;
+  line-height: 1.35;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.card-preview code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
 </style>
 </head>
 <body>

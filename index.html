@@ -191,35 +191,33 @@ padding:0;
 }
 .filter-btn.active{background:#6366F1;color:#fff;}
 .filter-btn:active{opacity:0.85;}
-
 /* =======================
-   ✅ 修复 QQ 浏览器代码块横向溢出
+   ✅ 修复 QQ 浏览器代码块横向溢出（安全版）
    ======================= */
-.preview-inner,
-.card-preview pre,
-.card-preview code,
-.card-preview .preview-inner pre,
-.card-preview .preview-inner code {
+.card-preview .preview-inner {
   white-space: pre-wrap !important;
   word-break: break-word !important;
   overflow-wrap: break-word !important;
-  max-width: 100% !important;
-  box-sizing: border-box !important;
 }
 
 .card-preview pre {
-  margin: 0;
-  padding: 0;
-  background: transparent;
-  font-size: 13px;
-  line-height: 1.35;
+  margin: 6px 0;
+  padding: 8px;
+  background: #f5f7fa;
+  border-radius: 6px;
+  font-size: 12px;
+  line-height: 1.4;
   max-width: 100%;
   overflow-x: auto;
+  /* ✅ 关键：防止吞掉后面内容 */
+  isolation: isolate;
 }
 
 .card-preview code {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  word-break: break-all;
 }
+
 </style>
 </head>
 <body>
