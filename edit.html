@@ -854,7 +854,13 @@ body.bg-custom .md-preview{
 </div>
 
 <script>
-let globalImgSerial = 0;
+// 全局图片序号持久化
+let globalImgSerial = Number(localStorage.getItem("img_serial") || 0);
+function addImgSerial(){
+  globalImgSerial++;
+  localStorage.setItem("img_serial", globalImgSerial);
+}
+
 const CACHE_KEY = "note_temp_data";
 const PWD_STORE_KEY = "admin_save_pwd";
 const LOGIN_EXPIRE_KEY = "admin_login_expire";
@@ -2853,30 +2859,7 @@ function getFullJsText(){
   return `window.NOTE_DATA = ${JSON.stringify(list, null, 2)};`;
 }
 
-// 全局图片序号持久化
-let globalImgSerial = Number(localStorage.getItem("img_serial") || 0);
-function addImgSerial(){
-  globalImgSerial++;
-  localStorage.setItem("img_serial", globalImgSerial);
-}
 
-// 本地图片插入通用方法
-function insertLocalImgTag(fileName){
-  addImgSerial();
-  const imgHtml = `<img loading="lazy" src="/notes/images/${fileName}" alt="配图" style="max-width:100%;margin:8px 0;"><br><br>`;
-  if(currentEditMode === "rich"){
-    document.execCommand("insertHTML",false,imgHtml);
-  }else{
-    mdBox.value += `![配图](/notes/images/${fileName})\n\n`;
-    saveMdRecord();
-    renderMdPreview();
-    calcWordCount();
-  }
-}
-
-// 页面初始化加载缓存
-loadLocalCache();
 </script>
 </body>
 </html>
-
