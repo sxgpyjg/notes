@@ -2055,6 +2055,8 @@ function exportSingleNoteMd(){
 function exportSingleNoteHtml(){
   syncFormToNoteList();
   const title = titleInput.value.trim();
+  // 过滤系统禁止的文件名符号
+  const safeTitle = title.replace(/[\/\\:*?"<>|]/g, "_");
   const html = `<!DOCTYPE html><html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -2065,15 +2067,14 @@ function exportSingleNoteHtml(){
 ${richBox.innerHTML}
 </body></html>`;
   const blob = new Blob([html], {type:"text/html"});
-const a = document.createElement("a");
-a.href = URL.createObjectURL(blob);
-a.download = `${title}.html`;
-document.body.appendChild(a);
-a.click();
-document.body.removeChild(a);
-URL.revokeObjectURL(a.href);
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = `${safeTitle}.html`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
 }
-
 
 //同步表单数据到笔记数组
 function syncFormToNoteList(){
