@@ -502,6 +502,68 @@ body.keyboard-opened{
   min-height: 16px;
   line-height: 1.5;
 }
+/* 下拉框样式，和字号选择器统一 */
+.editor-bg-select{
+  border:1px solid #ddd;
+  border-radius:3px;
+  padding:2px;
+  font-size:11px;
+  height:24px;
+  width:46px;
+}
+/* 过渡动画 */
+.rich-editor, .md-editor, .md-preview {
+  transition: background 0.25s, color 0.25s, border-color 0.25s;
+}
+/* 默认白色，不用写 */
+/* 米黄 */
+body.bg-cream .rich-editor{
+  background:#fffbeb;
+  color:#222;
+  border-color:#e0e3f0;
+}
+body.bg-cream .md-editor{
+  background:#fffbeb;
+  color:#222;
+  border-color:#e0e3f0;
+}
+body.bg-cream .md-preview{
+  background:#fffbeb;
+  color:#222;
+  border-color:#e0e3f0;
+}
+/* 浅灰 */
+body.bg-gray .rich-editor{
+  background:#f3f4f6;
+  color:#222;
+  border-color:#d1d5db;
+}
+body.bg-gray .md-editor{
+  background:#f3f4f6;
+  color:#222;
+  border-color:#d1d5db;
+}
+body.bg-gray .md-preview{
+  background:#f3f4f6;
+  color:#222;
+  border-color:#d1d5db;
+}
+/* 深色黑底 */
+body.bg-dark .rich-editor{
+  background:#121212;
+  color:#eeeeee;
+  border-color:#444;
+}
+body.bg-dark .md-editor{
+  background:#121212;
+  color:#eeeeee;
+  border-color:#444;
+}
+body.bg-dark .md-preview{
+  background:#121212;
+  color:#eeeeee;
+  border-color:#444;
+}
 
 </style>
 </head>
@@ -617,6 +679,12 @@ body.keyboard-opened{
     <button class="icon-btn" data-tip="已完成复选框" onclick="insertCheckedCheckbox()">[✓]</button>    
     <button class="icon-btn" data-tip="块级公式" onclick="insertBlockLatex()">√∑</button>
     <button class="icon-btn" data-tip="取色器" onclick="openColorPicker()">🎨</button>
+    <select onchange="setEditorBg(this.value)">
+  <option value="white">默认白色</option>
+  <option value="dark">深色黑底</option>
+  <option value="cream">米黄护眼</option>
+</select>
+
     <button class="icon-btn" data-tip="长分割线" onclick="splitLine2()">===</button>
     <button class="icon-btn" data-tip="切换MD模式" onclick="switchMode('md')">MD</button>
     <button class="icon-btn" data-tip="切换富文本" onclick="switchMode('rich')">富</button>
@@ -2250,6 +2318,27 @@ clearAllContentBtn.addEventListener('click', () => {
   searchIndex = 0;
 });
 
+// 切换底色
+function changeEditorBg(type){
+  // 清空所有底色class
+  document.body.classList.remove("bg-cream","bg-gray","bg-dark");
+  // 赋值对应class
+  if(type !== "white"){
+    document.body.classList.add("bg-"+type);
+  }
+  // 本地存储，刷新页面记忆选择
+  localStorage.setItem("editor_bg_mode", type);
+}
+// 页面加载自动读取上次选择
+(function loadSaveBg(){
+  const save = localStorage.getItem("editor_bg_mode");
+  if(save){
+    changeEditorBg(save);
+    // 同步下拉框选中状态
+    const sel = document.querySelector(".editor-bg-select");
+    if(sel) sel.value = save;
+  }
+})();
 
 </script>
 </body>
