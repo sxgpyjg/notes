@@ -19,7 +19,7 @@ body{
   margin: 0 auto;
 }
 header{
-  /* 改小上下padding，减少空白 */
+  /* 缩小头部上下空白 */
   margin-bottom: 12px;
   padding: 8px 6px;
   border-bottom: 1px solid #e4e7f3;
@@ -35,6 +35,8 @@ h1{
   cursor: pointer;
   user-select: none;
   letter-spacing: 1px;
+  /* 支持长按 */
+  -webkit-user-select: none;
 }
 /* 全屏按钮 SVG 新版 */
 #fullPageBtn{
@@ -242,16 +244,15 @@ const dataList = window.NOTE_DATA || [];
 const trigger = document.getElementById('secretTrigger');
 const fullBtn = document.getElementById('fullPageBtn');
 const fullSvg = document.getElementById('fullSvg');
-let clickCount = 0;
-let timer = null;
 let currentFilter = "";
 let allTypes = new Set();
+const ADMIN_PWD = "admin123";
+const LONG_PRESS_TIME = 400;
 
-// 全屏切换逻辑，切换SVG path实现内外线条切换
+// 全屏切换逻辑
 fullBtn.addEventListener('click',()=>{
   if(!document.fullscreenElement){
     document.documentElement.requestFullscreen();
-    // 进入全屏：向内收拢线条
     fullSvg.innerHTML = `
       <path d="M7 10 H10 V7"/>
       <path d="M17 10 H14 V7"/>
@@ -260,7 +261,6 @@ fullBtn.addEventListener('click',()=>{
     `;
   }else{
     document.exitFullscreen();
-    // 退出全屏：朝外展开线条
     fullSvg.innerHTML = `
       <path d="M10 7 H7 V10"/>
       <path d="M14 7 H17 V10"/>
@@ -270,28 +270,46 @@ fullBtn.addEventListener('click',()=>{
   }
 })
 
-trigger.addEventListener('click', ()=>{
-  clickCount++;
-  clearTimeout(timer);
-  timer = setTimeout(()=>{
-    clickCount = 0;
-  }, 2000);
-  if(clickCount >= 5){
-    const savedPwd = localStorage.getItem("admin_save_pwd");
-    if(savedPwd === "admin123"){
-      location.href = "admin-list.html";
-    }else{
-      const inputPwd = prompt("请输入管理员密码：");
-      if(inputPwd === "admin123"){
-        localStorage.setItem("admin_save_pwd", inputPwd);
-        location.href = "admin-list.html";
-      }else if(inputPwd !== null){
-        alert("密码错误，无法进入管理页面");
-      }
-      clickCount = 0;
-    }
+// 统一密码校验函数
+function verifyAdminPwd(cb){
+  const savedPwd = localStorage.getItem("admin_save_pwd");
+  if(savedPwd === ADMIN_PWD){
+    cb();
+    return;
   }
-});
+  const inputPwd = prompt("请输入管理员密码：");
+  if(inputPwd === ADMIN_PWD){
+    localStorage.setItem("admin_save_pwd", inputPwd);
+    cb();
+  }else if(inputPwd !== null){
+    alert("密码错误，无权限进入");
+  }
+}
+
+// 标题长按：进入编辑页
+function bindTitleLongPress(){
+  let pressTimer = null;
+  let isLongPress = false;
+  const start = ()=>{
+    isLongPress = false;
+    pressTimer = setTimeout(()=>{
+      isLongPress = true;
+      verifyAdminPwd(()=>location.href = "edit.html");
+    }, LONG_PRESS_TIME);
+  };
+  const end = ()=>{
+    clearTimeout(pressTimer);
+    // 短按无操作，只长按触发编辑
+  };
+  const cancel = ()=> clearTimeout(pressTimer);
+
+  trigger.addEventListener('touchstart', start);
+  trigger.addEventListener('touchend', end);
+  trigger.addEventListener('touchmove', cancel);
+  trigger.addEventListener('mousedown', start);
+  trigger.addEventListener('mouseup', end);
+  trigger.addEventListener('mouseleave', cancel);
+}
 
 function toggleFilterPanel(){
   const body = document.getElementById('filterBody');
@@ -335,10 +353,9 @@ function openRead(noteId){
   localStorage.setItem('readNoteId', noteId);
   location.href = "read.html";
 }
-// 长按进入编辑页
-function openEdit(noteId){
-  localStorage.setItem('editNoteId', noteId);
-  location.href = "edit.html";
+// 卡片长按：进入管理列表页
+function openAdminPage(){
+  verifyAdminPwd(()=>location.href = "admin-list.html");
 }
 
 function renderNotes(){
@@ -371,7 +388,6 @@ function renderNotes(){
       imgBoxHtml = `<div class="card-img-box"><img src="${leftImgSrc}" alt=""></div>`;
     }
 
-    // 替换原生onclick，改用touch/鼠标长按逻辑
     html += `
     <div class="note-card" data-id="${item.id}">
       ${imgBoxHtml}
@@ -388,45 +404,39 @@ function renderNotes(){
   })
   wrap.innerHTML = html;
 
-  // 绑定卡片长按/短按事件
+  // 卡片绑定：短按阅读，长按管理页
   const cards = document.querySelectorAll('.note-card');
-  const LONG_PRESS_TIME = 400; // 长按400ms判定
   cards.forEach(card=>{
     let pressTimer = null;
     let isLongPress = false;
     const noteId = card.dataset.id;
 
-    // 按下
     const startPress = ()=>{
       isLongPress = false;
       pressTimer = setTimeout(()=>{
         isLongPress = true;
-        openEdit(noteId);
+        openAdminPage();
       }, LONG_PRESS_TIME);
     };
-    // 松开
     const endPress = ()=>{
       clearTimeout(pressTimer);
       if(!isLongPress){
         openRead(noteId);
       }
     };
-    // 滑动取消
-    const cancelPress = ()=>{
-      clearTimeout(pressTimer);
-    };
+    const cancelPress = ()=> clearTimeout(pressTimer);
 
-    // 触屏
     card.addEventListener('touchstart', startPress);
     card.addEventListener('touchend', endPress);
     card.addEventListener('touchmove', cancelPress);
-    // 鼠标兼容
     card.addEventListener('mousedown', startPress);
     card.addEventListener('mouseup', endPress);
     card.addEventListener('mouseleave', cancelPress);
   })
 }
 
+// 初始化绑定标题长按
+bindTitleLongPress();
 renderFilter();
 renderNotes();
 </script>
