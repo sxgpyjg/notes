@@ -19,29 +19,25 @@ body{
   margin: 0 auto;
 }
 header{
-  margin-bottom: 8px;
-  padding: 8px 6px;
+  margin-bottom: 16px;
+  padding: 16px 6px;
   border-bottom: 1px solid #e4e7f3;
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 12px;
 }
-h1#secretTrigger{
-  font-size: 17px;
+h1{
+  font-size: 20px;
   color: #1d2133;
   font-weight: 600;
   cursor: pointer;
-  letter-spacing: 0.5px;
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
   user-select: none;
-  -webkit-touch-callout: none;
-  -webkit-tap-highlight-color: transparent;
+  letter-spacing: 1px;
 }
+/* 全屏按钮 SVG 新版 */
 #fullPageBtn{
-width:40px;height:40px;
+width:48px;height:48px;
 border:none;background:transparent;
 display:flex;align-items:center;justify-content:center;
 -webkit-tap-highlight-color:transparent;
@@ -50,7 +46,7 @@ padding:0;
 }
 #fullPageBtn:active{transform:scale(0.92);}
 #fullPageBtn svg{
-  width:22px;height:22px;
+  width:26px;height:26px;
 }
 #fullPageBtn path{
   fill:none;
@@ -80,6 +76,7 @@ padding:0;
   border-radius: 16px;
   align-items: center;
 }
+
 .note-card:active{
   background: #f7f8fc;
 }
@@ -104,6 +101,7 @@ padding:0;
   gap: 4px;
   padding: 3px 0;
 }
+
 .card-head{
   display: flex;
   justify-content: space-between;
@@ -129,16 +127,26 @@ padding:0;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.tag-note{background: #e8eaff;color:#3950cc;}
-.tag-doc{background: #e6f8ee;color:#148246;}
-.tag-custom{background: #fff0e6;color:#b8460c;}
+
+.tag-note{
+  background: #e8eaff;
+  color: #3950cc;
+}
+.tag-doc{
+  background: #e6f8ee;
+  color: #148246;
+}
+.tag-custom{
+  background: #fff0e6;
+  color: #b8460c;
+}
+
 .card-date{
   font-size: 10px;
   color: #6b7280;
   margin-top: -2px;
 }
 
-/* 外层固定3行省略，强制高度限制，文字不会全部展开 */
 .card-preview{
   font-size: 13px;
   color: #6b7280;
@@ -148,21 +156,14 @@ padding:0;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-/* 超长代码横向滚动，不强制拆字符，不会撑高外层 */
-.preview-inner{
-  white-space: pre-wrap;
-  overflow-x: auto;
-  word-wrap: normal;
-}
-
 .filter-collapse{
   border:1px solid #dbeafe;
   border-radius:12px;
-  margin:0 2px 12px;
+  margin:0 2px 16px;
   overflow:hidden;
 }
 .filter-header{
-  padding:10px 16px;
+  padding:12px 16px;
   background:#eff6ff;
   cursor:pointer;
   display:flex;
@@ -176,9 +177,16 @@ padding:0;
   display:none;
   background:#fff;
 }
-.filter-body.show{display:block;}
-.arrow{transition:transform 0.24s ease;font-size:14px;}
-.arrow.rotate{transform:rotate(180deg);}
+.filter-body.show{
+  display:block;
+}
+.arrow{
+  transition:transform 0.24s ease;
+  font-size:14px;
+}
+.arrow.rotate{
+  transform:rotate(180deg);
+}
 .filter-btn{
   padding:6px 11px;
   border:none;
@@ -189,13 +197,19 @@ padding:0;
   font-size:13px;
   transition:0.2s;
 }
-.filter-btn.active{background:#6366F1;color:#fff;}
-.filter-btn:active{opacity:0.85;}
+.filter-btn.active{
+  background:#6366F1;
+  color:#fff;
+}
+.filter-btn:active{
+  opacity:0.85;
+}
 </style>
 </head>
 <body>
 <header>
   <h1 id="secretTrigger">笔记目录</h1>
+  <!-- 全屏SVG按钮 朝外展开初始 -->
   <button id="fullPageBtn">
     <svg viewBox="0 0 24 24" id="fullSvg">
       <path d="M10 7 H7 V10"/>
@@ -229,37 +243,35 @@ let timer = null;
 let currentFilter = "";
 let allTypes = new Set();
 
-let longPressTimer = null;
-const LONG_PRESS_DELAY = 2000;
-let isLongTriggered = false;
-
+// 全屏切换逻辑，切换SVG path实现内外线条切换
 fullBtn.addEventListener('click',()=>{
   if(!document.fullscreenElement){
     document.documentElement.requestFullscreen();
-    fullSvg.innerHTML = `<path d="M7 10 H10 V7"/><path d="M17 10 H14 V7"/><path d="M17 14 H14 V17"/><path d="M7 14 H10 V17"/>`;
+    // 进入全屏：向内收拢线条
+    fullSvg.innerHTML = `
+      <path d="M7 10 H10 V7"/>
+      <path d="M17 10 H14 V7"/>
+      <path d="M17 14 H14 V17"/>
+      <path d="M7 14 H10 V17"/>
+    `;
   }else{
     document.exitFullscreen();
-    fullSvg.innerHTML = `<path d="M10 7 H7 V10"/><path d="M14 7 H17 V10"/><path d="M14 17 H17 V14"/><path d="M10 17 H7 V14"/>`;
+    // 退出全屏：朝外展开线条
+    fullSvg.innerHTML = `
+      <path d="M10 7 H7 V10"/>
+      <path d="M14 7 H17 V10"/>
+      <path d="M14 17 H17 V14"/>
+      <path d="M10 17 H7 V14"/>
+    `;
   }
 })
 
-trigger.addEventListener('contextmenu', e=> e.preventDefault());
-trigger.addEventListener('mousedown', startLongPress);
-trigger.addEventListener('touchstart', startLongPress);
-trigger.addEventListener('mouseup', cancelLongPress);
-trigger.addEventListener('mouseleave', cancelLongPress);
-trigger.addEventListener('touchend', cancelLongPress);
-trigger.addEventListener('touchmove', cancelLongPress);
-
-trigger.addEventListener('click', (e)=>{
-  clearTimeout(timer);
-  clearTimeout(longPressTimer);
-  if(isLongTriggered){
-    isLongTriggered = false;
-    return;
-  }
+trigger.addEventListener('click', ()=>{
   clickCount++;
-  timer = setTimeout(()=>clickCount = 0, 2000);
+  clearTimeout(timer);
+  timer = setTimeout(()=>{
+    clickCount = 0;
+  }, 2000);
   if(clickCount >= 5){
     const savedPwd = localStorage.getItem("admin_save_pwd");
     if(savedPwd === "admin123"){
@@ -277,48 +289,49 @@ trigger.addEventListener('click', (e)=>{
   }
 });
 
-function startLongPress(){
-  isLongTriggered = false;
-  longPressTimer = setTimeout(()=>{
-    isLongTriggered = true;
-    location.href = "edit.html";
-  }, LONG_PRESS_DELAY);
-}
-function cancelLongPress(){clearTimeout(longPressTimer);}
-
 function toggleFilterPanel(){
   const body = document.getElementById('filterBody');
   const arrow = document.getElementById('filterArrow');
   body.classList.toggle('show');
   arrow.classList.toggle('rotate');
 }
+
 function getFirstImgFromHtml(html){
   const reg = /<img[^>]+src=['"]([^'"]+)['"][^>]*>/;
   const match = html.match(reg);
   return match ? match[1] : '';
 }
+
 function getPureTextPreview(rawContent){
   let text = rawContent.replace(/```[\s\S]*?```/g,"");
   text = text.replace(/<img[^>]*>/g,"");
   return text;
 }
+
 function renderFilter(){
   allTypes.clear();
-  dataList.forEach(item=>{if(item.type) allTypes.add(item.type);})
+  dataList.forEach(item=>{
+    if(item.type) allTypes.add(item.type);
+  })
   const filterBody = document.getElementById('filterBody');
   let html = `<button class="filter-btn ${currentFilter===''?'active':''}" onclick="filterByType('')">全部</button>`;
-  allTypes.forEach(t=>html += `<button class="filter-btn ${currentFilter===t?'active':''}" onclick="filterByType('${t}')">${t}</button>`);
+  allTypes.forEach(t=>{
+    html += `<button class="filter-btn ${currentFilter===t?'active':''}" onclick="filterByType('${t}')">${t}</button>`;
+  })
   filterBody.innerHTML = html;
 }
+
 function filterByType(type){
   currentFilter = type;
   renderFilter();
   renderNotes();
 }
+
 function openRead(noteId){
   localStorage.setItem('readNoteId', noteId);
   location.href = "read.html";
 }
+
 function renderNotes(){
   let list = [...dataList];
   if(currentFilter) list = list.filter(item=>item.type === currentFilter);
@@ -335,11 +348,20 @@ function renderNotes(){
     let tagText = item.type;
     if(item.type === 'note') tagText = '开发笔记';
     if(item.type === 'doc') tagText = '实操教程';
-    const previewText = getPureTextPreview(item.content);
+    
+    const previewHtml = getPureTextPreview(item.content);
+    
     let leftImgSrc = '';
-    if(item.cover) leftImgSrc = item.cover;
-    else leftImgSrc = getFirstImgFromHtml(item.content);
-    let imgBoxHtml = leftImgSrc ? `<div class="card-img-box"><img src="${leftImgSrc}" alt=""></div>` : '';
+    if(item.cover){
+      leftImgSrc = item.cover;
+    }else{
+      leftImgSrc = getFirstImgFromHtml(item.content);
+    }
+    let imgBoxHtml = '';
+    if(leftImgSrc){
+      imgBoxHtml = `<div class="card-img-box"><img src="${leftImgSrc}" alt=""></div>`;
+    }
+
     html += `
     <div class="note-card" onclick="openRead('${item.id}')">
       ${imgBoxHtml}
@@ -349,16 +371,16 @@ function renderNotes(){
           <span class="tag ${tagClass}">${tagText}</span>
         </div>
         <div class="card-date">发布时间：${item.date}</div>
-        <div class="card-preview">
-          <div class="preview-inner">${previewText}</div>
-        </div>
+        <div class="card-preview">${previewHtml}</div>
       </div>
     </div>
     `;
   })
   wrap.innerHTML = html;
 }
+
 renderFilter();
+renderNotes();
 </script>
 </body>
 </html>

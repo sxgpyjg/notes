@@ -19,8 +19,9 @@ body{
   margin: 0 auto;
 }
 header{
-  margin-bottom: 16px;
-  padding: 16px 6px;
+  /* 改小上下padding，减少空白 */
+  margin-bottom: 12px;
+  padding: 8px 6px;
   border-bottom: 1px solid #e4e7f3;
   display: flex;
   justify-content: space-between;
@@ -75,6 +76,9 @@ padding:0;
   gap: 14px;
   border-radius: 16px;
   align-items: center;
+  /* 禁止长按选中文字 */
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .note-card:active{
@@ -331,6 +335,11 @@ function openRead(noteId){
   localStorage.setItem('readNoteId', noteId);
   location.href = "read.html";
 }
+// 长按进入编辑页
+function openEdit(noteId){
+  localStorage.setItem('editNoteId', noteId);
+  location.href = "edit.html";
+}
 
 function renderNotes(){
   let list = [...dataList];
@@ -362,8 +371,9 @@ function renderNotes(){
       imgBoxHtml = `<div class="card-img-box"><img src="${leftImgSrc}" alt=""></div>`;
     }
 
+    // 替换原生onclick，改用touch/鼠标长按逻辑
     html += `
-    <div class="note-card" onclick="openRead('${item.id}')">
+    <div class="note-card" data-id="${item.id}">
       ${imgBoxHtml}
       <div class="card-right-wrap">
         <div class="card-head">
@@ -377,6 +387,44 @@ function renderNotes(){
     `;
   })
   wrap.innerHTML = html;
+
+  // 绑定卡片长按/短按事件
+  const cards = document.querySelectorAll('.note-card');
+  const LONG_PRESS_TIME = 400; // 长按400ms判定
+  cards.forEach(card=>{
+    let pressTimer = null;
+    let isLongPress = false;
+    const noteId = card.dataset.id;
+
+    // 按下
+    const startPress = ()=>{
+      isLongPress = false;
+      pressTimer = setTimeout(()=>{
+        isLongPress = true;
+        openEdit(noteId);
+      }, LONG_PRESS_TIME);
+    };
+    // 松开
+    const endPress = ()=>{
+      clearTimeout(pressTimer);
+      if(!isLongPress){
+        openRead(noteId);
+      }
+    };
+    // 滑动取消
+    const cancelPress = ()=>{
+      clearTimeout(pressTimer);
+    };
+
+    // 触屏
+    card.addEventListener('touchstart', startPress);
+    card.addEventListener('touchend', endPress);
+    card.addEventListener('touchmove', cancelPress);
+    // 鼠标兼容
+    card.addEventListener('mousedown', startPress);
+    card.addEventListener('mouseup', endPress);
+    card.addEventListener('mouseleave', cancelPress);
+  })
 }
 
 renderFilter();
