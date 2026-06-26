@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>笔记管理列表</title>
+<script src="/notes/data.js"></script>
+<style>
+*{
+  margin:0;padding:0;box-sizing:border-box;
+  font-family: system-ui, sans-serif;
+}
+body{
+  background:#f7f8fc;
+  padding:0 2px;
+  max-width:100%;
+  margin:0 auto;
+}
+header{
+  margin-bottom:16px;
+  padding-bottom:10px;
+  border-bottom:1px solid #e4e7f3;
+}
+.header-top{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:10px;
+}
+h1{
+  font-size:22px;
+  color:#1d2133;
+}
+.btn-group-header{
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+}
+.back-btn{
+  padding:6px 10px;
+  background:#e4e7f3;
+  border:none;
+  border-radius:8px;
+  font-size:13px;
+  cursor:pointer;
+}
+.new-btn{
+  padding:6px 10px;
+  background:#6366F1;
+  color:#fff;
+  border:none;
+  border-radius:8px;
+  font-size:13px;
+  cursor:pointer;
+}
+.blog-btn{
+  padding:6px 10px;
+  background:#10b981;
+  color:#fff;
+  border:none;
+  border-radius:8px;
+  font-size:13px;
+  cursor:pointer;
+}
+.album-btn{
+  padding:6px 10px;
+  background:#f97316;
+  color:#fff;
+  border:none;
+  border-radius:8px;
+  font-size:13px;
+  cursor:pointer;
+}
+.item-box{
+  background:#fff;
+  border-radius:10px;
+  padding:12px;
+  box-shadow:0 2px 10px rgba(99,102,241,0.07);
+  margin-bottom:10px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+.item-info h3{
+  font-size:16px;
+  color:#1a1e32;
+  margin-bottom:4px;
+}
+.item-info p{
+  font-size:13px;
+  color:#888;
+}
+.btn-group{
+  display:flex;
+  gap:6px;
+}
+.edit-btn{
+  background:#6366F1;
+  color:#fff;
+  border:none;
+  padding:6px 10px;
+  border-radius:6px;
+}
+.del-btn{
+  background:#f43f5e;
+  color:#fff;
+  border:none;
+  padding:6px 10px;
+  border-radius:6px;
+}
+.empty{
+  text-align:center;
+  padding:50px 2px;
+  color:#999;
+}
+/* 弹窗样式 */
+.login-modal{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.5);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  z-index:999;
+}
+.login-box{
+  background:#fff;
+  padding:20px;
+  border-radius:12px;
+  width:90%;
+  max-width:320px;
+}
+.login-box input[type="password"]{
+  width:100%;
+  padding:10px;
+  margin:10px 0;
+  border:1px solid #ddd;
+  border-radius:8px;
+}
+.login-box button{
+  width:100%;
+  padding:10px;
+  background:#6366F1;
+  color:#fff;
+  border:none;
+  border-radius:8px;
+  margin-top:8px;
+}
+.remember-row{
+  display:flex;
+  gap:6px;
+  align-items:center;
+}
+</style>
+</head>
+<body>
+<div id="loginWrap" class="login-modal">
+  <div class="login-box">
+    <h3>管理员登录</h3>
+    <input type="password" id="pwdInput" placeholder="输入管理员密码">
+    <div class="remember-row">
+      <input type="checkbox" id="rememberCheck">
+      <label for="rememberCheck">记住密码</label>
+    </div>
+    <button onclick="doLogin()">登录</button>
+  </div>
+</div>
+
+<header style="display:none" id="mainWrap">
+  <div class="header-top">
+    <h1>笔记管理后台</h1>
+    <div class="btn-group-header">
+      <button class="blog-btn" onclick="window.open('https://sxgpyjg.github.io','_blank')">博客主页</button>
+      <button class="album-btn" onclick="window.open('https://sxgpyjg.github.io/blog','_blank')">图文相册</button>
+      <button class="new-btn" onclick="location.href='edit.html'">+新建笔记</button>
+      <button class="back-btn" onclick="location.href='index.html'">笔记首页</button>
+    </div>
+  </div>
+</header>
+<div id="listWrap"></div>
+
+<script>
+const ADMIN_PASSWORD = "admin123";
+const CACHE_KEY = "note_temp_data";
+const PWD_STORE_KEY = "admin_save_pwd";
+
+// 加载缓存数据
+function loadData() {
+  const cache = localStorage.getItem(CACHE_KEY);
+  if (cache) {
+    try {
+      window.NOTE_DATA = JSON.parse(cache);
+    } catch {
+      window.NOTE_DATA = window.NOTE_DATA || [];
+    }
+  } else {
+    window.NOTE_DATA = window.NOTE_DATA || [];
+  }
+}
+function saveTempCache() {
+  localStorage.setItem(CACHE_KEY, JSON.stringify(window.NOTE_DATA));
+}
+
+// 登录校验
+function doLogin(){
+  const inputPwd = document.getElementById("pwdInput").value.trim();
+  const remember = document.getElementById("rememberCheck").checked;
+  if(inputPwd !== ADMIN_PASSWORD){
+    alert("密码错误");
+    return;
+  }
+  // 记住密码
+  if(remember){
+    localStorage.setItem(PWD_STORE_KEY, inputPwd);
+  }else{
+    localStorage.removeItem(PWD_STORE_KEY);
+  }
+  // 展示主界面
+  document.getElementById("loginWrap").style.display = "none";
+  document.getElementById("mainWrap").style.display = "block";
+  loadData();
+  render();
+}
+
+// 页面初始化自动检测记住的密码
+(function autoLogin(){
+  const saved = localStorage.getItem(PWD_STORE_KEY);
+  if(saved === ADMIN_PASSWORD){
+    // 自动登录
+    document.getElementById("loginWrap").style.display = "none";
+    document.getElementById("mainWrap").style.display = "block";
+    loadData();
+    render();
+  }
+})();
+
+// 删除：不再弹窗输密码，只确认删除
+window.delNote = function(id){
+  if(!confirm("确认永久删除这条笔记？删除后无法恢复")){
+    return;
+  }
+  window.NOTE_DATA = window.NOTE_DATA.filter(item => item.id !== id);
+  saveTempCache();
+  alert("已删除，进入编辑器复制/下载data.js即可同步更新仓库");
+  render();
+}
+
+function render(){
+  const wrap = document.getElementById('listWrap');
+  let list = window.NOTE_DATA || [];
+  if(list.length === 0){
+    wrap.innerHTML = '<div class="empty">暂无笔记，点击上方【+新建笔记】创建第一条</div>';
+    return;
+  }
+  let html = '';
+  list.sort((a,b)=>new Date(b.date) - new Date(a.date)).forEach(item=>{
+    html += `
+    <div class="item-box">
+      <div class="item-info">
+        <h3>${item.title}</h3>
+        <p>${item.date} | ${item.type}</p>
+      </div>
+      <div class="btn-group">
+        <button class="edit-btn" onclick="location.href='edit.html?id=${item.id}'">编辑</button>
+        <button class="del-btn" onclick="delNote(${item.id})">删除</button>
+      </div>
+    </div>
+    `
+  })
+  wrap.innerHTML = html;
+}
+</script>
+</body>
+</html>
