@@ -414,6 +414,79 @@ body.keyboard-opened{
   padding:5px 6px;
   min-width:50px;
 }
+/* 查找替换弹窗样式 */
+.find-replace-mask{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.45);
+  display:none;
+  align-items:center;
+  justify-content:center;
+  z-index:9999;
+}
+.find-replace-mask.show{
+  display:flex;
+}
+.find-replace-box{
+  background:#fff;
+  width:min(92%,420px);
+  border-radius:14px;
+  padding:16px;
+}
+.find-replace-top{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:14px;
+}
+.find-replace-title{
+  font-size:16px;
+  font-weight:600;
+}
+.find-replace-close{
+  border:none;
+  background:transparent;
+  font-size:20px;
+  color:#666;
+  cursor:pointer;
+}
+.find-replace-item{
+  margin-bottom:12px;
+}
+.find-replace-item label{
+  display:block;
+  font-size:13px;
+  color:#444;
+  margin-bottom:4px;
+}
+.find-replace-item input{
+  width:100%;
+  padding:9px 12px;
+  border:1px solid #ddd;
+  border-radius:8px;
+  font-size:14px;
+}
+.find-replace-btns{
+  display:flex;
+  gap:10px;
+  margin-top:16px;
+}
+.find-replace-btns button{
+  flex:1;
+  padding:10px;
+  border:none;
+  border-radius:8px;
+  font-size:14px;
+  cursor:pointer;
+}
+.btn-find{
+  background:#e0e7ff;
+  color:#2d3748;
+}
+.btn-replace-all{
+  background:#6366F1;
+  color:#fff;
+}
 
 </style>
 </head>
@@ -501,6 +574,7 @@ body.keyboard-opened{
     <button class="icon-btn" data-tip="批量图床链接" id="batchImgBtn">🔗</button>    
     <button class="icon-btn" data-tip="插入链接" onclick="insertLink()">[]()</button>
     <button class="icon-btn" data-tip="固定宽度图片" onclick="insertImgWidth()">img</button>
+    <button id="findReplaceBtn" class="tool-btn">查找替换</button>
     <button class="icon-btn" data-tip="更多工具" onclick="toggleMoreTools()">⋮</button>
     <input type="file" id="hiddenImgFile1" multiple>
 
@@ -1885,6 +1959,130 @@ bgColorInput.addEventListener("input", function(){
   richBox.focus();
   checkFormatActive();
 });
+// ========== 查找替换功能（纯文本/富文本双模式兼容） ==========
+const findReplaceBtn = document.getElementById('findReplaceBtn');
+const findReplaceMask = document.getElementById('findReplaceMask');
+const findReplaceClose = document.getElementById('findReplaceClose');
+const findInput = document.getElementById('findInput');
+const replaceInput = document.getElementById('replaceInput');
+const findNextBtn = document.getElementById('findNextBtn');
+const replaceAllBtn = document.getElementById('replaceAllBtn');
+
+let searchIndex = 0;
+let matchList = [];
+
+// 打开弹窗
+findReplaceBtn.addEventListener('click', ()=>{
+  findReplaceMask.classList.add('show');
+  // 获取当前选中文字，自动填入查找框
+  const selText = window.getSelection().toString().trim();
+  if(selText) findInput.value = selText;
+  findInput.focus();
+  searchIndex = 0;
+  matchList = [];
+});
+
+// 关闭弹窗按钮
+findReplaceClose.addEventListener('click', ()=>{
+  findReplaceMask.classList.remove('show');
+});
+// 点击遮罩空白关闭弹窗
+findReplaceMask.addEventListener('click', (e)=>{
+  if(e.target === findReplaceMask){
+    findReplaceMask.classList.remove('show');
+  }
+});
+
+// 自动识别当前激活编辑器读取内容
+function getEditorText(){
+  const txtEditor = document.getElementById('mdEditor');
+  const richEditor = document.getElementById('richEditor');
+  // 纯文本框显示就读value，富文本显示就读innerHTML
+  if(txtEditor.style.display !== 'none'){
+    return txtEditor.value;
+  }else{
+    return richEditor.innerHTML;
+  }
+}
+// 写入内容到当前编辑器
+function setEditorText(val){
+  const txtEditor = document.getElementById('mdEditor');
+  const richEditor = document.getElementById('richEditor');
+  if(txtEditor.style.display !== 'none'){
+    txtEditor.value = val;
+    saveMdRecord();
+    renderMdPreview();
+  }else{
+    richEditor.innerHTML = val;
+  }
+}
+
+
+// 查找下一处
+findNextBtn.addEventListener('click', ()=>{
+  const findText = findInput.value.trim();
+  if(!findText){
+    alert("请输入查找内容");
+    return;
+  }
+  const text = getEditorText();
+  const reg = new RegExp(findText, 'g');
+  matchList = [];
+  let match;
+  while((match = reg.exec(text)) !== null){
+    matchList.push(match.index);
+  }
+  if(matchList.length === 0){
+    alert("未找到匹配内容");
+    return;
+  }
+  if(searchIndex >= matchList.length) searchIndex = 0;
+  alert(`匹配到第${searchIndex+1}/${matchList.length}处`);
+  searchIndex++;
+});
+
+// 全部替换
+replaceAllBtn.addEventListener('click', ()=>{
+  const findText = findInput.value.trim();
+  const repText = replaceInput.value;
+  if(!findText){
+    alert("请输入查找内容");
+    return;
+  }
+  const oldText = getEditorText();
+  const reg = new RegExp(findText, 'g');
+  const newText = oldText.replace(reg, repText);
+  if(oldText === newText){
+    alert("未找到可替换内容");
+    return;
+  }
+  setEditorText(newText);
+  const count = (oldText.match(new RegExp(findText,'g')) || []).length;
+  alert(`替换完成，共替换${count}处`);
+});
+
 </script>
+<!-- 查找替换弹窗 -->
+<div class="find-replace-mask" id="findReplaceMask">
+  <div class="find-replace-box">
+    <div class="find-replace-top">
+      <div class="find-replace-title">查找与替换</div>
+      <button class="find-replace-close" id="findReplaceClose">×</button>
+    </div>
+    <div class="find-replace-item">
+      <label>查找内容</label>
+      <input type="text" id="findInput" placeholder="输入要查找的文字">
+    </div>
+    <div class="find-replace-item">
+      <label>替换为</label>
+      <input type="text" id="replaceInput" placeholder="替换后的文字">
+    </div>
+    <div class="find-replace-btns">
+      <button class="btn-find" id="findNextBtn">查找下一个</button>
+      <button class="btn-replace-all" id="replaceAllBtn">全部替换</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
