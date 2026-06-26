@@ -418,7 +418,7 @@ body.keyboard-opened{
 .find-replace-mask{
   position:fixed;
   inset:0;
-  background:rgba(0,0,0,0.45);
+  background:rgba(0,0,0,0.25); /* 原来0.45，降低遮罩透明度 */
   display:none;
   align-items:center;
   justify-content:center;
@@ -428,11 +428,13 @@ body.keyboard-opened{
   display:flex;
 }
 .find-replace-box{
-  background:#fff;
+  background:rgba(255,255,255,0.85); /* 白色半透明面板 */
   width:min(92%,420px);
   border-radius:14px;
   padding:16px;
+  backdrop-filter: blur(6px); /* 毛玻璃虚化背景，更通透 */
 }
+
 .find-replace-top{
   display:flex;
   justify-content:space-between;
@@ -468,7 +470,7 @@ body.keyboard-opened{
 }
 .find-replace-btns{
   display:flex;
-  gap:10px;
+  gap:6px;
   margin-top:16px;
 }
 .find-replace-btns button{
@@ -575,7 +577,7 @@ body.keyboard-opened{
     <button class="icon-btn" data-tip="批量图床链接" id="batchImgBtn">🔗</button>    
     <button class="icon-btn" data-tip="插入链接" onclick="insertLink()">[]()</button>
     <button class="icon-btn" data-tip="固定宽度图片" onclick="insertImgWidth()">img</button>
-    <button id="findReplaceBtn" class="tool-btn">查找替换</button>
+    <button class="icon-btn" data-tip="查找替换" id="findReplaceBtn">🔍</button>
     <button class="icon-btn" data-tip="更多工具" onclick="toggleMoreTools()">⋮</button>
     <input type="file" id="hiddenImgFile1" multiple>
 
@@ -622,10 +624,11 @@ body.keyboard-opened{
       <input type="text" id="replaceInput" placeholder="替换后的文字">
     </div>
     <div class="find-replace-btns">
-  <button class="btn-find" id="findNextBtn">查找下一个</button>
-  <button class="btn-find" id="replaceSingleBtn">替换当前</button>
-  <button class="btn-replace-all" id="replaceAllBtn">全部替换</button>
+  <button class="btn-find" id="findNextBtn">下一处</button>
+  <button class="btn-find" id="replaceSingleBtn">替换</button>
+  <button class="btn-replace-all" id="replaceAllBtn">全部</button>
 </div>
+
 
   </div>
 </div>
