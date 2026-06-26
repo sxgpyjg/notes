@@ -25,79 +25,65 @@ header{
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 12px;
 }
 h1#secretTrigger{
   font-size: 17px;
   color: #1d2133;
   font-weight: 600;
   cursor: pointer;
-  letter-spacing: 0.5px;
-  -webkit-user-select: none;
-  user-select: none;
 }
 #fullPageBtn{
   width:40px;height:40px;
   border:none;background:transparent;
   display:flex;align-items:center;justify-content:center;
-  -webkit-tap-highlight-color:transparent;
-  transition:all 0.12s;
-  padding:0;
 }
-#fullPageBtn:active{transform:scale(0.92);}
 #fullPageBtn svg{width:22px;height:22px;}
 #fullPageBtn path{
-  fill:none;
-  stroke:#9ca3af;
+  fill:none;stroke:#9ca3af;
   stroke-width:2;
-  stroke-linecap:round;
-  stroke-linejoin:round;
 }
 
 .empty-tip{
   text-align: center;
   padding: 80px 4px;
   color: #888;
-  font-size: 16px;
 }
-.note-list{
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
+
 .note-card{
   background: #fff;
   padding: 12px;
-  cursor: pointer;
+  margin-bottom: 8px;
+  border-radius: 16px;
   display: flex;
   gap: 14px;
-  border-radius: 16px;
-  align-items: center;
+  cursor: pointer;
 }
-.note-card:active{
-  background: #f7f8fc;
-}
+.note-card:active{background:#f7f8fc;}
+
 .card-img-box{
   width: 100px;
   height: 75px;
-  flex-shrink: 0;
   border-radius: 7px;
   overflow: hidden;
+  flex-shrink: 0;
   background: #f2f5fc;
 }
 .card-img-box img{
   width: 100%;
   height: 100%;
   object-fit: cover;
-  display: block;
 }
+
 .card-right-wrap{
   flex: 1;
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 3px 0;
 }
+
+/* =======================
+   ✅ 标题 + 角标
+   ======================= */
 .card-head{
   display: flex;
   justify-content: space-between;
@@ -113,52 +99,8 @@ h1#secretTrigger{
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.tag{
-  font-size: 10px;
-  padding: 2px 7px;
-  border-radius: 99px;
-  flex-shrink: 0;
-  max-width: 80px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.tag-note{background: #e8eaff;color:#3950cc;}
-.tag-doc{background: #e6f8ee;color:#148246;}
-.tag-custom{background: #fff0e6;color:#b8460c;}
-.card-date{
-  font-size: 10px;
-  color: #6b7280;
-  margin-top: -2px;
-}
 
-/* 外层固定3行省略 */
-.card-preview{
-  font-size: 13px;
-  color: #6b7280;
-  line-height: 1.35;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-.preview-inner{
-  white-space: pre-wrap;
-}
-
-/* =======================
-   ✅ 目录页：彻底屏蔽代码块（QQ浏览器救星）
-   ======================= */
-.card-preview pre,
-.card-preview code,
-.card-preview .preview-inner pre,
-.card-preview .preview-inner code {
-  display: none !important;
-}
-
-/* =======================
-   ✅ 代码角标（</>）
-   ======================= */
+/* ✅ 代码角标（</>） */
 .code-badge{
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 11px;
@@ -172,6 +114,59 @@ h1#secretTrigger{
   flex-shrink: 0;
 }
 
+.tag{
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 99px;
+  flex-shrink: 0;
+}
+.tag-note{background:#e8eaff;color:#3950cc;}
+.tag-doc{background:#e6f8ee;color:#148246;}
+.tag-custom{background:#fff0e6;color:#b8460c;}
+
+.card-date{
+  font-size: 10px;
+  color: #6b7280;
+}
+
+/* =======================
+   ✅ 摘要区（表格保留 + 不炸）
+   ======================= */
+.card-preview{
+  font-size: 13px;
+  color: #6b7280;
+  line-height: 1.35;
+  max-height: calc(1.35em * 3);
+  overflow: hidden;
+  position: relative;
+}
+
+/* ✅ 目录页表格：保留但不撑高 */
+.card-preview table{
+  max-width: 100%;
+  width: auto;
+  border-collapse: collapse;
+  font-size: 12px;
+  margin: 4px 0;
+  overflow-x: auto;
+  display: block;
+}
+.card-preview th,
+.card-preview td{
+  border: 1px solid #ddd;
+  padding: 3px 6px;
+  white-space: nowrap;
+}
+
+/* ✅ 代码块：目录页永不显示（保命） */
+.card-preview pre,
+.card-preview code{
+  display: none !important;
+}
+
+/* =======================
+   筛选面板
+   ======================= */
 .filter-collapse{
   border:1px solid #dbeafe;
   border-radius:12px;
@@ -185,16 +180,13 @@ h1#secretTrigger{
   display:flex;
   justify-content:space-between;
   align-items:center;
-  font-weight:500;
-  font-size:15px;
 }
 .filter-body{
   padding:12px;
   display:none;
-  background:#fff;
 }
 .filter-body.show{display:block;}
-.arrow{transition:transform 0.24s ease;font-size:14px;}
+.arrow{transition:transform 0.24s;}
 .arrow.rotate{transform:rotate(180deg);}
 .filter-btn{
   padding:6px 11px;
@@ -203,11 +195,8 @@ h1#secretTrigger{
   margin:4px;
   background:#e0e7ff;
   color:#334155;
-  font-size:13px;
-  transition:0.2s;
 }
 .filter-btn.active{background:#6366F1;color:#fff;}
-.filter-btn:active{opacity:0.85;}
 </style>
 </head>
 <body>
@@ -215,12 +204,7 @@ h1#secretTrigger{
 <header>
   <h1 id="secretTrigger">笔记目录</h1>
   <button id="fullPageBtn">
-    <svg viewBox="0 0 24 24" id="fullSvg">
-      <path d="M10 7 H7 V10"/>
-      <path d="M14 7 H17 V10"/>
-      <path d="M14 17 H17 V14"/>
-      <path d="M10 17 H7 V14"/>
-    </svg>
+    <svg viewBox="0 0 24 24"><path d="M10 7 H7 V10"/><path d="M14 7 H17 V10"/><path d="M14 17 H17 V14"/><path d="M10 17 H7 V14"/></svg>
   </button>
 </header>
 
@@ -229,9 +213,7 @@ h1#secretTrigger{
     <span>笔记分类筛选</span>
     <span class="arrow" id="filterArrow">▼</span>
   </div>
-  <div class="filter-body" id="filterBody">
-    <button class="filter-btn active" onclick="filterByType('')">全部</button>
-  </div>
+  <div class="filter-body" id="filterBody"></div>
 </div>
 
 <div class="note-list" id="noteWrap"></div>
@@ -239,143 +221,101 @@ h1#secretTrigger{
 <script>
 const wrap = document.getElementById('noteWrap');
 const dataList = window.NOTE_DATA || [];
-const trigger = document.getElementById('secretTrigger');
-const fullBtn = document.getElementById('fullPageBtn');
-const fullSvg = document.getElementById('fullSvg');
-let clickCount = 0;
-let timer = null;
 let currentFilter = "";
-let allTypes = new Set();
 
-let longPressTimer = null;
-const LONG_PRESS_DELAY = 2000;
-let isLongTriggered = false;
-
-fullBtn.addEventListener('click',()=>{
-  if(!document.fullscreenElement){
-    document.documentElement.requestFullscreen();
-    fullSvg.innerHTML = `<path d="M7 10 H10 V7"/><path d="M17 10 H14 V7"/><path d="M17 14 H14 V17"/><path d="M7 14 H10 V17"/>`;
-  }else{
-    document.exitFullscreen();
-    fullSvg.innerHTML = `<path d="M10 7 H7 V10"/><path d="M14 7 H17 V10"/><path d="M14 17 H17 V14"/><path d="M10 17 H7 V14"/>`;
-  }
+/* =======================
+   长按 / 点击逻辑
+   ======================= */
+let longPressTimer;
+const trigger = document.getElementById('secretTrigger');
+trigger.addEventListener('contextmenu', e=>e.preventDefault());
+trigger.addEventListener('mousedown', ()=>{
+  longPressTimer = setTimeout(()=>location.href='edit.html', 2000);
 });
+trigger.addEventListener('mouseup', ()=>clearTimeout(longPressTimer));
+trigger.addEventListener('mouseleave', ()=>clearTimeout(longPressTimer));
+trigger.addEventListener('touchstart', ()=>{
+  longPressTimer = setTimeout(()=>location.href='edit.html', 2000);
+});
+trigger.addEventListener('touchend', ()=>clearTimeout(longPressTimer));
 
-trigger.addEventListener('contextmenu', e=> e.preventDefault());
-trigger.addEventListener('mousedown', startLongPress);
-trigger.addEventListener('touchstart', startLongPress);
-trigger.addEventListener('mouseup', cancelLongPress);
-trigger.addEventListener('mouseleave', cancelLongPress);
-trigger.addEventListener('touchend', cancelLongPress);
-trigger.addEventListener('touchmove', cancelLongPress);
-
-trigger.addEventListener('click', (e)=>{
-  clearTimeout(timer);
-  clearTimeout(longPressTimer);
-  if(isLongTriggered){
-    isLongTriggered = false;
-    return;
-  }
-  clickCount++;
-  timer = setTimeout(()=>clickCount = 0, 2000);
-  if(clickCount >= 5){
-    const savedPwd = localStorage.getItem("admin_save_pwd");
-    if(savedPwd === "admin123"){
-      location.href = "admin-list.html";
+trigger.addEventListener('click', ()=>{
+  let count = Number(sessionStorage.getItem('clickCount')||0)+1;
+  sessionStorage.setItem('clickCount', count);
+  if(count>=5){
+    sessionStorage.removeItem('clickCount');
+    if(localStorage.getItem('admin_save_pwd')==='admin123'){
+      location.href='admin-list.html';
     }else{
-      const inputPwd = prompt("请输入管理员密码：");
-      if(inputPwd === "admin123"){
-        localStorage.setItem("admin_save_pwd", inputPwd);
-        location.href = "admin-list.html";
-      }else if(inputPwd !== null){
-        alert("密码错误，无法进入管理页面");
+      const pwd=prompt('管理员密码');
+      if(pwd==='admin123'){
+        localStorage.setItem('admin_save_pwd',pwd);
+        location.href='admin-list.html';
       }
-      clickCount = 0;
     }
   }
+  setTimeout(()=>sessionStorage.removeItem('clickCount'),2000);
 });
 
-function startLongPress(){
-  isLongTriggered = false;
-  longPressTimer = setTimeout(()=>{
-    isLongTriggered = true;
-    location.href = "edit.html";
-  }, LONG_PRESS_DELAY);
-}
-function cancelLongPress(){clearTimeout(longPressTimer);}
-
-function toggleFilterPanel(){
-  const body = document.getElementById('filterBody');
-  const arrow = document.getElementById('filterArrow');
-  body.classList.toggle('show');
-  arrow.classList.toggle('rotate');
+/* =======================
+   工具函数
+   ======================= */
+function getFirstImgFromHtml(h){
+  const m=h.match(/<img[^>]+src=['"]([^'"]+)['"][^>]*>/);
+  return m?m[1]:'';
 }
 
-function getFirstImgFromHtml(html){
-  const reg = /<img[^>]+src=['"]([^'"]+)['"][^>]*>/;
-  const match = html.match(reg);
-  return match ? match[1] : '';
+function getPureTextPreview(h){
+  if(!h) return '';
+  return h.replace(/```[\s\S]*?```/g,'')
+         .replace(/`[^`]+`/g,'')
+         .replace(/<[^>]+>/g,'')
+         .replace(/\s+/g,' ')
+         .trim();
 }
 
-function getPureTextPreview(rawContent){
-  if(!rawContent) return '';
-  let text = rawContent;
-  text = text.replace(/```[\s\S]*?```/g, '');
-  text = text.replace(/`[^`]+`/g, '');
-  text = text.replace(/<[^>]+>/g, '');
-  text = text.replace(/\s+/g, ' ').trim();
-  return text;
-}
-
+/* =======================
+   渲染
+   ======================= */
 function renderFilter(){
-  allTypes.clear();
-  dataList.forEach(item=>{if(item.type) allTypes.add(item.type);})
-  const filterBody = document.getElementById('filterBody');
-  let html = `<button class="filter-btn ${currentFilter===''?'active':''}" onclick="filterByType('')">全部</button>`;
-  allTypes.forEach(t=>html += `<button class="filter-btn ${currentFilter===t?'active':''}" onclick="filterByType('${t}')">${t}</button>`);
-  filterBody.innerHTML = html;
+  const types=[...new Set(dataList.filter(i=>i.type).map(i=>i.type))];
+  let html='<button class="filter-btn active" onclick="filterByType(\'\')">全部</button>';
+  types.forEach(t=>html+=`<button class="filter-btn" onclick="filterByType('${t}')">${t}</button>`);
+  document.getElementById('filterBody').innerHTML=html;
 }
 
-function filterByType(type){
-  currentFilter = type;
-  renderFilter();
+function filterByType(t){
+  currentFilter=t;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
   renderNotes();
 }
 
-function openRead(noteId){
-  localStorage.setItem('readNoteId', noteId);
-  location.href = "read.html";
+function openRead(id){
+  localStorage.setItem('readNoteId',id);
+  location.href='read.html';
 }
 
 function renderNotes(){
-  let list = [...dataList];
-  if(currentFilter) list = list.filter(item=>item.type === currentFilter);
-  const sorted = list.sort((a,b)=>new Date(b.date.replace(" ","T")) - new Date(a.date.replace(" ","T")));
-  if(sorted.length === 0){
-    wrap.innerHTML = `<div class="empty-tip">暂无笔记</div>`;
+  let list=dataList.filter(i=>!currentFilter||i.type===currentFilter);
+  list.sort((a,b)=>new Date(b.date)-new Date(a.date));
+
+  if(!list.length){
+    wrap.innerHTML='<div class="empty-tip">暂无笔记</div>';
     return;
   }
-  let html = '';
-  sorted.forEach((item)=>{
-    let tagClass = 'tag-custom';
-    if(item.type === 'note') tagClass = 'tag-note';
-    if(item.type === 'doc') tagClass = 'tag-doc';
-    let tagText = item.type;
-    if(item.type === 'note') tagText = '开发笔记';
-    if(item.type === 'doc') tagText = '实操教程';
 
-    const hasCode = /```/.test(item.content);
+  wrap.innerHTML=list.map(item=>{
+    const hasCode=/```/.test(item.content);
+    const img=item.cover||getFirstImgFromHtml(item.content);
+    const preview=getPureTextPreview(item.content);
 
-    let leftImgSrc = '';
-    if(item.cover) leftImgSrc = item.cover;
-    else leftImgSrc = getFirstImgFromHtml(item.content);
-    let imgBoxHtml = leftImgSrc ? `<div class="card-img-box"><img src="${leftImgSrc}" alt=""></div>` : '';
+    let tagClass='tag-custom',tagText=item.type;
+    if(item.type==='note'){tagClass='tag-note';tagText='开发笔记';}
+    if(item.type==='doc'){tagClass='tag-doc';tagText='实操教程';}
 
-    const previewText = getPureTextPreview(item.content);
-
-    html += `
+    return `
     <div class="note-card" onclick="openRead('${item.id}')">
-      ${imgBoxHtml}
+      ${img?`<div class="card-img-box"><img src="${img}"></div>`:''}
       <div class="card-right-wrap">
         <div class="card-head">
           <div class="card-title">
@@ -384,15 +324,17 @@ function renderNotes(){
           </div>
           <span class="tag ${tagClass}">${tagText}</span>
         </div>
-        <div class="card-date">发布时间：${item.date}</div>
-        <div class="card-preview">
-          <div class="preview-inner">${previewText}</div>
-        </div>
+        <div class="card-date">${item.date}</div>
+        <div class="card-preview">${preview}</div>
       </div>
     </div>
     `;
-  });
-  wrap.innerHTML = html;
+  }).join('');
+}
+
+function toggleFilterPanel(){
+  const b=document.getElementById('filterBody'),a=document.getElementById('filterArrow');
+  b.classList.toggle('show');a.classList.toggle('rotate');
 }
 
 renderFilter();
