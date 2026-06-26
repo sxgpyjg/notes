@@ -473,12 +473,13 @@ body.keyboard-opened{
 }
 .find-replace-btns button{
   flex:1;
-  padding:10px;
+  padding:8px 2px;
   border:none;
   border-radius:8px;
-  font-size:14px;
+  font-size:12px;
   cursor:pointer;
 }
+
 .btn-find{
   background:#e0e7ff;
   color:#2d3748;
@@ -621,9 +622,11 @@ body.keyboard-opened{
       <input type="text" id="replaceInput" placeholder="替换后的文字">
     </div>
     <div class="find-replace-btns">
-      <button class="btn-find" id="findNextBtn">查找下一个</button>
-      <button class="btn-replace-all" id="replaceAllBtn">全部替换</button>
-    </div>
+  <button class="btn-find" id="findNextBtn">查找下一个</button>
+  <button class="btn-find" id="replaceSingleBtn">替换当前</button>
+  <button class="btn-replace-all" id="replaceAllBtn">全部替换</button>
+</div>
+
   </div>
 </div>
 
@@ -2082,6 +2085,40 @@ replaceAllBtn.addEventListener('click', ()=>{
   const count = (oldText.match(new RegExp(findText,'g')) || []).length;
   alert(`替换完成，共替换${count}处`);
 });
+
+// 单次替换当前匹配
+const replaceSingleBtn = document.getElementById('replaceSingleBtn');
+replaceSingleBtn.addEventListener('click', () => {
+  const findText = findInput.value.trim();
+  const repText = replaceInput.value;
+  if (!findText) {
+    alert("请输入查找内容");
+    return;
+  }
+  if (matchList.length === 0) {
+    alert("请先点击查找下一个定位匹配内容");
+    return;
+  }
+  // 获取当前选中匹配位置
+  const curPos = matchList[searchIndex - 1 >= 0 ? searchIndex - 1 : 0];
+  let oldText = getEditorText();
+  // 只截取替换当前一处
+  const leftPart = oldText.slice(0, curPos);
+  const rightPart = oldText.slice(curPos + findText.length);
+  const newText = leftPart + repText + rightPart;
+  setEditorText(newText);
+  alert("已替换当前这一处");
+  // 替换后重新更新全部匹配位置列表
+  const freshText = getEditorText();
+  const reg = new RegExp(findText, 'g');
+  matchList = [];
+  let match;
+  while ((match = reg.exec(freshText)) !== null) {
+    matchList.push(match.index);
+  }
+  searchIndex = 0;
+});
+
 
 </script>
 
