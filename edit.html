@@ -429,11 +429,14 @@ body.keyboard-opened{
 }
 .find-replace-box{
   background:rgba(255,255,255,0.85);
-  width:min(80%, 320px); /* 宽度从420 → 320，缩小整体宽度 */
+  width:min(80%, 320px);
   border-radius:12px;
-  padding:12px; /* 内边距缩小 */
+  padding:12px;
   backdrop-filter: blur(6px);
+  position: relative;
+  cursor: move;
 }
+
 .find-replace-top{
   display:flex;
   justify-content:space-between;
@@ -575,7 +578,7 @@ body.keyboard-opened{
     <button class="icon-btn" data-tip="本地图片上传" id="localImgBtn">🖼</button>
     <button class="icon-btn" data-tip="批量图床链接" id="batchImgBtn">🔗</button>    
     <button class="icon-btn" data-tip="插入链接" onclick="insertLink()">[]()</button>
-    <button class="icon-btn" data-tip="固定宽度图片" onclick="insertImgWidth()">img</button>
+    <button class="icon-btn" data-tip="固定宽度图片" onclick="insertImgWidth()">Img</button>
     <button class="icon-btn" data-tip="查找替换" id="findReplaceBtn">🔍</button>
     <button class="icon-btn" data-tip="更多工具" onclick="toggleMoreTools()">⋮</button>
     <input type="file" id="hiddenImgFile1" multiple>
@@ -2119,6 +2122,40 @@ replaceSingleBtn.addEventListener('click', () => {
     matchList.push(match.index);
   }
   searchIndex = 0;
+});
+// 弹窗拖拽功能
+const mask = findReplaceMask;
+const box = document.querySelector('.find-replace-box');
+let drag = false;
+let offsetX, offsetY;
+
+box.addEventListener('mousedown', (e) => {
+  // 点击输入框、按钮不触发拖拽
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
+  drag = true;
+  offsetX = e.clientX - box.getBoundingClientRect().left;
+  offsetY = e.clientY - box.getBoundingClientRect().top;
+  box.style.transition = 'none';
+});
+document.addEventListener('mousemove', (e) => {
+  if (!drag) return;
+  const x = e.clientX - offsetX;
+  const y = e.clientY - offsetY;
+  box.style.left = x + 'px';
+  box.style.top = y + 'px';
+  box.style.transform = 'unset';
+});
+document.addEventListener('mouseup', () => {
+  if (drag) {
+    drag = false;
+    box.style.transition = '0.15s ease';
+  }
+});
+// 打开弹窗时重置位置
+findReplaceBtn.addEventListener('click', () => {
+  box.style.left = '';
+  box.style.top = '';
+  box.style.transform = '';
 });
 
 
