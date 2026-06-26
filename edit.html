@@ -578,13 +578,14 @@ body.keyboard-opened{
     <button class="icon-btn" data-tip="行内代码" onclick="insertInlineCode()">`</button>
     <button class="icon-btn" data-tip="引用块" onclick="insertQuote()">></button>
     <button class="icon-btn" data-tip="无序列表" onclick="insertUl()">•</button>
-    <button class="icon-btn" data-tip="分割线" onclick="splitLine1()">—</button>
+    <button class="icon-btn" data-tip="清空全部内容" id="clearAllContentBtn">🗑️</button>
     <button class="icon-btn" data-tip="表格" onclick="insertTable()">▦</button>
     <button class="icon-btn" data-tip="本地图片上传" id="localImgBtn">🖼</button>
-    <button class="icon-btn" data-tip="批量图床链接" id="batchImgBtn">🔗</button>    
+    <button class="icon-btn" data-tip="批量图床链接" id="batchImgBtn">🔗</button>  
     <button class="icon-btn" data-tip="插入链接" onclick="insertLink()">[]()</button>
     <button class="icon-btn" data-tip="固定宽度图片" onclick="insertImgWidth()">Img</button>
     <button class="icon-btn" data-tip="查找替换" id="findReplaceBtn">🔍</button>
+    <button class="icon-btn" data-tip="分割线" onclick="splitLine1()">—</button>
     <button class="icon-btn" data-tip="更多工具" onclick="toggleMoreTools()">⋮</button>
     <input type="file" id="hiddenImgFile1" multiple>
 
@@ -2214,6 +2215,21 @@ document.addEventListener('touchend', endDrag);
 // 打开弹窗复位居中
 findReplaceBtn.addEventListener('click', resetBoxPos);
 
+// 一键清空编辑器所有文字、图片、表格等全部内容
+const clearAllContentBtn = document.getElementById('clearAllContentBtn');
+clearAllContentBtn.addEventListener('click', () => {
+  // 二次确认防止误触
+  if (!confirm('确定清空编辑器所有文字、图片、表格内容？无法撤销！')) return;
+
+  // 清空编辑器主体（替换成你编辑器实际DOM容器）
+  document.getElementById('editor').innerHTML = '';
+
+  // 同步清空查找替换缓存
+  findInput.value = '';
+  replaceInput.value = '';
+  matchList = [];
+  searchIndex = 0;
+});
 
 </script>
 </body>
