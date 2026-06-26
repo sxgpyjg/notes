@@ -1958,6 +1958,7 @@ function insertImgWidth(){
 
 //本地图片插入通用方法
 function insertLocalImgTag(fileName){
+  addImgSerial();
   const imgHtml = `<img loading="lazy" src="/notes/images/${fileName}" alt="配图" style="max-width:100%;margin:8px 0;"><br><br>`;
   if(currentEditMode === "rich"){
     document.execCommand("insertHTML",false,imgHtml);
@@ -2064,12 +2065,15 @@ function exportSingleNoteHtml(){
 ${richBox.innerHTML}
 </body></html>`;
   const blob = new Blob([html], {type:"text/html"});
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = `${title}.html`;
-  a.click();
-  URL.revokeObjectURL(a.href);
+const a = document.createElement("a");
+a.href = URL.createObjectURL(blob);
+a.download = `${title}.html`;
+document.body.appendChild(a);
+a.click();
+document.body.removeChild(a);
+URL.revokeObjectURL(a.href);
 }
+
 
 //同步表单数据到笔记数组
 function syncFormToNoteList(){
@@ -2362,7 +2366,7 @@ function setEditorText(val){
     renderMdPreview();
     calcWordCount();
   }else{
-    richEditor.innerHTML = val;
+    richBox.innerHTML = val;
     calcWordCount();
   }
 }
@@ -2635,6 +2639,9 @@ window.addEventListener("DOMContentLoaded", ()=>{
   // 大图预览关闭绑定
   const previewMask = document.getElementById("imgPreviewMask");
   previewMask.onclick = ()=> previewMask.classList.remove("show");
+  // 加载缓存与笔记
+  loadLocalCache();
+  if(editId) setTimeout(initLoadNote, 100);
 });
 
 // 编辑器图片点击放大预览
@@ -2660,205 +2667,6 @@ mdPreviewBox.addEventListener("click", function(e){
 // 页面切后台、关闭前自动缓存
 window.addEventListener("blur", syncFormToNoteList);
 window.addEventListener("beforeunload", syncFormToNoteList);
-
-// 清空图片上传记录按钮
-clearImgListBtn.onclick = function(){
-  imgUploadList = [];
-  alert("已清空全部图片复制脚本记录");
-}
-
-// 区分大小写切换监听
-matchCaseCheck.addEventListener("change", ()=>{
-  matchCase = matchCaseCheck.checked;
-})
-
-// 导出单篇MD文件
-function exportSingleNoteMd(){
-  const title = titleInput.value.trim();
-  if(!title) return alert("请先填写笔记标题");
-  syncFormToNoteList();
-  const content = currentEditMode === "rich" ? richBox.innerText : mdBox.value;
-  const blob = new Blob([content], {type:"text/markdown;charset=utf-8"});
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = `${title}.md`;
-  a.click();
-  URL.revokeObjectURL(a.href);
-}
-
-// 导出单篇HTML文件
-function exportSingleNoteHtml(){
-  syncFormToNoteList();
-  const title = titleInput.value.trim();
-  if(!title) return alert("请先填写标题");
-  const htmlContent = richBox.innerHTML;
-  const htmlTpl = `<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>${title}</title>
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-body{max-width:920px;margin:24px auto;padding:0 16px;font-size:16px;line-height:1.75;color:#222;background:#fff}
-img{max-width:100%;margin:10px 0;border-radius:6px}
-table{width:100%;border-collapse:collapse;margin:12px 0}
-th,td{border:1px solid #aaa;padding:6px 8px}
-pre{background:#f4f4f4;padding:12px;border-radius:6px;overflow-x:auto;margin:10px 0}
-</style>
-</head>
-<body>
-<h1 style="margin-bottom:16px">${title}</h1>
-${htmlContent}
-</body>
-</html>`;
-  const blob = new Blob([htmlTpl], {type:"text/html;charset=utf-8"});
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = `${title}.html`;
-  a.click();
-  URL.revokeObjectURL(a.href);
-}
-
-// 获取标准格式化时间
-function getNowTimeStr(){
-  const d = new Date();
-  const pad = n => String(n).padStart(2,"0");
-  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
-}
-
-// 图片面板展开收起
-function toggleImgPanel(){
-  const body = document.getElementById("imgPanelBody");
-  const arrow = document.getElementById("imgArrow");
-  body.classList.toggle("show");
-  arrow.classList.toggle("rotate");
-}
-
-// 清除文字格式
-function clearTextFormat(){
-  if(currentEditMode === "rich"){
-    richBox.focus();
-    document.execCommand("removeFormat",false,null);
-    checkFormatActive();
-    calcWordCount();
-  }else{
-    alert("Markdown模式需手动删除格式标记");
-  }
-}
-
-// 折叠详情块
-function insertDetails(){
-  const mdStr = `<details>
-<summary>点击展开查看</summary>
-在此输入内容
-</details>
-`;
-  const richHtml = `<details style="border:1px solid #ddd;border-radius:6px;padding:8px;margin:8px 0;">
-<summary style="cursor:pointer;font-weight:500;margin-bottom:6px;">点击展开查看</summary>
-在此输入内容
-</details>`;
-  if(currentEditMode === "rich"){
-    richBox.focus();
-    document.execCommand("insertHTML",false,richHtml);
-    calcWordCount();
-  }else{
-    mdBox.value += mdStr;
-    saveMdRecord();
-    renderMdPreview();
-    calcWordCount();
-    const pos = mdBox.value.length - 8;
-    mdBox.selectionStart = pos;
-    mdBox.selectionEnd = pos;
-  }
-}
-
-// 行内公式
-function insertInlineMath(){
-  if(currentEditMode === "rich"){
-    richBox.focus();
-    document.execCommand("insertText",false,"$ $");
-    const sel = window.getSelection();
-    const range = sel.getRangeAt(0);
-    range.setStart(range.startContainer, range.startOffset - 1);
-    range.collapse(true);
-    sel.removeAllRanges();
-    sel.addRange(range);
-    calcWordCount();
-  }else{
-    mdBox.value += "$ $";
-    saveMdRecord();
-    renderMdPreview();
-    calcWordCount();
-    mdBox.selectionStart = mdBox.value.length - 1;
-    mdBox.selectionEnd = mdBox.value.length - 1;
-  }
-}
-
-// 块级公式
-function insertBlockLatex(){
-  if(currentEditMode === "rich"){
-    richBox.focus();
-    document.execCommand("insertHTML",false,"<p>$$<br><br>$$</p>");
-    calcWordCount();
-  }else{
-    mdBox.value += "$$\n\n$$\n";
-    saveMdRecord();
-    renderMdPreview();
-    calcWordCount();
-    mdBox.selectionStart = mdBox.value.length - 4;
-    mdBox.selectionEnd = mdBox.value.length - 4;
-  }
-}
-
-// 复制选中内容
-function copySelect(){
-  const selText = window.getSelection().toString();
-  if(!selText) return alert("未选中任何文字");
-  navigator.clipboard.writeText(selText).catch(()=>{
-    const tmp = document.createElement("textarea");
-    tmp.value = selText;
-    document.body.appendChild(tmp);
-    tmp.select();
-    document.execCommand("copy");
-    document.body.removeChild(tmp);
-  });
-  alert("选中内容复制成功");
-}
-
-// 段落移动占位
-function moveUp(){alert("段落上移功能待完善");}
-function moveDown(){alert("段落下移功能待完善");}
-
-// 撤销重做快捷调用
-function globalUndo(){globalUndoBtn.click();}
-function globalRedo(){globalRedoBtn.click();}
-
-// 读取本地缓存笔记
-function loadLocalCache(){
-  const cache = localStorage.getItem(CACHE_KEY);
-  if(cache){
-    try{
-      list = JSON.parse(cache);
-      window.NOTE_DATA = list;
-    }catch(e){
-      list = [];
-    }
-  }else{
-    list = [];
-  }
-}
-
-// 保存临时缓存
-function saveLocalCache(){
-  localStorage.setItem(CACHE_KEY, JSON.stringify(list));
-}
-
-// 生成完整data.js文本
-function getFullJsText(){
-  return `window.NOTE_DATA = ${JSON.stringify(list, null, 2)};`;
-}
-
 
 </script>
 </body>
