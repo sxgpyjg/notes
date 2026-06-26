@@ -19,8 +19,9 @@ body{
   margin: 0 auto;
 }
 header{
-  margin-bottom: 16px;
-  padding: 16px 6px;
+  /* 缩小头部上下空白 */
+  margin-bottom: 8px;
+  padding: 8px 6px;
   border-bottom: 1px solid #e4e7f3;
   display: flex;
   justify-content: space-between;
@@ -28,16 +29,16 @@ header{
   gap: 12px;
 }
 h1{
-  font-size: 20px;
+  font-size: 17px;
   color: #1d2133;
   font-weight: 600;
   cursor: pointer;
   user-select: none;
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
 }
 /* 全屏按钮 SVG 新版 */
 #fullPageBtn{
-width:48px;height:48px;
+width:40px;height:40px;
 border:none;background:transparent;
 display:flex;align-items:center;justify-content:center;
 -webkit-tap-highlight-color:transparent;
@@ -46,7 +47,7 @@ padding:0;
 }
 #fullPageBtn:active{transform:scale(0.92);}
 #fullPageBtn svg{
-  width:26px;height:26px;
+  width:22px;height:22px;
 }
 #fullPageBtn path{
   fill:none;
@@ -147,6 +148,7 @@ padding:0;
   margin-top: -2px;
 }
 
+/* 核心修复：QQ浏览器超长代码强制换行 */
 .card-preview{
   font-size: 13px;
   color: #6b7280;
@@ -155,15 +157,20 @@ padding:0;
   -webkit-line-clamp: 3;
   -webkit-box-orient: vertical;
   overflow: hidden;
+  /* 兼容老旧QQ浏览器强制断行 */
+  white-space: normal !important;
+  word-break: break-all !important;
+  word-wrap: break-word !important;
+  overflow-wrap: break-word !important;
 }
 .filter-collapse{
   border:1px solid #dbeafe;
   border-radius:12px;
-  margin:0 2px 16px;
+  margin:0 2px 12px;
   overflow:hidden;
 }
 .filter-header{
-  padding:12px 16px;
+  padding:10px 16px;
   background:#eff6ff;
   cursor:pointer;
   display:flex;
