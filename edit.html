@@ -187,7 +187,7 @@ body{
 }
 .rich-editor{
   width:100%;
-  min-height:280px;
+  min-height:560px;
   border:1px solid #e0e3f0;
   border-radius:8px;
   padding:10px;
@@ -208,7 +208,7 @@ body{
 }
 .md-editor{
   width:100%;
-  min-height:280px;
+  min-height:380px;
   border:1px solid #e0e3f0;
   border-radius:8px;
   padding:10px;
@@ -2221,8 +2221,15 @@ clearAllContentBtn.addEventListener('click', () => {
   // 二次确认防止误触
   if (!confirm('确定清空编辑器所有文字、图片、表格内容？无法撤销！')) return;
 
-  // 清空编辑器主体（替换成你编辑器实际DOM容器）
-  document.getElementById('editor').innerHTML = '';
+  // 清空富文本
+  richBox.innerHTML = '';
+  // 清空Markdown
+  mdBox.value = '';
+  saveMdRecord();
+  renderMdPreview();
+  // 重置撤销栈
+  mdRecordStack = [];
+  mdRecordIndex = -1;
 
   // 同步清空查找替换缓存
   findInput.value = '';
@@ -2230,6 +2237,7 @@ clearAllContentBtn.addEventListener('click', () => {
   matchList = [];
   searchIndex = 0;
 });
+
 
 </script>
 </body>
