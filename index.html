@@ -19,7 +19,6 @@ body{
   margin: 0 auto;
 }
 header{
-  /* 缩小头部上下空白 */
   margin-bottom: 8px;
   padding: 8px 6px;
   border-bottom: 1px solid #e4e7f3;
@@ -34,7 +33,6 @@ h1#secretTrigger{
   font-weight: 600;
   cursor: pointer;
   letter-spacing: 0.5px;
-  /* 全套禁止长按复制/选中菜单（QQ浏览器生效） */
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
@@ -42,7 +40,6 @@ h1#secretTrigger{
   -webkit-touch-callout: none;
   -webkit-tap-highlight-color: transparent;
 }
-/* 全屏按钮 SVG 新版 */
 #fullPageBtn{
 width:40px;height:40px;
 border:none;background:transparent;
@@ -83,7 +80,6 @@ padding:0;
   border-radius: 16px;
   align-items: center;
 }
-
 .note-card:active{
   background: #f7f8fc;
 }
@@ -108,7 +104,6 @@ padding:0;
   gap: 4px;
   padding: 3px 0;
 }
-
 .card-head{
   display: flex;
   justify-content: space-between;
@@ -134,38 +129,23 @@ padding:0;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
-.tag-note{
-  background: #e8eaff;
-  color: #3950cc;
-}
-.tag-doc{
-  background: #e6f8ee;
-  color: #148246;
-}
-.tag-custom{
-  background: #fff0e6;
-  color: #b8460c;
-}
-
+.tag-note{background: #e8eaff;color:#3950cc;}
+.tag-doc{background: #e6f8ee;color:#148246;}
+.tag-custom{background: #fff0e6;color:#b8460c;}
 .card-date{
   font-size: 10px;
   color: #6b7280;
   margin-top: -2px;
 }
 
-/* 外层省略容器，不处理换行 */
+/* 完全移除-webkit-line-clamp，换行属性直接写外层，QQ浏览器100%生效 */
 .card-preview{
   font-size: 13px;
   color: #6b7280;
   line-height: 1.35;
-  display: -webkit-box;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
+  max-height: 4.05em;
   overflow: hidden;
-}
-/* 内层文本容器：QQ浏览器强制换行核心 */
-.preview-text{
+  /* QQ强制换行全套属性，无任何省略样式冲突 */
   white-space: normal !important;
   word-break: break-all !important;
   word-wrap: break-word !important;
@@ -193,16 +173,9 @@ padding:0;
   display:none;
   background:#fff;
 }
-.filter-body.show{
-  display:block;
-}
-.arrow{
-  transition:transform 0.24s ease;
-  font-size:14px;
-}
-.arrow.rotate{
-  transform:rotate(180deg);
-}
+.filter-body.show{display:block;}
+.arrow{transition:transform 0.24s ease;font-size:14px;}
+.arrow.rotate{transform:rotate(180deg);}
 .filter-btn{
   padding:6px 11px;
   border:none;
@@ -213,19 +186,13 @@ padding:0;
   font-size:13px;
   transition:0.2s;
 }
-.filter-btn.active{
-  background:#6366F1;
-  color:#fff;
-}
-.filter-btn:active{
-  opacity:0.85;
-}
+.filter-btn.active{background:#6366F1;color:#fff;}
+.filter-btn:active{opacity:0.85;}
 </style>
 </head>
 <body>
 <header>
   <h1 id="secretTrigger">笔记目录</h1>
-  <!-- 全屏SVG按钮 朝外展开初始 -->
   <button id="fullPageBtn">
     <svg viewBox="0 0 24 24" id="fullSvg">
       <path d="M10 7 H7 V10"/>
@@ -259,58 +226,37 @@ let timer = null;
 let currentFilter = "";
 let allTypes = new Set();
 
-// 长按控制变量
 let longPressTimer = null;
 const LONG_PRESS_DELAY = 2000;
-let isLongTriggered = false; // 标记是否触发长按，阻止单击事件
+let isLongTriggered = false;
 
-// 全屏切换逻辑
 fullBtn.addEventListener('click',()=>{
   if(!document.fullscreenElement){
     document.documentElement.requestFullscreen();
-    fullSvg.innerHTML = `
-      <path d="M7 10 H10 V7"/>
-      <path d="M17 10 H14 V7"/>
-      <path d="M17 14 H14 V17"/>
-      <path d="M7 14 H10 V17"/>
-    `;
+    fullSvg.innerHTML = `<path d="M7 10 H10 V7"/><path d="M17 10 H14 V7"/><path d="M17 14 H14 V17"/><path d="M7 14 H10 V17"/>`;
   }else{
     document.exitFullscreen();
-    fullSvg.innerHTML = `
-      <path d="M10 7 H7 V10"/>
-      <path d="M14 7 H17 V10"/>
-      <path d="M14 17 H17 V14"/>
-      <path d="M10 17 H7 V14"/>
-    `;
+    fullSvg.innerHTML = `<path d="M10 7 H7 V10"/><path d="M14 7 H17 V10"/><path d="M14 17 H17 V14"/><path d="M10 17 H7 V14"/>`;
   }
 })
 
-// 拦截长按右键/复制菜单（双保险，CSS失效时JS兜底）
 trigger.addEventListener('contextmenu', e=> e.preventDefault());
-
-// 按下：启动长按计时
 trigger.addEventListener('mousedown', startLongPress);
 trigger.addEventListener('touchstart', startLongPress);
-
-// 松开/滑动：取消长按
 trigger.addEventListener('mouseup', cancelLongPress);
 trigger.addEventListener('mouseleave', cancelLongPress);
 trigger.addEventListener('touchend', cancelLongPress);
 trigger.addEventListener('touchmove', cancelLongPress);
 
-// 单击逻辑（只有没触发长按时才执行5连击）
 trigger.addEventListener('click', (e)=>{
   clearTimeout(timer);
   clearTimeout(longPressTimer);
-  // 如果已经触发长按，直接终止单击逻辑，互不冲突
   if(isLongTriggered){
     isLongTriggered = false;
     return;
   }
   clickCount++;
-  timer = setTimeout(()=>{
-    clickCount = 0;
-  }, 2000);
+  timer = setTimeout(()=>clickCount = 0, 2000);
   if(clickCount >= 5){
     const savedPwd = localStorage.getItem("admin_save_pwd");
     if(savedPwd === "admin123"){
@@ -328,7 +274,6 @@ trigger.addEventListener('click', (e)=>{
   }
 });
 
-// 开启长按计时（不阻断touchstart，兼容QQ触摸）
 function startLongPress(){
   isLongTriggered = false;
   longPressTimer = setTimeout(()=>{
@@ -336,11 +281,7 @@ function startLongPress(){
     location.href = "edit.html";
   }, LONG_PRESS_DELAY);
 }
-
-// 取消长按
-function cancelLongPress(){
-  clearTimeout(longPressTimer);
-}
+function cancelLongPress(){clearTimeout(longPressTimer);}
 
 function toggleFilterPanel(){
   const body = document.getElementById('filterBody');
@@ -348,43 +289,33 @@ function toggleFilterPanel(){
   body.classList.toggle('show');
   arrow.classList.toggle('rotate');
 }
-
 function getFirstImgFromHtml(html){
   const reg = /<img[^>]+src=['"]([^'"]+)['"][^>]*>/;
   const match = html.match(reg);
   return match ? match[1] : '';
 }
-
 function getPureTextPreview(rawContent){
   let text = rawContent.replace(/```[\s\S]*?```/g,"");
   text = text.replace(/<img[^>]*>/g,"");
   return text;
 }
-
 function renderFilter(){
   allTypes.clear();
-  dataList.forEach(item=>{
-    if(item.type) allTypes.add(item.type);
-  })
+  dataList.forEach(item=>{if(item.type) allTypes.add(item.type);})
   const filterBody = document.getElementById('filterBody');
   let html = `<button class="filter-btn ${currentFilter===''?'active':''}" onclick="filterByType('')">全部</button>`;
-  allTypes.forEach(t=>{
-    html += `<button class="filter-btn ${currentFilter===t?'active':''}" onclick="filterByType('${t}')">${t}</button>`;
-  })
+  allTypes.forEach(t=>html += `<button class="filter-btn ${currentFilter===t?'active':''}" onclick="filterByType('${t}')">${t}</button>`);
   filterBody.innerHTML = html;
 }
-
 function filterByType(type){
   currentFilter = type;
   renderFilter();
   renderNotes();
 }
-
 function openRead(noteId){
   localStorage.setItem('readNoteId', noteId);
   location.href = "read.html";
 }
-
 function renderNotes(){
   let list = [...dataList];
   if(currentFilter) list = list.filter(item=>item.type === currentFilter);
@@ -401,20 +332,11 @@ function renderNotes(){
     let tagText = item.type;
     if(item.type === 'note') tagText = '开发笔记';
     if(item.type === 'doc') tagText = '实操教程';
-    
     const previewText = getPureTextPreview(item.content);
-    
     let leftImgSrc = '';
-    if(item.cover){
-      leftImgSrc = item.cover;
-    }else{
-      leftImgSrc = getFirstImgFromHtml(item.content);
-    }
-    let imgBoxHtml = '';
-    if(leftImgSrc){
-      imgBoxHtml = `<div class="card-img-box"><img src="${leftImgSrc}" alt=""></div>`;
-    }
-
+    if(item.cover) leftImgSrc = item.cover;
+    else leftImgSrc = getFirstImgFromHtml(item.content);
+    let imgBoxHtml = leftImgSrc ? `<div class="card-img-box"><img src="${leftImgSrc}" alt=""></div>` : '';
     html += `
     <div class="note-card" onclick="openRead('${item.id}')">
       ${imgBoxHtml}
@@ -424,17 +346,14 @@ function renderNotes(){
           <span class="tag ${tagClass}">${tagText}</span>
         </div>
         <div class="card-date">发布时间：${item.date}</div>
-        <!-- 内层独立换行容器 -->
-        <div class="card-preview">
-          <div class="preview-text">${previewText}</div>
-        </div>
+        <!-- 直接单层文本，无嵌套冲突 -->
+        <div class="card-preview">${previewText}</div>
       </div>
     </div>
     `;
   })
   wrap.innerHTML = html;
 }
-
 renderFilter();
 renderNotes();
 </script>
