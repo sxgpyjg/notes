@@ -497,6 +497,11 @@ body.keyboard-opened{
   color:#fff;
 }
 
+.rich-editor pre code {
+  display: block;
+  min-height: 120px;
+  line-height: 1.5;
+}
 
 </style>
 </head>
@@ -1961,7 +1966,7 @@ backupFileInput.onchange = function(e){
 };
 // 代码块按钮功能（修复光标定位）
 function insertMdCode(){
-  const richTpl = `<pre style="background:#f5f5f5;padding:10px;border-radius:6px;white-space:pre-wrap;"><code></code></pre><br><br>`;
+  const richTpl = `<pre style="background:#f5f5f5;padding:10px;border-radius:6px;white-space:pre-wrap;"><code style="display:block;min-height:120px;">\n</code></pre><br><br>`;
   const mdTpl = "```\n\n```\n";
   if(currentEditMode === "rich"){
     richBox.focus();
