@@ -423,6 +423,9 @@ body.keyboard-opened{
   align-items:center;
   justify-content:center;
   z-index:9999;
+  /* 新增两行阻止页面滚动穿透 */
+  overflow: hidden;
+  touch-action: none;
 }
 .find-replace-mask.show{
   display:flex;
@@ -433,9 +436,10 @@ body.keyboard-opened{
   border-radius:12px;
   padding:12px;
   backdrop-filter: blur(6px);
-  position: relative;
+  position: absolute; /* 这里改成absolute，不要relative */
   cursor: move;
 }
+
 
 .find-replace-top{
   display:flex;
@@ -2123,39 +2127,79 @@ replaceSingleBtn.addEventListener('click', () => {
   }
   searchIndex = 0;
 });
-// 弹窗拖拽功能
+// 弹窗拖拽 修复滚动穿透+触屏兼容
 const mask = findReplaceMask;
 const box = document.querySelector('.find-replace-box');
 let drag = false;
 let offsetX, offsetY;
 
+// 鼠标按下
 box.addEventListener('mousedown', (e) => {
-  // 点击输入框、按钮不触发拖拽
-  if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
+  const tag = e.target.tagName;
+  if (tag === 'INPUT' || tag === 'BUTTON') return;
+  e.preventDefault();
   drag = true;
-  offsetX = e.clientX - box.getBoundingClientRect().left;
-  offsetY = e.clientY - box.getBoundingClientRect().top;
+  const rect = box.getBoundingClientRect();
+  offsetX = e.clientX - rect.left;
+  offsetY = e.clientY - rect.top;
   box.style.transition = 'none';
 });
+
+// 触屏按下
+box.addEventListener('touchstart', (e) => {
+  const tag = e.target.tagName;
+  if (tag === 'INPUT' || tag === 'BUTTON') return;
+  e.preventDefault();
+  drag = true;
+  const touch = e.touches[0];
+  const rect = box.getBoundingClientRect();
+  offsetX = touch.clientX - rect.left;
+  offsetY = touch.clientY - rect.top;
+  box.style.transition = 'none';
+});
+
+// 鼠标移动
 document.addEventListener('mousemove', (e) => {
   if (!drag) return;
+  e.preventDefault();
   const x = e.clientX - offsetX;
   const y = e.clientY - offsetY;
   box.style.left = x + 'px';
   box.style.top = y + 'px';
-  box.style.transform = 'unset';
 });
-document.addEventListener('mouseup', () => {
-  if (drag) {
+
+// 触屏移动
+document.addEventListener('touchmove', (e) => {
+  if (!drag) return;
+  e.preventDefault();
+  const touch = e.touches[0];
+  const x = touch.clientX - offsetX;
+  const y = touch.clientY - offsetY;
+  box.style.left = x + 'px';
+  box.style.top = y + 'px';
+});
+
+// 松开结束拖拽
+function endDrag(){
+  if(drag){
     drag = false;
     box.style.transition = '0.15s ease';
   }
-});
-// 打开弹窗时重置位置
+}
+document.addEventListener('mouseup', endDrag);
+document.addEventListener('touchend', endDrag);
+
+// 重新打开弹窗复位居中
 findReplaceBtn.addEventListener('click', () => {
-  box.style.left = '';
-  box.style.top = '';
-  box.style.transform = '';
+  box.style.left = '50%';
+  box.style.top = '50%';
+  box.style.transform = 'translate(-50%, -50%)';
+});
+// 初始打开自动居中
+box.style.left = '50%';
+box.style.top = '50%';
+box.style.transform = 'translate(-50%, -50%)';
+
 });
 
 
