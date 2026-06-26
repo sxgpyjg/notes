@@ -418,7 +418,7 @@ body.keyboard-opened{
 .find-replace-mask{
   position:fixed;
   inset:0;
-  background:rgba(0,0,0,0.25); /* 原来0.45，降低遮罩透明度 */
+  background:rgba(0,0,0,0.25);
   display:none;
   align-items:center;
   justify-content:center;
@@ -428,60 +428,58 @@ body.keyboard-opened{
   display:flex;
 }
 .find-replace-box{
-  background:rgba(255,255,255,0.85); /* 白色半透明面板 */
-  width:min(92%,420px);
-  border-radius:14px;
-  padding:16px;
-  backdrop-filter: blur(6px); /* 毛玻璃虚化背景，更通透 */
+  background:rgba(255,255,255,0.85);
+  width:min(80%, 320px); /* 宽度从420 → 320，缩小整体宽度 */
+  border-radius:12px;
+  padding:12px; /* 内边距缩小 */
+  backdrop-filter: blur(6px);
 }
-
 .find-replace-top{
   display:flex;
   justify-content:space-between;
   align-items:center;
-  margin-bottom:14px;
+  margin-bottom:10px;
 }
 .find-replace-title{
-  font-size:16px;
+  font-size:15px;
   font-weight:600;
 }
 .find-replace-close{
   border:none;
   background:transparent;
-  font-size:20px;
+  font-size:18px;
   color:#666;
   cursor:pointer;
 }
 .find-replace-item{
-  margin-bottom:12px;
+  margin-bottom:10px;
 }
 .find-replace-item label{
   display:block;
-  font-size:13px;
+  font-size:12px;
   color:#444;
-  margin-bottom:4px;
+  margin-bottom:3px;
 }
 .find-replace-item input{
   width:100%;
-  padding:9px 12px;
+  padding:7px 10px;
   border:1px solid #ddd;
-  border-radius:8px;
-  font-size:14px;
+  border-radius:6px;
+  font-size:13px;
 }
 .find-replace-btns{
   display:flex;
-  gap:6px;
-  margin-top:16px;
+  gap:5px;
+  margin-top:12px;
 }
 .find-replace-btns button{
   flex:1;
-  padding:8px 2px;
+  padding:7px 2px;
   border:none;
-  border-radius:8px;
+  border-radius:6px;
   font-size:12px;
   cursor:pointer;
 }
-
 .btn-find{
   background:#e0e7ff;
   color:#2d3748;
@@ -490,6 +488,7 @@ body.keyboard-opened{
   background:#6366F1;
   color:#fff;
 }
+
 
 </style>
 </head>
