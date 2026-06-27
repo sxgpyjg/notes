@@ -93,7 +93,6 @@ cursor: pointer;
   -webkit-user-select: none;
   transition: background 0.15s;
 }
-/* 电脑端hover样式 */
 .note-card:hover{
   background: #f0f4ff;
 }
@@ -270,6 +269,16 @@ const PWD_STORE_KEY = "admin_save_pwd";
 const LOCAL_NOTE_KEY = "notes";
 let dataList = [];
 
+// 清除遮罩残留，解决电脑页面点不动
+function clearAllLockMask() {
+  document.body.classList.remove("lock-scroll");
+  document.querySelectorAll(".modal-mask,.find-replace-mask").forEach(m => {
+    m.classList.remove("show");
+  });
+}
+window.addEventListener("load", clearAllLockMask);
+window.addEventListener("resize", clearAllLockMask);
+
 async function waitNoteData(){
   let count = 0;
   while((!window.NOTE_DATA || !Array.isArray(window.NOTE_DATA)) && count < 20){
@@ -297,8 +306,6 @@ function loadNoteData(){
       dataList = [];
     }
   }
-  // 注释过滤草稿，全部笔记显示
-  // dataList = dataList.filter(item => !item._isTempNew);
   try{
     if(dataList.length > 0){
       bindTitleLongPress();
@@ -312,6 +319,7 @@ function loadNoteData(){
 }
 
 window.addEventListener('load', async ()=>{
+  clearAllLockMask();
   await waitNoteData();
   setTimeout(()=>{
     loadNoteData();
@@ -362,10 +370,7 @@ function bindTitleLongPress(){
   trigger.addEventListener('touchmove',move);
   trigger.addEventListener('touchend',end);
   trigger.addEventListener('touchcancel',end);
-  // 电脑鼠标左键单击
-  trigger.addEventListener("click", ()=>{
-    // 短按标题无操作，仅长按进编辑
-  })
+  trigger.addEventListener("click", ()=>{});
 }
 
 function toggleFilterPanel(){
@@ -436,12 +441,11 @@ function renderNotes(){
   })
   wrap.innerHTML = html;
 
-  // 给卡片同时绑定触屏 + PC鼠标点击（核心修复电脑点不动）
   document.querySelectorAll('.note-card').forEach(card=>{
     let pressTimer=null,isLongPress=false,startX=0,startY=0,isScroll=false;
     const noteId = card.dataset.id;
 
-    // 触屏逻辑
+    // 移动端触屏逻辑
     const startPress = (e)=>{
       isLongPress=false;isScroll=false;
       const touch = e.touches[0];
@@ -462,11 +466,11 @@ function renderNotes(){
     card.addEventListener('touchmove',movePress);
     card.addEventListener('touchend',endPress);
 
-    // 电脑PC鼠标单击修复（新增）
+    // 电脑鼠标左键点击
     card.addEventListener("click", ()=>{
       openRead(noteId);
     })
-    // 鼠标右键长按进入管理页
+    // 鼠标右键唤起管理页
     card.addEventListener("contextmenu", (e)=>{
       e.preventDefault();
       openAdminPage();
