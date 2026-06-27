@@ -897,10 +897,10 @@ body.bg-custom .md-preview{
 <script>
 // 统一写入主存储 notes，给管理页/复制按钮读取
 function buildSafeCpCmd(srcPath, destFileName) {
-  const destDir = "~/storage/shared/notes/images/";
-  // 双引号包裹，兼容中文、空格、特殊符号文件名
-  return `cp "${srcPath}" "${destDir}${destFileName}"`;
+  const destDir = "/storage/emulated/0/notes/images/";
+  return `cp ${srcPath} "${destDir}${destFileName}"`;
 }
+
 
 function saveNoteToStorage(newList){
   localStorage.setItem("notes", JSON.stringify(newList));
@@ -1937,8 +1937,7 @@ insertLocalImgTagTerminal(safeName);
 let fullPath = file.path || "";
 let termuxSrc;
 if (fullPath) {
-  // 修正共享目录前缀、Download标准目录名
-  fullPath = fullPath.replace(/^\/storage\/emulated\/0\//i, "~/storage/shared/");
+  fullPath = fullPath.replace(/^\/storage\/emulated\/0\//i, "/storage/emulated/0/");
   fullPath = fullPath.replace(/\/download\//gi, "/Download/");
   termuxSrc = fullPath;
 } else {
@@ -1946,16 +1945,17 @@ if (fullPath) {
   const fnLower = fileName.toLowerCase();
   // 扩充多目录匹配，全部使用正确 ~/storage/shared 路径
   if (/screenshot/.test(fnLower)) {
-    termuxSrc = `~/storage/shared/DCIM/Screenshots/${fileName}`;
-  } else if (/wx_|wechat|mmexport/.test(fnLower)) {
-    termuxSrc = `~/storage/shared/tencent/MicroMsg/WeiXin/${fileName}`;
-  } else if (/qq/.test(fnLower)) {
-    termuxSrc = `~/storage/shared/tencent/QQ_images/${fileName}`;
-  } else if (/download/.test(fnLower)) {
-    termuxSrc = `~/storage/shared/Download/${fileName}`;
-  } else {
-    termuxSrc = `~/storage/shared/DCIM/Camera/${fileName}`;
-  }
+    termuxSrc = `/storage/emulated/0/DCIM/Screenshots/${fileName}`;
+} else if (/wx_|wechat|mmexport/.test(fnLower)) {
+    termuxSrc = `/storage/emulated/0/tencent/MicroMsg/WeiXin/${fileName}`;
+} else if (/qq/.test(fnLower)) {
+    termuxSrc = `/storage/emulated/0/tencent/QQ_images/${fileName}`;
+} else if (/download/.test(fnLower)) {
+    termuxSrc = `/storage/emulated/0/Download/${fileName}`;
+} else {
+    termuxSrc = `/storage/emulated/0/DCIM/Camera/${fileName}`;
+}
+
 }
 // 传入源路径 + 带序号目标文件名
 const cpCmd = buildSafeCpCmd(termuxSrc, safeName);
@@ -2062,24 +2062,25 @@ insertLocalImgTagTerminal(safeName);
 let fullPath = file.path || "";
 let termuxSrc;
 if (fullPath) {
-  // 系统绝对路径转Termux共享路径
-  fullPath = fullPath.replace(/^\/storage\/emulated\/0\//i, "~/storage/shared/");
+  fullPath = fullPath.replace(/^\/storage\/emulated\/0\//i, "/storage/emulated/0/");
   fullPath = fullPath.replace(/\/download\//gi, "/Download/");
   termuxSrc = fullPath;
-} else {
+}
+else {
   const fileName = file.name;
   const fnLower = fileName.toLowerCase();
   if (/screenshot/.test(fnLower)) {
-    termuxSrc = `~/storage/shared/DCIM/Screenshots/${fileName}`;
-  } else if (/wx_|wechat|mmexport/.test(fnLower)) {
-    termuxSrc = `~/storage/shared/tencent/MicroMsg/WeiXin/${fileName}`;
-  } else if (/qq/.test(fnLower)) {
-    termuxSrc = `~/storage/shared/tencent/QQ_images/${fileName}`;
-  } else if (/download/.test(fnLower)) {
-    termuxSrc = `~/storage/shared/Download/${fileName}`;
-  } else {
-    termuxSrc = `~/storage/shared/DCIM/Camera/${fileName}`;
-  }
+    termuxSrc = `/storage/emulated/0/DCIM/Screenshots/${fileName}`;
+} else if (/wx_|wechat|mmexport/.test(fnLower)) {
+    termuxSrc = `/storage/emulated/0/tencent/MicroMsg/WeiXin/${fileName}`;
+} else if (/qq/.test(fnLower)) {
+    termuxSrc = `/storage/emulated/0/tencent/QQ_images/${fileName}`;
+} else if (/download/.test(fnLower)) {
+    termuxSrc = `/storage/emulated/0/Download/${fileName}`;
+} else {
+    termuxSrc = `/storage/emulated/0/DCIM/Camera/${fileName}`;
+}
+
 }
 const cpCmd = buildSafeCpCmd(termuxSrc, safeName);
 imgUploadList.push({ name: safeName, src: termuxSrc, copyCmd: cpCmd });
@@ -2143,26 +2144,37 @@ insertLocalImgTagTerminal(safeName);
 
 let fullPath = file.path || "";
 let termuxSrc;
-if (fullPath) {
-  // 转换系统真实路径为Termux共享路径
-  fullPath = fullPath.replace(/^\/storage\/emulated\/0\//i, "~/storage/shared/");
+if (/screenshot/.test(fnLower)) {
+    termuxSrc = `/storage/emulated/0/DCIM/Screenshots/${fileName}`;
+} else if (/wx_|wechat|mmexport/.test(fnLower)) {
+    termuxSrc = `/storage/emulated/0/tencent/MicroMsg/WeiXin/${fileName}`;
+} else if (/qq/.test(fnLower)) {
+    termuxSrc = `/storage/emulated/0/tencent/QQ_images/${fileName}`;
+} else if (/download/.test(fnLower)) {
+    termuxSrc = `/storage/emulated/0/Download/${fileName}`;
+} else {
+    termuxSrc = `/storage/emulated/0/DCIM/Camera/${fileName}`;
+}
+) {
+  fullPath = fullPath.replace(/^\/storage\/emulated\/0\//i, "/storage/emulated/0/");
   fullPath = fullPath.replace(/\/download\//gi, "/Download/");
   termuxSrc = fullPath;
-} else {
+}else {
   // 无真实路径时按文件名猜测源目录，统一使用 ~/storage/shared
   const fileName = file.name;
   const fnLower = fileName.toLowerCase();
   if (/screenshot/.test(fnLower)) {
-    termuxSrc = `~/storage/shared/DCIM/Screenshots/${fileName}`;
-  } else if (/wx_|wechat|mmexport/.test(fnLower)) {
-    termuxSrc = `~/storage/shared/tencent/MicroMsg/WeiXin/${fileName}`;
-  } else if (/qq/.test(fnLower)) {
-    termuxSrc = `~/storage/shared/tencent/QQ_images/${fileName}`;
-  } else if (/download/.test(fnLower)) {
-    termuxSrc = `~/storage/shared/Download/${fileName}`;
-  } else {
-    termuxSrc = `~/storage/shared/DCIM/Camera/${fileName}`;
-  }
+    termuxSrc = `/storage/emulated/0/DCIM/Screenshots/${fileName}`;
+} else if (/wx_|wechat|mmexport/.test(fnLower)) {
+    termuxSrc = `/storage/emulated/0/tencent/MicroMsg/WeiXin/${fileName}`;
+} else if (/qq/.test(fnLower)) {
+    termuxSrc = `/storage/emulated/0/tencent/QQ_images/${fileName}`;
+} else if (/download/.test(fnLower)) {
+    termuxSrc = `/storage/emulated/0/Download/${fileName}`;
+} else {
+    termuxSrc = `/storage/emulated/0/DCIM/Camera/${fileName}`;
+}
+7
 }
 // 传入源路径，函数内部拼接目标 ~/storage/shared/notes/images
 const cpCmd = buildSafeCpCmd(termuxSrc, safeName);
