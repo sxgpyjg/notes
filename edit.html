@@ -915,27 +915,15 @@ autoLoginCheck();
 
 function loadLocalCache(){
   const cacheStr = localStorage.getItem(CACHE_KEY);
-  const realStorage = localStorage.getItem("notes");
 
-  // 优先读取远程data.js完整原始笔记
+  // 核心：优先加载远程data.js完整数据，本地存储不再覆盖线上
   if(window.NOTE_DATA && Array.isArray(window.NOTE_DATA)){
     list = [...window.NOTE_DATA];
   }
 
-  // 仅读取临时草稿，不覆盖正式笔记
-  if(cacheStr){
-    try{
-      const tempCache = JSON.parse(cacheStr);
-      const tempDraft = tempCache.find(item => item._isTempNew === true);
-      if(tempDraft){
-        const hasDraft = list.some(i => i._isTempNew === true);
-        if(!hasDraft) list.push(tempDraft);
-      }
-    }catch(e){}
-  }
-
-  // 屏蔽本地存储强行覆盖远程数据
+  // 屏蔽读取 localStorage.notes 覆盖远程的代码
   /*
+  const realStorage = localStorage.getItem("notes");
   if(realStorage){
     try{
       list = JSON.parse(realStorage);
@@ -943,7 +931,19 @@ function loadLocalCache(){
     }catch(e){}
   }
   */
+
+  // 仅保留编辑临时草稿，不干扰正式笔记列表
+  if(cacheStr){
+    try{
+      const tempCache = JSON.parse(cacheStr);
+      const tempDraft = tempCache.find(item => item._isTempNew === true);
+      if(tempDraft && !list.some(i => i._isTempNew === true)){
+        list.push(tempDraft);
+      }
+    }catch(e){}
+  }
 }
+
 
 
 
