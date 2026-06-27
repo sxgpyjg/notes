@@ -193,6 +193,16 @@ const LOGIN_EXPIRE_KEY = "admin_login_expire";
 const LOGIN_EXPIRE_HOUR = 8;
 let remoteNoteData = [];
 
+// 特殊字符转义，防止标题带引号破坏页面
+function escapeHtml(str){
+  if(!str) return "";
+  return str.replace(/&/g,"&amp;")
+  .replace(/</g,"&lt;")
+  .replace(/>/g,"&gt;")
+  .replace(/"/g,"&quot;")
+  .replace(/'/g,"&#039;");
+}
+
 // 强制刷新远程数据，清空本地缓存
 function forceReloadRemote(){
   localStorage.removeItem("notes");
@@ -306,8 +316,8 @@ function render(){
     html += `
     <div class="item-box">
       <div class="item-info">
-        <h3>${item.title}</h3>
-        <p>${item.date} | ${item.type}</p>
+        <h3>${escapeHtml(item.title)}</h3>
+        <p>${escapeHtml(item.date)} | ${escapeHtml(item.type)}</p>
       </div>
       <div class="btn-group">
         <button class="edit-btn" onclick="location.href='edit.html?id=${item.id}'">编辑</button>
@@ -319,5 +329,6 @@ function render(){
   wrap.innerHTML = html;
 }
 </script>
+
 </body>
 </html>
