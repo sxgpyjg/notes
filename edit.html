@@ -1872,8 +1872,9 @@ realName = `IMG_${uniqueId}.${ext}`;
 const safeName = realName;
 insertLocalImgTagTerminal(safeName);
 let path = "~/storage/dcim/Camera";
-if(/^Screenshot/.test(realName)) path = "~/storage/Pictures/Screenshots";
-if(/wx|wechat/.test(realName.toLowerCase())) path = "~/storage/Download";
+if(/^Screenshot/.test(realName)) path = "~/storage/dcim/Screenshots";
+if(/wx|wechat/.test(realName.toLowerCase())) path = "~/storage/downloads";
+
 imgUploadList.push({name:safeName, src:`${path}/${realName}`});
 });
 addImgSerial();
@@ -1973,8 +1974,9 @@ realName = `IMG_${uniqueId}.${ext}`;
 const safeName = realName;
 insertLocalImgTagTerminal(safeName);
 let path = "~/storage/dcim/Camera";
-if(/^Screenshot/.test(realName)) path = "~/storage/Pictures/Screenshots";
-if(/wx|wechat/.test(realName.toLowerCase())) path = "~/storage/Download";
+if(/^Screenshot/.test(realName)) path = "~/storage/dcim/Screenshots";
+if(/wx|wechat/.test(realName.toLowerCase())) path = "~/storage/downloads";
+
 imgUploadList.push({name:safeName, src:`${path}/${realName}`});
 });
 addImgSerial();
@@ -2033,8 +2035,9 @@ realName = `IMG_${uniqueId}.${ext}`;
 const safeName = realName;
 insertLocalImgTagTerminal(safeName);
 let path = "~/storage/dcim/Camera";
-if(/^Screenshot/.test(realName)) path = "~/storage/Pictures/Screenshots";
-if(/wx|wechat/.test(realName.toLowerCase())) path = "~/storage/Download";
+if(/^Screenshot/.test(realName)) path = "~/storage/dcim/Screenshots";
+if(/wx|wechat/.test(realName.toLowerCase())) path = "~/storage/downloads";
+
 imgUploadList.push({name:safeName, src:`${path}/${realName}`});
 });
 addImgSerial();
