@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>笔记目录</title>
 <!-- 文件都在notes文件夹内，使用相对路径，增加版本号防缓存 -->
-<script src="./data.js?v=1"></script>
+<script src="./data.js?v=1" defer></script>
 <style>
 *{
   margin: 0;
@@ -260,13 +260,10 @@ let allTypes = new Set();
 const ADMIN_PWD = "admin123";
 const LONG_PRESS_TIME = 400;
 const MOVE_THRESHOLD = 8;
-
-// 统一存储键（和管理页/编辑器完全一致）
 const PWD_STORE_KEY = "admin_save_pwd";
 const LOCAL_NOTE_KEY = "notes";
 let dataList = [];
 
-// 等待远程data.js加载完成，弱网延迟兼容
 async function waitNoteData(){
   let count = 0;
   while((!window.NOTE_DATA || !Array.isArray(window.NOTE_DATA)) && count < 20){
@@ -275,21 +272,18 @@ async function waitNoteData(){
   }
 }
 
-// 强制刷新远程data.js，清空本地缓存，解决手机缓存看不到新笔记
 function forceReloadRemote(){
   localStorage.removeItem(LOCAL_NOTE_KEY);
   location.reload(true);
 }
 
-// 1. 数据加载函数：线上data.js优先，兜底本地缓存
 function loadNoteData(){
-  // 优先线上全局变量
   if(window.NOTE_DATA && Array.isArray(window.NOTE_DATA)){
     dataList = JSON.parse(JSON.stringify(window.NOTE_DATA));
-    wrap.innerHTML = `<div class="empty-tip">成功读到远程data.js，笔记数量：${dataList.length}</div>`;
+    wrap.innerHTML = `<div class="empty-tip">已加载远程笔记，共${dataList.length}条</div>`;
     localStorage.setItem(LOCAL_NOTE_KEY, JSON.stringify(dataList));
   }else{
-    wrap.innerHTML = `<div class="empty-tip">读取不到远程data.js，使用本地缓存</div>`;
+    wrap.innerHTML = `<div class="empty-tip">远程data.js加载失败，读取本地缓存</div>`;
     const localRaw = localStorage.getItem(LOCAL_NOTE_KEY);
     try{
       dataList = localRaw ? JSON.parse(localRaw) : [];
@@ -300,68 +294,46 @@ function loadNoteData(){
   dataList = dataList.filter(item => !item._isTempNew);
 }
 
-
-// 页面加载入口，增加等待data.js逻辑
 window.addEventListener('load', async ()=>{
   await waitNoteData();
   setTimeout(()=>{
     loadNoteData();
-    bindTitleLongPress();
-    renderFilter();
-    renderNotes();
+    if(dataList.length > 0){
+      bindTitleLongPress();
+      renderFilter();
+      renderNotes();
+    }
   }, 100);
 });
 
-// 全屏切换逻辑
 fullBtn.addEventListener('click',()=>{
   if(!document.fullscreenElement){
     document.documentElement.requestFullscreen();
-    fullSvg.innerHTML = `
-      <path d="M7 10 H10 V7"/>
-      <path d="M17 10 H14 V7"/>
-      <path d="M17 14 H14 V17"/>
-      <path d="M7 14 H10 V17"/>
-    `;
+    fullSvg.innerHTML = `<path d="M7 10 H10 V7"/><path d="M17 10 H14 V7"/><path d="M17 14 H14 V17"/><path d="M7 14 H10 V17"/>`;
   }else{
     document.exitFullscreen();
-    fullSvg.innerHTML = `
-      <path d="M10 7 H7 V10"/>
-      <path d="M14 7 H17 V10"/>
-      <path d="M14 17 H17 V14"/>
-      <path d="M10 17 H7 V14"/>
-    `;
+    fullSvg.innerHTML = `<path d="M10 7 H7 V10"/><path d="M14 7 H17 V10"/><path d="M14 17 H17 V14"/><path d="M10 17 H7 V14"/>`;
   }
 })
 
-// 统一密码校验函数（和后台页面逻辑对齐）
 function verifyAdminPwd(cb){
   const savedPwd = localStorage.getItem(PWD_STORE_KEY);
-  if(savedPwd === ADMIN_PWD){
-    cb();
-    return;
-  }
+  if(savedPwd === ADMIN_PWD){cb();return;}
   const inputPwd = prompt("请输入管理员密码：");
   if(inputPwd === ADMIN_PWD){
     localStorage.setItem(PWD_STORE_KEY, inputPwd);
     cb();
   }else if(inputPwd !== null){
-    alert("密码错误，无权限进入后台");
+    alert("密码错误");
   }
 }
 
-// 标题长按进入编辑器
 function bindTitleLongPress(){
-  let pressTimer = null;
-  let isLongPress = false;
-  let startX = 0, startY = 0;
-  let isScroll = false;
-
+  let pressTimer = null,isLongPress = false,startX=0,startY=0,isScroll=false;
   const start = (e)=>{
-    isLongPress = false;
-    isScroll = false;
+    isLongPress = false;isScroll = false;
     const touch = e.touches[0];
-    startX = touch.clientX;
-    startY = touch.clientY;
+    startX = touch.clientX;startY = touch.clientY;
     pressTimer = setTimeout(()=>{
       isLongPress = true;
       verifyAdminPwd(()=>location.href = "edit.html");
@@ -369,200 +341,104 @@ function bindTitleLongPress(){
   };
   const move = (e)=>{
     const touch = e.touches[0];
-    const dx = Math.abs(touch.clientX - startX);
-    const dy = Math.abs(touch.clientY - startY);
-    if(dx > MOVE_THRESHOLD || dy > MOVE_THRESHOLD){
-      isScroll = true;
-      clearTimeout(pressTimer);
-    }
+    const dx = Math.abs(touch.clientX-startX);
+    const dy = Math.abs(touch.clientY-startY);
+    if(dx>MOVE_THRESHOLD||dy>MOVE_THRESHOLD){isScroll=true;clearTimeout(pressTimer);}
   };
-  const end = ()=> clearTimeout(pressTimer);
-  const cancel = ()=> clearTimeout(pressTimer);
-
-  trigger.addEventListener('touchstart', start);
-  trigger.addEventListener('touchmove', move);
-  trigger.addEventListener('touchend', end);
-  trigger.addEventListener('touchcancel', cancel);
-  trigger.addEventListener('mousedown', start);
-  trigger.addEventListener('mousemove', (e)=>{
-    const dx = Math.abs(e.clientX - startX);
-    const dy = Math.abs(e.clientY - startY);
-    if(dx > MOVE_THRESHOLD || dy > MOVE_THRESHOLD){
-      isScroll = true;
-      clearTimeout(pressTimer);
-    }
-  });
-  trigger.addEventListener('mouseup', end);
-  trigger.addEventListener('mouseleave', cancel);
+  const end = ()=>clearTimeout(pressTimer);
+  trigger.addEventListener('touchstart',start);
+  trigger.addEventListener('touchmove',move);
+  trigger.addEventListener('touchend',end);
+  trigger.addEventListener('touchcancel',end);
 }
 
 function toggleFilterPanel(){
-  const body = document.getElementById('filterBody');
-  const arrow = document.getElementById('filterArrow');
-  body.classList.toggle('show');
-  arrow.classList.toggle('rotate');
+  document.getElementById('filterBody').classList.toggle('show');
+  document.getElementById('filterArrow').classList.toggle('rotate');
 }
 
-// 提取正文第一张图片
 function getFirstImgFromHtml(html){
   const reg = /<img[^>]+src=['"]([^'"]+)['"][^>]*>/;
   const match = html.match(reg);
   return match ? match[1] : '';
 }
-
-// 纯文字预览（去除代码块、图片）
 function getPureTextPreview(rawContent){
   let text = rawContent.replace(/```[\s\S]*?```/g,"");
   text = text.replace(/<img[^>]*>/g,"");
   return text;
 }
-
-// 渲染分类筛选按钮
 function renderFilter(){
   allTypes.clear();
-  dataList.forEach(item=>{
-    if(item.type) allTypes.add(item.type);
-  })
-  const filterBody = document.getElementById('filterBody');
+  dataList.forEach(item=>{if(item.type) allTypes.add(item.type);})
   let html = `<button class="filter-btn ${currentFilter===''?'active':''}" onclick="filterByType('')">全部</button>`;
   allTypes.forEach(t=>{
     html += `<button class="filter-btn ${currentFilter===t?'active':''}" onclick="filterByType('${t}')">${t}</button>`;
   })
-  filterBody.innerHTML = html;
+  document.getElementById('filterBody').innerHTML = html;
 }
-
-// 切换分类筛选
 function filterByType(type){
-  currentFilter = type;
-  renderFilter();
-  renderNotes();
+  currentFilter = type;renderFilter();renderNotes();
 }
-
-// 打开阅读页
 function openRead(noteId){
   localStorage.setItem('readNoteId', noteId);
   location.href = "read.html";
 }
-
-// 长按卡片进入管理列表
 function openAdminPage(){
   verifyAdminPwd(()=>location.href = "admin-list.html");
 }
-
-// 渲染笔记卡片列表
+function escapeHtml(str){
+  if(!str) return "";
+  return str.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");
+}
 function renderNotes(){
   let list = [...dataList];
   if(currentFilter) list = list.filter(item=>item.type === currentFilter);
-
-  // 修复日期排序，增加异常字段容错，不会卡死渲染
   const sorted = list.sort((a,b)=>{
-    let t1 = new Date(a.date ? a.date.replace(" ","T") : 0);
-    let t2 = new Date(b.date ? b.date.replace(" ","T") : 0);
+    let t1 = new Date(a.date?a.date.replace(" ","T"):0);
+    let t2 = new Date(b.date?b.date.replace(" ","T"):0);
     if(isNaN(t2.getTime())) return -1;
     if(isNaN(t1.getTime())) return 1;
-    return t2 - t1;
+    return t2-t1;
   });
-
   if(sorted.length === 0){
-    wrap.innerHTML = `<div class="empty-tip">暂无笔记，长按顶部标题新建</div>`;
+    wrap.innerHTML = `<div class="empty-tip">暂无笔记</div>`;
     return;
   }
   let html = '';
-  sorted.forEach((item)=>{
-    let tagClass = 'tag-custom';
-    let tagText = item.type;
-    if(item.type === 'note'){
-      tagClass = 'tag-note';
-      tagText = '开发笔记';
-    }
-    if(item.type === 'doc'){
-      tagClass = 'tag-doc';
-      tagText = '实操教程';
-    }
-    
-    const previewHtml = getPureTextPreview(item.content);
-    
-    let leftImgSrc = '';
-    if(item.cover){
-      leftImgSrc = item.cover;
-    }else{
-      leftImgSrc = getFirstImgFromHtml(item.content);
-    }
-    let imgBoxHtml = '';
-    if(leftImgSrc){
-      imgBoxHtml = `<div class="card-img-box"><img src="${leftImgSrc}" alt=""></div>`;
-    }
-
-    html += `
-    <div class="note-card" data-id="${item.id}">
-      ${imgBoxHtml}
-      <div class="card-right-wrap">
-        <div class="card-head">
-          <div class="card-title">${item.title}</div>
-          <span class="tag ${tagClass}">${tagText}</span>
-        </div>
-        <div class="card-date">发布时间：${item.date}</div>
-        <div class="card-preview">${previewHtml}</div>
-      </div>
-    </div>
-    `;
+  sorted.forEach(item=>{
+    let tagClass = 'tag-custom',tagText = escapeHtml(item.type);
+    if(item.type === 'note'){tagClass='tag-note';tagText='开发笔记';}
+    if(item.type === 'doc'){tagClass='tag-doc';tagText='实操教程';}
+    const safeTitle = escapeHtml(item.title);
+    const safeDate = escapeHtml(item.date);
+    const safePreview = escapeHtml(getPureTextPreview(item.content));
+    let leftImgSrc = item.cover || getFirstImgFromHtml(item.content);
+    let imgBoxHtml = leftImgSrc ? `<div class="card-img-box"><img src="${escapeHtml(leftImgSrc)}" alt=""></div>` : '';
+    html += `<div class="note-card" data-id="${escapeHtml(item.id)}">${imgBoxHtml}<div class="card-right-wrap"><div class="card-head"><div class="card-title">${safeTitle}</div><span class="tag ${tagClass}">${tagText}</span></div><div class="card-date">发布时间：${safeDate}</div><div class="card-preview">${safePreview}</div></div></div>`;
   })
   wrap.innerHTML = html;
-
-  // 卡片长按/点击逻辑
-  const cards = document.querySelectorAll('.note-card');
-  cards.forEach(card=>{
-    let pressTimer = null;
-    let isLongPress = false;
-    let startX = 0, startY = 0;
-    let isScroll = false;
+  document.querySelectorAll('.note-card').forEach(card=>{
+    let pressTimer=null,isLongPress=false,startX=0,startY=0,isScroll=false;
     const noteId = card.dataset.id;
-
     const startPress = (e)=>{
-      isLongPress = false;
-      isScroll = false;
+      isLongPress=false;isScroll=false;
       const touch = e.touches[0];
-      startX = touch.clientX;
-      startY = touch.clientY;
-      pressTimer = setTimeout(()=>{
-        isLongPress = true;
-        openAdminPage();
-      }, LONG_PRESS_TIME);
+      startX = touch.clientX;startY = touch.clientY;
+      pressTimer = setTimeout(()=>{isLongPress=true;openAdminPage();},LONG_PRESS_TIME);
     };
     const movePress = (e)=>{
       const touch = e.touches[0];
-      const dx = Math.abs(touch.clientX - startX);
-      const dy = Math.abs(touch.clientY - startY);
-      if(dx > MOVE_THRESHOLD || dy > MOVE_THRESHOLD){
-        isScroll = true;
-        clearTimeout(pressTimer);
-      }
+      const dx = Math.abs(touch.clientX-startX);
+      const dy = Math.abs(touch.clientY-startY);
+      if(dx>MOVE_THRESHOLD||dy>MOVE_THRESHOLD){isScroll=true;clearTimeout(pressTimer);}
     };
-    const endPress = ()=>{
-      clearTimeout(pressTimer);
-      if(!isScroll && !isLongPress){
-        openRead(noteId);
-      }
-    };
-    const cancelPress = ()=> clearTimeout(pressTimer);
-
-    card.addEventListener('touchstart', startPress);
-    card.addEventListener('touchmove', movePress);
-    card.addEventListener('touchend', endPress);
-    card.addEventListener('touchcancel', cancelPress);
-    card.addEventListener('mousedown', startPress);
-    card.addEventListener('mousemove', (e)=>{
-      const dx = Math.abs(e.clientX - startX);
-      const dy = Math.abs(e.clientY - startY);
-      if(dx > MOVE_THRESHOLD || dy > MOVE_THRESHOLD){
-        isScroll = true;
-        clearTimeout(pressTimer);
-      }
-    });
-    card.addEventListener('mouseup', endPress);
-    card.addEventListener('mouseleave', cancelPress);
+    const endPress = ()=>{clearTimeout(pressTimer);if(!isScroll&&!isLongPress) openRead(noteId);};
+    card.addEventListener('touchstart',startPress);
+    card.addEventListener('touchmove',movePress);
+    card.addEventListener('touchend',endPress);
   })
 }
 </script>
+
 </body>
 </html>
