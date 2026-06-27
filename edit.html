@@ -163,19 +163,21 @@ body.keyboard-opened .edit-toolbar-wrap{
   color:#fff !important;
   border-color:#4f46e5 !important;
 }
-.icon-btn:hover::after{
-  content:attr(data-tip);
-  position:absolute;
-  bottom:110%;
-  left:50%;
-  transform:translateX(-50%);
-  background:#222;
-  color:#fff;
-  font-size:10px;
-  padding:2px 4px;
-  border-radius:3px;
-  white-space:nowrap;
-  z-index:9999;
+@media (min-width:769px){
+  .icon-btn:hover::after{
+    content:attr(data-tip);
+    position:absolute;
+    bottom:110%;
+    left:50%;
+    transform:translateX(-50%);
+    background:#222;
+    color:#fff;
+    font-size:10px;
+    padding:2px 4px;
+    border-radius:3px;
+    white-space:nowrap;
+    z-index:9999;
+  }
 }
 
 .edit-toolbar select{
@@ -300,6 +302,14 @@ body.keyboard-opened .edit-toolbar-wrap{
   background:#fee2e2;
   padding:6px 8px;
   border-radius:6px;
+}
+body.bg-dark .tip-green, body.bg-midnight .tip-green{
+  background:#163428;
+  color:#86efac;
+}
+body.bg-dark .warn, body.bg-midnight .warn{
+  background:#421a22;
+  color:#fca5a5;
 }
 
 .login-modal{
@@ -700,87 +710,6 @@ body.bg-custom .md-preview{
   max-height:95vh;
   object-fit:contain;
 }
-/* 羊皮纸 */
-.rich-editor.bg-paper {
-  background: #f4efe0;
-  color: #2c2618;
-}
-.md-editor.bg-paper {
-  background: #f4efe0;
-  color: #2c2618;
-}
-/* 米色 */
-.rich-editor.bg-cream{
-  background:#f8f5e6;
-  color:#333;
-}
-.md-editor.bg-cream{
-  background:#f8f5e6;
-  color:#333;
-}
-/* 浅蓝 */
-.rich-editor.bg-blue{
-  background:#e6f0ff;
-  color:#222;
-}
-.md-editor.bg-blue{
-  background:#e6f0ff;
-  color:#222;
-}
-/* 柔和浅蓝 */
-.rich-editor.bg-softblue{
-  background:#e8f4ff;
-  color:#222;
-}
-.md-editor.bg-softblue{
-  background:#e8f4ff;
-  color:#222;
-}
-/* 深灰 */
-.rich-editor.bg-gray{
-  background:#e9e9e9;
-  color:#111;
-}
-.md-editor.bg-gray{
-  background:#e9e9e9;
-  color:#111;
-}
-/* 棕褐 */
-.rich-editor.bg-sepia{
-  background:#efe8dd;
-  color:#3a2e20;
-}
-.md-editor.bg-sepia{
-  background:#efe8dd;
-  color:#3a2e20;
-}
-/* 深色 */
-.rich-editor.bg-dark{
-  background:#222222;
-  color:#eeeeee;
-}
-.md-editor.bg-dark{
-  background:#222222;
-  color:#eeeeee;
-}
-/* 午夜黑 */
-.rich-editor.bg-midnight{
-  background:#1a202c;
-  color:#e2e8f0;
-}
-.md-editor.bg-midnight{
-  background:#1a202c;
-  color:#e2e8f0;
-}
-
-/* 自定义（保持不动） */
-.rich-editor.bg-custom,
-.md-editor.bg-custom{
-  background-color: var(--custom-bg) !important;
-  color: var(--custom-text) !important;
-  border-color: var(--custom-border) !important;
-}
-
 </style>
 </head>
 <body>
@@ -1024,6 +953,7 @@ let initViewHeight = window.visualViewport ? window.visualViewport.height : wind
 const ADMIN_PASSWORD = "admin123";
 let matchCase = false;
 
+
 // 退出登录
 function logoutAdmin(){
   localStorage.removeItem(PWD_STORE_KEY);
@@ -1089,7 +1019,13 @@ function loadLocalCache(){
 }
 
 function saveLocalCache(){
-  localStorage.setItem(CACHE_KEY, JSON.stringify(list));
+  const tempObj = {
+    list: list,
+    targetId: targetNote ? targetNote.id : null,
+    imgUploadList: imgUploadList,
+    serial: globalImgSerial
+  };
+  localStorage.setItem(CACHE_KEY, JSON.stringify(tempObj));
 }
 function getFullJsText(){
   return `window.NOTE_DATA = ${JSON.stringify(list, null, 2)};`;
@@ -1300,7 +1236,7 @@ function htmlToMd(htmlStr){
     .replace(/<em>(.*?)<\/em>/g, '*$1*')
     .replace(/<s>(.*?)<\/s>/g, '~~$1~~')
     .replace(/<li>(.*?)<\/li>/g, '- $1')
-    .replace(/<img.*?width="(\d+)px".*?src="(.*?)".*?alt="(.*?)".*?>/g, '![$3]($2){width=$1}')
+    .replace(/<img.*?width="(\d+)px".*?src="(.*?)".*?alt="(.*?)".*?>/g, '![![$3]($2){width=$1}')
     .replace(/<img.*?src="(.*?)".*?alt="(.*?)".*?>/g, '![$2]($1)')
     .replace(/<br>/g, '\n');
   text = text.replace(/<(?!p style="text-align:center"|u|table|tr|th|td)[^>]+>/g, '');
@@ -1449,7 +1385,7 @@ mdBox.selectionStart = pos;
 mdBox.selectionEnd = pos;
 }
 }
-//斜体
+//斜体【修复原错误** → *】
 function formatItalic(){
 if(currentEditMode === "rich"){
 richBox.focus();
@@ -1457,7 +1393,7 @@ document.execCommand("italic", false, null);
 checkFormatActive();
 calcWordCount();
 }else{
-const tpl = "**";
+const tpl = "*";
 mdBox.value += tpl;
 saveMdRecord();
 renderMdPreview();
@@ -1954,13 +1890,11 @@ localBtn.onclick = ()=> fileInput.click();
 fileInput.onchange = function(e){
 const allFiles = Array.from(e.target.files);
 if(allFiles.length === 0) return closeModal();
+//修复：先判断数量再清空列表
 if(imgUploadList.length + allFiles.length > 5){
 alert("图片记录总数不能超过5张，请先清空历史图片记录");
 fileInput.value = "";
 return closeModal();
-}
-if(allFiles.length === 1){
-alert("vivo提示：弹出窗口点右上角【文件管理】，长按图片可批量多选");
 }
 imgUploadList = [];
 allFiles.forEach((file, idx)=>{
@@ -2078,9 +2012,6 @@ alert("图片记录总数不能超过5张，请先清空历史图片记录");
 fileInput.value = "";
 return closeModal();
 }
-if(allFiles.length === 1){
-alert("vivo提示：弹出窗口点右上角【文件管理】，长按图片可批量多选");
-}
 imgUploadList = [];
 allFiles.forEach((file, idx)=>{
 let realName = file.name;
@@ -2095,12 +2026,10 @@ insertLocalImgTagTerminal(safeName);
 let fullPath = file.path || "";
 let termuxSrc;
 if (fullPath) {
-  // 转换安卓绝对路径为Termux路径，统一修正download为downloads
   fullPath = fullPath.replace(/^\/storage\/emulated\/0\//i, "~/storage/");
   fullPath = fullPath.replace(/\/download\//gi, "/downloads/");
   termuxSrc = fullPath;
 } else {
-  // 兜底：拿不到原生路径时 fallback
   const fileName = file.name;
   if (/^Screenshot/.test(fileName)) {
     termuxSrc = `~/storage/dcim/Screenshots/${fileName}`;
@@ -2156,9 +2085,6 @@ alert("图片记录总数不能超过5张，请先清空历史图片记录");
 imgFileInput.value = "";
 return;
 }
-if(allFiles.length === 1){
-alert("vivo提示：弹出窗口点右上角【文件管理】，长按图片可批量多选");
-}
 imgUploadList = [];
 allFiles.forEach((file, idx)=>{
 let realName = file.name;
@@ -2173,12 +2099,10 @@ insertLocalImgTagTerminal(safeName);
 let fullPath = file.path || "";
 let termuxSrc;
 if (fullPath) {
-  // 转换安卓绝对路径为Termux路径，统一修正download为downloads
   fullPath = fullPath.replace(/^\/storage\/emulated\/0\//i, "~/storage/");
   fullPath = fullPath.replace(/\/download\//gi, "/downloads/");
   termuxSrc = fullPath;
 } else {
-  // 兜底：拿不到原生路径时 fallback
   const fileName = file.name;
   if (/^Screenshot/.test(fileName)) {
     termuxSrc = `~/storage/dcim/Screenshots/${fileName}`;
@@ -2332,7 +2256,8 @@ try{
 genCpBtn.onclick = async function(){
 let cpText = "# 仅复制页面选中图片，不会读取手机全部图片\n";
 imgUploadList.forEach(item=>{
-cpText += `cp -v ${item.src} images/\n`;
+//修复文件名带空格转义单引号
+cpText += `cp -v '${item.src}' images/\n`;
 });
 const gitCmd = `cd ~/storage/shared/notes
 mkdir -p images
@@ -2460,7 +2385,7 @@ if(raw.startsWith("window.NOTE_DATA = ")) raw = raw.replace("window.NOTE_DATA = 
 const fullNoteArr = JSON.parse(raw);
 if(!Array.isArray(fullNoteArr)) throw "文件格式错误";
 list = fullNoteArr;
-saveLocalCache();
+saveLocalCache(); //修复：导入后同步缓存
 saveNoteToStorage(list);
 window.NOTE_DATA = list;
 alert(`导入成功，共${list.length}条笔记，切换页面即可生效`);
@@ -2528,33 +2453,40 @@ document.body.classList.remove("lock-scroll");
 findReplaceMask.classList.remove('show');
 }
 });
-// 选中富文本匹配文字
+// 修复：完整递归遍历富文本，嵌套标签文字正常选中
 function selectRichText(start, len){
-const sel = window.getSelection();
-const range = document.createRange();
-let pos = 0, targetNode = null, targetOffset = 0;
-function traverse(node){
-if(node.nodeType === 3){
-if(pos + node.length >= start){
-targetNode = node;
-targetOffset = start - pos;
-return true;
-}
-pos += node.length;
-}
-for(let n of node.childNodes){
-if(traverse(n)) return true;
-}
-return false;
-}
-traverse(richBox);
-if(targetNode){
-range.setStart(targetNode, targetOffset);
-range.setEnd(targetNode, targetOffset + len);
-sel.removeAllRanges();
-sel.addRange(range);
-richBox.focus();
-}
+  const sel = window.getSelection();
+  const range = document.createRange();
+  let offset = 0;
+  let targetTextNode = null;
+  let nodeOffset = 0;
+
+  function walk(el) {
+    for (const node of el.childNodes) {
+      if (targetTextNode) return true;
+      if (node.nodeType === Node.TEXT_NODE) {
+        const textLen = node.textContent.length;
+        if (offset + textLen > start) {
+          targetTextNode = node;
+          nodeOffset = start - offset;
+          return true;
+        }
+        offset += textLen;
+      } else if (node.nodeType === Node.ELEMENT_NODE) {
+        if (walk(node)) return true;
+      }
+    }
+    return false;
+  }
+  walk(richBox);
+
+  if(targetTextNode){
+    range.setStart(targetTextNode, nodeOffset);
+    range.setEnd(targetTextNode, nodeOffset + len);
+    sel.removeAllRanges();
+    sel.addRange(range);
+    richBox.focus();
+  }
 }
 // 自动识别当前激活编辑器读取内容
 function getEditorText(){
@@ -2670,7 +2602,7 @@ matchList.push(match.index);
 }
 searchIndex = 0;
 });
-// 弹窗拖拽 修复偏移、卡顿、触屏穿透
+// 弹窗拖拽 修复偏移、卡顿、触屏穿透 + 边界限制
 const mask = findReplaceMask;
 const box = document.querySelector('.find-replace-box');
 let drag = false;
@@ -2700,8 +2632,13 @@ document.addEventListener("mousemove", (e) => {
 if (!drag) return;
 const dx = e.clientX - startX;
 const dy = e.clientY - startY;
-box.style.left = `${boxStartX + dx}px`;
-box.style.top = `${boxStartY + dy}px`;
+let left = boxStartX + dx;
+let top = boxStartY + dy;
+// 边界约束，防止拖出屏幕
+left = Math.max(0, Math.min(left, window.innerWidth - box.offsetWidth));
+top = Math.max(0, Math.min(top, window.innerHeight - box.offsetHeight));
+box.style.left = `${left}px`;
+box.style.top = `${top}px`;
 });
 document.addEventListener("mouseup", () => drag = false);
 //触屏拖拽兼容
@@ -2723,206 +2660,65 @@ if (!drag) return;
 const touch = e.touches[0];
 const dx = touch.clientX - startX;
 const dy = touch.clientY - startY;
-box.style.left = `${boxStartX + dx}px`;
-box.style.top = `${boxStartY + dy}px`;
+let left = boxStartX + dx;
+let top = boxStartY + dy;
+left = Math.max(0, Math.min(left, window.innerWidth - box.offsetWidth));
+top = Math.max(0, Math.min(top, window.innerHeight - box.offsetHeight));
+box.style.left = `${left}px`;
+box.style.top = `${top}px`;
 });
 document.addEventListener("touchend", () => drag = false);
-//重置默认底色函数（新增按钮配套）
-function resetDefaultBg(){
-localStorage.removeItem("editorBgTheme");
-changeEditorBg("white");
-alert("已恢复编辑器默认纯白底色");
-}
-//主题切换主函数（修复自定义底色实时更新）
-function changeEditorBg(theme){
-  const r = document.querySelector(".rich-editor");
-  const m = document.querySelector(".md-editor");
-  //清空全部主题class
-  r.className = "rich-editor";
-  m.className = "md-editor";
-  //重置自定义变量
-  document.documentElement.style.removeProperty("--custom-bg");
-  document.documentElement.style.removeProperty("--custom-text");
-  document.documentElement.style.removeProperty("--custom-border");
-  customBgColorInput.style.display = "none";
 
-  switch(theme){
-    case "cream":
-      r.classList.add("bg-cream");
-      m.classList.add("bg-cream");
-      break;
-    case "blue":
-      r.classList.add("bg-blue");
-      m.classList.add("bg-blue");
-      break;
-    case "dark":
-      r.classList.add("bg-dark");
-      m.classList.add("bg-dark");
-      break;
-    case "midnight":
-      r.classList.add("bg-midnight");
-      m.classList.add("bg-midnight");
-      break;
-    case "sepia":
-      r.classList.add("bg-sepia");
-      m.classList.add("bg-sepia");
-      break;
-    case "gray":
-      r.classList.add("bg-gray");
-      m.classList.add("bg-gray");
-      break;
-    case "paper":
-      r.classList.add("bg-paper");
-      m.classList.add("bg-paper");
-      break;
-    case "softblue":
-      r.classList.add("bg-softblue");
-      m.classList.add("bg-softblue");
-      break;
-    case "custom":
-      r.classList.add("bg-custom");
-      m.classList.add("bg-custom");
-      customBgColorInput.style.display = "block";
-      //读取本地保存的自定义色
-      const savedCustomColor = localStorage.getItem("savedCustomBg") || "#ffffff";
-      customBgColorInput.value = savedCustomColor;
-      //用 setProperty 全局根节点设置变量（全局生效，所有编辑器继承）
-      updateCustomBgStyle(savedCustomColor);
-      //取色器实时监听
-      customBgColorInput.oninput = function(){
-        const colorVal = this.value;
-        localStorage.setItem("savedCustomBg", colorVal);
-        updateCustomBgStyle(colorVal);
-      }
-      break;
-    default:
-      break;
-  }
-  localStorage.setItem("editorBgTheme", theme);
-}
-
-//统一更新全局CSS变量（关键：document.documentElement = :root 全局作用域）
-function updateCustomBgStyle(hexColor){
-  //正确API：setProperty 带--前缀
-  document.documentElement.style.setProperty("--custom-bg", hexColor);
-  //自动计算亮度切换文字颜色
-  const hex = hexColor.replace("#","");
-  const r = parseInt(hex.substring(0,2),16);
-  const g = parseInt(hex.substring(2,2),16);
-  const b = parseInt(hex.substring(4,2),16);
-  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-  if(brightness < 120){
-    document.documentElement.style.setProperty("--custom-text","#eeeeee");
-    document.documentElement.style.setProperty("--custom-border","#555555");
-  }else{
-    document.documentElement.style.setProperty("--custom-text","#222222");
-    document.documentElement.style.setProperty("--custom-border","#dddddd");
-  }
-}
-
-//页面加载读取保存主题
-window.addEventListener("load", ()=>{
-  const saveTheme = localStorage.getItem("editorBgTheme") || "white";
-  changeEditorBg(saveTheme);
+// 大图预览点击关闭
+const previewMask = document.getElementById("imgPreviewMask");
+const previewImg = document.getElementById("previewImg");
+previewMask.addEventListener("click", () => {
+  previewMask.classList.remove("show");
 });
-
-//新增：统一更新自定义底色、文字、边框亮度
-function updateCustomBgStyle(hexColor){
-  document.body.style.setProperty("--custom-bg", hexColor);
-  //计算亮度自动切换文字黑白
-  const hex = hexColor.replace("#","");
-  const r = parseInt(hex.substring(0,2),16);
-  const g = parseInt(hex.substring(2,2),16);
-  const b = parseInt(hex.substring(4,2),16);
-  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-  if(brightness < 120){
-    document.body.style.setProperty("--custom-text","#eeeeee");
-    document.body.style.setProperty("--custom-border","#555555");
-  }else{
-    document.body.style.setProperty("--custom-text","#222222");
-    document.body.style.setProperty("--custom-border","#dddddd");
-  }
+function openImgPreview(src) {
+  previewImg.src = src;
+  previewMask.classList.add("show");
 }
 
-//页面加载时同步自定义底色存储
-window.addEventListener("load", ()=>{
-  const saveTheme = localStorage.getItem("editorBgTheme") || "white";
-  changeEditorBg(saveTheme);
-});
+// 工具函数：获取当前时间字符串
+function getNowTimeStr() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  const h = String(d.getHours()).padStart(2, "0");
+  const mi = String(d.getMinutes()).padStart(2, "0");
+  const s = String(d.getSeconds()).padStart(2, "0");
+  return `${y}-${m}-${day} ${h}:${mi}:${s}`;
+}
 
-//存储读写封装
-function saveNoteToStorage(arr){
-localStorage.setItem("notes", JSON.stringify(arr));
-window.NOTE_DATA = arr;
+// 存储读写封装
+function saveNoteToStorage(arr) {
+  localStorage.setItem("notes", JSON.stringify(arr));
+  window.NOTE_DATA = arr;
 }
-function saveLocalCache(){
-const tempObj = {
-list: list,
-targetId: targetNote ? targetNote.id : null,
-imgUploadList: imgUploadList,
-serial: globalImgSerial
-};
-localStorage.setItem(CACHE_KEY, JSON.stringify(tempObj));
+function saveLocalCache() {
+  const tempObj = {
+    list: list,
+    targetId: targetNote ? targetNote.id : null,
+    imgUploadList: imgUploadList,
+    serial: globalImgSerial
+  };
+  localStorage.setItem(CACHE_KEY, JSON.stringify(tempObj));
 }
-function loadLocalCache(){
-const raw = localStorage.getItem(CACHE_KEY);
-if(!raw) return;
-try{
-const cache = JSON.parse(raw);
-list = cache.list || [];
-const tid = cache.targetId;
-if(tid) targetNote = list.find(i=>i.id === tid);
-imgUploadList = cache.imgUploadList || [];
-globalImgSerial = Number(cache.serial) || 1;
-}catch(e){
-console.log("缓存读取失败",e);
+function getFullJsText() {
+  return "window.NOTE_DATA = " + JSON.stringify(list, null, 2);
 }
-}
-function getFullJsText(){
-return `window.NOTE_DATA = ${JSON.stringify(list,null,2)};`;
-}
-function getNowTimeStr(){
-const d = new Date();
-const y = d.getFullYear();
-const mo = String(d.getMonth()+1).padStart(2,"0");
-const da = String(d.getDate()).padStart(2,"0");
-const h = String(d.getHours()).padStart(2,"0");
-const mi = String(d.getMinutes()).padStart(2,"0");
-const s = String(d.getSeconds()).padStart(2,"0");
-return `${y}-${mo}-${da} ${h}:${mi}:${s}`;
-}
- 
-//本地图片富文本插入通用方法（终端路径版本，弹窗上传使用）
-function insertLocalImgTagTerminal(safeName){
-  const srcPath = `~/storage/shared/notes/images/${safeName}`;
-  if(currentEditMode === "rich"){
-    const imgHtml = `<img loading="lazy" src="${srcPath}" alt="本地图片" style="max-width:100%;margin:8px 0;"><br><br>`;
-    document.execCommand("insertHTML",false,imgHtml);
-    richBox.focus();
-  }else{
-    mdBox.value += `![本地图](${srcPath})\n\n`;
-    saveMdRecord();
-    renderMdPreview();
-    calcWordCount();
-  }
-}
-//图片序号自增保存
-function addImgSerial(){
-  localStorage.setItem("imgSerial", globalImgSerial);
-}
-window.addEventListener("load", ()=>{
-  const s = localStorage.getItem("imgSerial");
-  globalImgSerial = s ? Number(s) : 1;
-});
- 
-//页面初始化入口
-window.addEventListener("DOMContentLoaded", ()=>{
-  loadLocalCache();
+
+// 初始化页面
+window.addEventListener("DOMContentLoaded", () => {
+  renderMdPreview();
   calcWordCount();
-  //初始化撤销栈
-  richRecordStack = [richBox.innerHTML];
-  richRecordIndex = 0;
 });
+
+
+
+
 </script>
 </body>
 </html>
