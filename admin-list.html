@@ -193,6 +193,16 @@ const LOGIN_EXPIRE_KEY = "admin_login_expire";
 const LOGIN_EXPIRE_HOUR = 8;
 let remoteNoteData = [];
 
+// 转义特殊字符，防止HTML注入、渲染报错
+function escapeHtml(str){
+  const s = String(str ?? "");
+  return s.replace(/&/g,"&amp;")
+          .replace(/</g,"&lt;")
+          .replace(/>/g,"&gt;")
+          .replace(/"/g,"&quot;")
+          .replace(/'/g,"&#039;");
+}
+
 // 强制刷新远程数据，清空本地缓存
 function forceReloadRemote(){
   localStorage.removeItem("notes");
@@ -287,14 +297,15 @@ window.delNote = function(id){
   render();
 }
 
-// 渲染列表：过滤临时草稿 _isTempNew，按时间倒序
+// 渲染列表：取消过滤草稿 _isTempNew，所有笔记全部展示，按时间倒序
 function render(){
   const wrap = document.getElementById('listWrap');
   let list = window.NOTE_DATA || loadAllNotes();
   if(!Array.isArray(list)) list = [];
 
-  // 过滤编辑器新建产生的临时草稿，只展示正式笔记
-  const realList = list.filter(item => !item._isTempNew);
+  // 取消草稿过滤，草稿、正式笔记一起显示
+  // const realList = list.filter(item => !item._isTempNew);
+  const realList = [...list];
 
   if(realList.length === 0){
     wrap.innerHTML = '<div class="empty">暂无笔记，点击上方【+新建笔记】创建第一条</div>';
@@ -303,11 +314,14 @@ function render(){
   let html = '';
   // 创建时间倒序，最新在顶部
   realList.sort((a,b)=>new Date(b.date) - new Date(a.date)).forEach(item=>{
+    const title = escapeHtml(item.title);
+    const type = escapeHtml(item.type);
+    const date = escapeHtml(item.date);
     html += `
     <div class="item-box">
       <div class="item-info">
-        <h3>${item.title}</h3>
-        <p>${item.date} | ${item.type}</p>
+        <h3>${title}</h3>
+        <p>${date} | ${type}</p>
       </div>
       <div class="btn-group">
         <button class="edit-btn" onclick="location.href='edit.html?id=${item.id}'">编辑</button>
