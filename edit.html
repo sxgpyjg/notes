@@ -1892,23 +1892,25 @@ realName = `IMG_${uniqueId}.${ext}`;
 }
 const safeName = realName;
 insertLocalImgTagTerminal(safeName);
-let termuxSrc = "";
-const fileName = file.name;
-// 截图目录
-if (/^Screenshot/.test(fileName)) {
-  termuxSrc = `~/storage/dcim/Screenshots/${fileName}`;
-}
-// 微信类文件丢downloads
-else if (/wx|wechat/.test(fileName.toLowerCase())) {
-  termuxSrc = `~/storage/downloads/${fileName}`;
-}
-// mmexport相册导出图统一放download/VideoDownloader（你当前场景专用）
-else if (/mmexport/.test(fileName)) {
-  termuxSrc = `~/storage/download/VideoDownloader/${fileName}`;
-}
-// 默认相机目录兜底
-else {
-  termuxSrc = `~/storage/dcim/Camera/${fileName}`;
+let fullPath = file.path || "";
+let termuxSrc;
+if (fullPath) {
+  // 转换安卓绝对路径为Termux路径，统一修正download为downloads
+  fullPath = fullPath.replace(/^\/storage\/emulated\/0\//i, "~/storage/");
+  fullPath = fullPath.replace(/\/download\//gi, "/downloads/");
+  termuxSrc = fullPath;
+} else {
+  // 兜底：拿不到原生路径时 fallback
+  const fileName = file.name;
+  if (/^Screenshot/.test(fileName)) {
+    termuxSrc = `~/storage/dcim/Screenshots/${fileName}`;
+  } else if (/wx|wechat/.test(fileName.toLowerCase())) {
+    termuxSrc = `~/storage/downloads/${fileName}`;
+  } else if (/mmexport/.test(fileName)) {
+    termuxSrc = `~/storage/downloads/VideoDownloader/${fileName}`;
+  } else {
+    termuxSrc = `~/storage/dcim/Camera/${fileName}`;
+  }
 }
 imgUploadList.push({ name: safeName, src: termuxSrc });
 
@@ -2009,23 +2011,25 @@ realName = `IMG_${uniqueId}.${ext}`;
 }
 const safeName = realName;
 insertLocalImgTagTerminal(safeName);
-let termuxSrc = "";
-const fileName = file.name;
-// 截图目录
-if (/^Screenshot/.test(fileName)) {
-  termuxSrc = `~/storage/dcim/Screenshots/${fileName}`;
-}
-// 微信类文件丢downloads
-else if (/wx|wechat/.test(fileName.toLowerCase())) {
-  termuxSrc = `~/storage/downloads/${fileName}`;
-}
-// mmexport相册导出图统一放download/VideoDownloader（你当前场景专用）
-else if (/mmexport/.test(fileName)) {
-  termuxSrc = `~/storage/download/VideoDownloader/${fileName}`;
-}
-// 默认相机目录兜底
-else {
-  termuxSrc = `~/storage/dcim/Camera/${fileName}`;
+let fullPath = file.path || "";
+let termuxSrc;
+if (fullPath) {
+  // 转换安卓绝对路径为Termux路径，统一修正download为downloads
+  fullPath = fullPath.replace(/^\/storage\/emulated\/0\//i, "~/storage/");
+  fullPath = fullPath.replace(/\/download\//gi, "/downloads/");
+  termuxSrc = fullPath;
+} else {
+  // 兜底：拿不到原生路径时 fallback
+  const fileName = file.name;
+  if (/^Screenshot/.test(fileName)) {
+    termuxSrc = `~/storage/dcim/Screenshots/${fileName}`;
+  } else if (/wx|wechat/.test(fileName.toLowerCase())) {
+    termuxSrc = `~/storage/downloads/${fileName}`;
+  } else if (/mmexport/.test(fileName)) {
+    termuxSrc = `~/storage/downloads/VideoDownloader/${fileName}`;
+  } else {
+    termuxSrc = `~/storage/dcim/Camera/${fileName}`;
+  }
 }
 imgUploadList.push({ name: safeName, src: termuxSrc });
 
@@ -2085,23 +2089,25 @@ realName = `IMG_${uniqueId}.${ext}`;
 }
 const safeName = realName;
 insertLocalImgTagTerminal(safeName);
-let termuxSrc = "";
-const fileName = file.name;
-// 截图目录
-if (/^Screenshot/.test(fileName)) {
-  termuxSrc = `~/storage/dcim/Screenshots/${fileName}`;
-}
-// 微信类文件丢downloads
-else if (/wx|wechat/.test(fileName.toLowerCase())) {
-  termuxSrc = `~/storage/downloads/${fileName}`;
-}
-// mmexport相册导出图统一放download/VideoDownloader（你当前场景专用）
-else if (/mmexport/.test(fileName)) {
-  termuxSrc = `~/storage/download/VideoDownloader/${fileName}`;
-}
-// 默认相机目录兜底
-else {
-  termuxSrc = `~/storage/dcim/Camera/${fileName}`;
+let fullPath = file.path || "";
+let termuxSrc;
+if (fullPath) {
+  // 转换安卓绝对路径为Termux路径，统一修正download为downloads
+  fullPath = fullPath.replace(/^\/storage\/emulated\/0\//i, "~/storage/");
+  fullPath = fullPath.replace(/\/download\//gi, "/downloads/");
+  termuxSrc = fullPath;
+} else {
+  // 兜底：拿不到原生路径时 fallback
+  const fileName = file.name;
+  if (/^Screenshot/.test(fileName)) {
+    termuxSrc = `~/storage/dcim/Screenshots/${fileName}`;
+  } else if (/wx|wechat/.test(fileName.toLowerCase())) {
+    termuxSrc = `~/storage/downloads/${fileName}`;
+  } else if (/mmexport/.test(fileName)) {
+    termuxSrc = `~/storage/downloads/VideoDownloader/${fileName}`;
+  } else {
+    termuxSrc = `~/storage/dcim/Camera/${fileName}`;
+  }
 }
 imgUploadList.push({ name: safeName, src: termuxSrc });
 
