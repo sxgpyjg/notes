@@ -426,13 +426,13 @@ function getFirstImgFromHtml(html){
 }
 function getPureTextPreview(rawContent){
   let text = String(rawContent ?? "");
-  // 只移除图片、完整代码块，保留table/div等标签正常渲染
-  text = text.replace(/<img[^>]*>/g,"");
   text = text.replace(/```[\s\S]*?```/g,"");
-  // 截断120字符，超长加省略号
+  text = text.replace(/<img[^>]*>/g,"");
+  // 限制预览最多120字符，超长自动截断加省略号
   if(text.length > 120) text = text.slice(0,120) + "…";
   return text;
 }
+
 
 function renderFilter(){
   allTypes.clear();
