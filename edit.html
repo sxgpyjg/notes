@@ -2412,10 +2412,17 @@ checkFormatActive();
 calcWordCount();
 });
 bgColorInput.addEventListener("input", function(){
-document.execCommand("hiliteColor", false, this.value);
-richBox.focus();
-checkFormatActive();
-calcWordCount();
+  richBox.focus();
+  // 必须先开启CSS样式模式，否则hiliteColor无效果
+  document.execCommand("styleWithCSS", false, true);
+  // 主流浏览器标准高亮文字背景
+  const ok = document.execCommand("hiliteColor", false, this.value);
+  // 兼容兜底：部分浏览器hilite失效时用backColor
+  if(!ok){
+    document.execCommand("backColor", false, this.value);
+  }
+  checkFormatActive();
+  calcWordCount();
 });
 // ========== 查找替换功能（纯文本/富文本双模式兼容） ==========
 const findReplaceBtn = document.getElementById('findReplaceBtn');
