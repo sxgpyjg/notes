@@ -1892,32 +1892,27 @@ realName = `IMG_${uniqueId}.${ext}`;
 }
 const safeName = realName;
 insertLocalImgTagTerminal(safeName);
-let rawRelPath = file.webkitRelativePath || "";
-let termuxSrc;
-
-if (rawRelPath) {
-  termuxSrc = `~/storage/${rawRelPath}`;
-} else {
-  let rawRelPath = file.webkitRelativePath || "";
-let termuxSrc;
-
-if (rawRelPath) {
-  termuxSrc = `~/storage/${rawRelPath}`;
-} else {
-  let rawRelPath = file.webkitRelativePath || "";
-let termuxSrc;
-
-if (rawRelPath) {
-  termuxSrc = `~/storage/${rawRelPath}`;
-} else {
-  let path = "~/storage/dcim/Camera";
-  if (/^Screenshot/.test(realName)) path = "~/storage/dcim/Screenshots";
-  if (/wx|wechat/.test(realName.toLowerCase())) path = "~/storage/downloads";
-  termuxSrc = `${path}/${realName}`;
+let termuxSrc = "";
+const fileName = file.name;
+// 截图目录
+if (/^Screenshot/.test(fileName)) {
+  termuxSrc = `~/storage/dcim/Screenshots/${fileName}`;
 }
-
+// 微信类文件丢downloads
+else if (/wx|wechat/.test(fileName.toLowerCase())) {
+  termuxSrc = `~/storage/downloads/${fileName}`;
+}
+// mmexport相册导出图统一放download/VideoDownloader（你当前场景专用）
+else if (/mmexport/.test(fileName)) {
+  termuxSrc = `~/storage/download/VideoDownloader/${fileName}`;
+}
+// 默认相机目录兜底
+else {
+  termuxSrc = `~/storage/dcim/Camera/${fileName}`;
+}
 imgUploadList.push({ name: safeName, src: termuxSrc });
 
+});
 addImgSerial();
 closeModal();
 };
@@ -2014,32 +2009,27 @@ realName = `IMG_${uniqueId}.${ext}`;
 }
 const safeName = realName;
 insertLocalImgTagTerminal(safeName);
-let rawRelPath = file.webkitRelativePath || "";
-let termuxSrc;
-
-if (rawRelPath) {
-  termuxSrc = `~/storage/${rawRelPath}`;
-} else {
-  let rawRelPath = file.webkitRelativePath || "";
-let termuxSrc;
-
-if (rawRelPath) {
-  termuxSrc = `~/storage/${rawRelPath}`;
-} else {
-  let rawRelPath = file.webkitRelativePath || "";
-let termuxSrc;
-
-if (rawRelPath) {
-  termuxSrc = `~/storage/${rawRelPath}`;
-} else {
-  let path = "~/storage/dcim/Camera";
-  if (/^Screenshot/.test(realName)) path = "~/storage/dcim/Screenshots";
-  if (/wx|wechat/.test(realName.toLowerCase())) path = "~/storage/downloads";
-  termuxSrc = `${path}/${realName}`;
+let termuxSrc = "";
+const fileName = file.name;
+// 截图目录
+if (/^Screenshot/.test(fileName)) {
+  termuxSrc = `~/storage/dcim/Screenshots/${fileName}`;
 }
-
+// 微信类文件丢downloads
+else if (/wx|wechat/.test(fileName.toLowerCase())) {
+  termuxSrc = `~/storage/downloads/${fileName}`;
+}
+// mmexport相册导出图统一放download/VideoDownloader（你当前场景专用）
+else if (/mmexport/.test(fileName)) {
+  termuxSrc = `~/storage/download/VideoDownloader/${fileName}`;
+}
+// 默认相机目录兜底
+else {
+  termuxSrc = `~/storage/dcim/Camera/${fileName}`;
+}
 imgUploadList.push({ name: safeName, src: termuxSrc });
 
+});
 addImgSerial();
 closeModal();
 };
@@ -2095,32 +2085,27 @@ realName = `IMG_${uniqueId}.${ext}`;
 }
 const safeName = realName;
 insertLocalImgTagTerminal(safeName);
-let rawRelPath = file.webkitRelativePath || "";
-let termuxSrc;
-
-if (rawRelPath) {
-  termuxSrc = `~/storage/${rawRelPath}`;
-} else {
-  let rawRelPath = file.webkitRelativePath || "";
-let termuxSrc;
-
-if (rawRelPath) {
-  termuxSrc = `~/storage/${rawRelPath}`;
-} else {
-  let rawRelPath = file.webkitRelativePath || "";
-let termuxSrc;
-
-if (rawRelPath) {
-  termuxSrc = `~/storage/${rawRelPath}`;
-} else {
-  let path = "~/storage/dcim/Camera";
-  if (/^Screenshot/.test(realName)) path = "~/storage/dcim/Screenshots";
-  if (/wx|wechat/.test(realName.toLowerCase())) path = "~/storage/downloads";
-  termuxSrc = `${path}/${realName}`;
+let termuxSrc = "";
+const fileName = file.name;
+// 截图目录
+if (/^Screenshot/.test(fileName)) {
+  termuxSrc = `~/storage/dcim/Screenshots/${fileName}`;
 }
-
+// 微信类文件丢downloads
+else if (/wx|wechat/.test(fileName.toLowerCase())) {
+  termuxSrc = `~/storage/downloads/${fileName}`;
+}
+// mmexport相册导出图统一放download/VideoDownloader（你当前场景专用）
+else if (/mmexport/.test(fileName)) {
+  termuxSrc = `~/storage/download/VideoDownloader/${fileName}`;
+}
+// 默认相机目录兜底
+else {
+  termuxSrc = `~/storage/dcim/Camera/${fileName}`;
+}
 imgUploadList.push({ name: safeName, src: termuxSrc });
 
+});
 addImgSerial();
 imgFileInput.value = "";
 alert(`已记录${allFiles.length}张本地图片，可生成复制命令`);
