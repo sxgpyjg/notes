@@ -917,12 +917,12 @@ function loadLocalCache(){
   const cacheStr = localStorage.getItem(CACHE_KEY);
   const realStorage = localStorage.getItem("notes");
 
-  // 第一步：优先加载远程data.js原始数据
+  // 优先读取远程data.js完整原始笔记
   if(window.NOTE_DATA && Array.isArray(window.NOTE_DATA)){
     list = [...window.NOTE_DATA];
   }
 
-  // 第二步：如果本地有缓存，只用来补草稿，不覆盖远程正式笔记
+  // 仅读取临时草稿，不覆盖正式笔记
   if(cacheStr){
     try{
       const tempCache = JSON.parse(cacheStr);
@@ -934,8 +934,7 @@ function loadLocalCache(){
     }catch(e){}
   }
 
-  // 本地完整notes不再覆盖远程，仅导入备份时临时生效
-  // 注释掉强行覆盖逻辑
+  // 屏蔽本地存储强行覆盖远程数据
   /*
   if(realStorage){
     try{
@@ -945,6 +944,7 @@ function loadLocalCache(){
   }
   */
 }
+
 
 
 function saveLocalCache(){
@@ -2228,19 +2228,24 @@ function downloadDataJs(isTimeStamp){
   }
   const nowTime = getNowTimeStr();
   const newId = Date.now();
-    // 下载保存，移除全部草稿标记，转为正式笔记
-  list.forEach(item => {
-    delete item._isTempNew;
-  });
-  list.push({
-    id: newId,
-    title,
-    type,
-    content,
-    date: nowTime
-  });
 
-    saveLocalCache();
+  if(targetNote){
+    // 编辑旧笔记：只移除当前这条草稿标记，不动其他所有笔记
+    const idx = list.findIndex(item=>item.id === targetNote.id);
+    if(idx > -1) delete list[idx]._isTempNew;
+  }else{
+    // 新建笔记：只删除临时草稿，保留全部正式笔记
+    list = list.filter(item => !(item._isTempNew === true));
+    list.push({
+      id: newId,
+      title,
+      type,
+      content,
+      date: nowTime
+    });
+  }
+
+  saveLocalCache();
   saveNoteToStorage(list);
   const jsText = getFullJsText();
 
@@ -2259,6 +2264,7 @@ function downloadDataJs(isTimeStamp){
   URL.revokeObjectURL(a.href);
   alert(`${fileName} 下载完成，可同步仓库`);
 }
+
 saveNormalBtn.onclick = ()=>downloadDataJs(false);
 saveTimeBtn.onclick = ()=>downloadDataJs(true);
 //Ctrl+S 快捷键复制代码
