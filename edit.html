@@ -915,13 +915,22 @@ autoLoginCheck();
 
 function loadLocalCache(){
   const cacheStr = localStorage.getItem(CACHE_KEY);
+  const realStorage = localStorage.getItem("notes");
   if(cacheStr){
     try{
       window.NOTE_DATA = JSON.parse(cacheStr);
       list = window.NOTE_DATA;
     }catch(e){}
   }
+  // 强制以主存储notes为准，覆盖页面缓存，解决数据不同步
+  if(realStorage){
+    try{
+      list = JSON.parse(realStorage);
+      window.NOTE_DATA = list;
+    }catch(e){}
+  }
 }
+
 function saveLocalCache(){
   localStorage.setItem(CACHE_KEY, JSON.stringify(list));
 }
@@ -1214,7 +1223,18 @@ function checkPwd(){
 
 // 【核心修复】初始化加载笔记，回填不丢失、不破坏按钮逻辑
 function initLoadNote(){
-  list = window.NOTE_DATA || [];
+  const storageRaw = localStorage.getItem("notes");
+  if(storageRaw){
+    try{
+      list = JSON.parse(storageRaw);
+      window.NOTE_DATA = list;
+    }catch(e){
+      list = window.NOTE_DATA || [];
+    }
+  }else{
+    list = window.NOTE_DATA || [];
+  }
+
   if(!editId) return;
   const target = list.find(item=>item.id === Number(editId));
   if(!target) return;
@@ -2081,7 +2101,7 @@ ${richBox.innerHTML}
   URL.revokeObjectURL(a.href);
 }
 
-//同步表单数据到笔记数组
+//同步表单数据到笔记数组（修复重复空白草稿）
 function syncFormToNoteList(){
   const title = titleInput.value.trim();
   const type = typeInput.value.trim();
@@ -2090,35 +2110,51 @@ function syncFormToNoteList(){
   else content = mdToHtml(mdBox.value);
   const nowTime = getNowTimeStr();
   if(targetNote){
+    // 编辑已有笔记，直接覆盖
     const idx = list.findIndex(item=>item.id === targetNote.id);
     list[idx].title = title;
     list[idx].type = type;
     list[idx].content = content;
     list[idx].date = nowTime;
+    // 编辑正式笔记，移除草稿标记
+    delete list[idx]._isTempNew;
   }else{
-    const newNote = {
-      id: Date.now(),
-      title,
-      type,
-      content,
-      date: nowTime,
-      _isTempNew: true
-    };
-    list.push(newNote);
+    // 新建场景：先查找已有临时草稿，复用不新增
+    const tempIdx = list.findIndex(item=>item._isTempNew === true);
+    if(tempIdx > -1){
+      list[tempIdx].title = title;
+      list[tempIdx].type = type;
+      list[tempIdx].content = content;
+      list[tempIdx].date = nowTime;
+    }else{
+      // 无草稿才新建一条临时笔记
+      const newNote = {
+        id: Date.now(),
+        title,
+        type,
+        content,
+        date: nowTime,
+        _isTempNew: true
+      };
+      list.push(newNote);
+    }
   }
-    saveLocalCache();
+  saveLocalCache();
   saveNoteToStorage(list);
-
 }
+
 
 //一键复制完整data.js
 copyAllJsonBtn.onclick = async function(){
   const allNotes = JSON.parse(localStorage.getItem("notes") || "[]");
+  // 过滤临时草稿、无ID、无标题笔记
   const validNotes = allNotes.filter(item => {
     if(!item || !item.id) return false;
+    if(item._isTempNew === true) return false;
     const titleStr = (item.title || "").trim();
     return titleStr.length > 0;
   });
+
 
   if(validNotes.length === 0){
     alert("暂无带有效标题的笔记可复制");
@@ -2176,6 +2212,10 @@ function downloadDataJs(isTimeStamp){
   }
   const nowTime = getNowTimeStr();
   const newId = Date.now();
+    // 下载保存，移除全部草稿标记，转为正式笔记
+  list.forEach(item => {
+    delete item._isTempNew;
+  });
   list.push({
     id: newId,
     title,
@@ -2183,6 +2223,7 @@ function downloadDataJs(isTimeStamp){
     content,
     date: nowTime
   });
+
     saveLocalCache();
   saveNoteToStorage(list);
   const jsText = getFullJsText();
