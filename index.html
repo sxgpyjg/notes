@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>笔记目录</title>
+<script src="./data.js"></script>
 <style>
 *{
   margin: 0;
@@ -18,18 +19,13 @@ body{
   margin: 0 auto;
 }
 header{
-  margin-bottom: 12px;
-  padding: 8px 6px;
+  margin-bottom: 16px;
+  padding: 16px 6px;
   border-bottom: 1px solid #e4e7f3;
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 12px;
-}
-.header-right-group{
-  display: flex;
-  gap:6px;
-  align-items:center;
 }
 h1{
   font-size: 20px;
@@ -38,17 +34,8 @@ h1{
   cursor: pointer;
   user-select: none;
   letter-spacing: 1px;
-  -webkit-user-select: none;
 }
-.refresh-data-btn{
-  padding:4px 8px;
-  border:none;
-  border-radius:6px;
-  background:#e0e7ff;
-  color:#334155;
-  font-size:12px;
-  cursor: pointer;
-}
+/* 全屏按钮 SVG 新版 */
 #fullPageBtn{
 width:48px;height:48px;
 border:none;background:transparent;
@@ -56,7 +43,6 @@ display:flex;align-items:center;justify-content:center;
 -webkit-tap-highlight-color:transparent;
 transition:all 0.12s;
 padding:0;
-cursor: pointer;
 }
 #fullPageBtn:active{transform:scale(0.92);}
 #fullPageBtn svg{
@@ -89,13 +75,8 @@ cursor: pointer;
   gap: 14px;
   border-radius: 16px;
   align-items: center;
-  user-select: none;
-  -webkit-user-select: none;
-  transition: background 0.15s;
 }
-.note-card:hover{
-  background: #f0f4ff;
-}
+
 .note-card:active{
   background: #f7f8fc;
 }
@@ -215,7 +196,6 @@ cursor: pointer;
   color:#334155;
   font-size:13px;
   transition:0.2s;
-  cursor: pointer;
 }
 .filter-btn.active{
   background:#6366F1;
@@ -229,18 +209,15 @@ cursor: pointer;
 <body>
 <header>
   <h1 id="secretTrigger">笔记目录</h1>
-  <div class="header-right-group">
-    <button class="refresh-data-btn" onclick="forceReloadRemote()">刷新数据</button>
-    <button class="refresh-data-btn" onclick="logoutAdmin()">退出登录</button>
-    <button id="fullPageBtn">
-      <svg viewBox="0 0 24 24" id="fullSvg">
-        <path d="M10 7 H7 V10"/>
-        <path d="M14 7 H17 V10"/>
-        <path d="M14 17 H17 V14"/>
-        <path d="M10 17 H7 V14"/>
-      </svg>
-    </button>
-  </div>
+  <!-- 全屏SVG按钮 朝外展开初始 -->
+  <button id="fullPageBtn">
+    <svg viewBox="0 0 24 24" id="fullSvg">
+      <path d="M10 7 H7 V10"/>
+      <path d="M14 7 H17 V10"/>
+      <path d="M14 17 H17 V14"/>
+      <path d="M10 17 H7 V14"/>
+    </svg>
+  </button>
 </header>
 
 <div class="filter-collapse">
@@ -255,291 +232,155 @@ cursor: pointer;
 
 <div class="note-list" id="noteWrap"></div>
 
-<script src="./data.js?v=1"></script>
 <script>
 const wrap = document.getElementById('noteWrap');
+const dataList = window.NOTE_DATA || [];
 const trigger = document.getElementById('secretTrigger');
 const fullBtn = document.getElementById('fullPageBtn');
 const fullSvg = document.getElementById('fullSvg');
+let clickCount = 0;
+let timer = null;
 let currentFilter = "";
 let allTypes = new Set();
-const ADMIN_PWD = "admin123";
-const LONG_PRESS_TIME = 600;
-const MOVE_THRESHOLD = 8;
-// 免登录缓存配置
-const PWD_STORE_KEY = "admin_save_pwd";
-const LOGIN_EXPIRE_KEY = "admin_login_expire";
-const LOGIN_EXPIRE_HOUR = 8;
-const LOCAL_NOTE_KEY = "notes";
-let dataList = [];
 
-// 清除遮罩残留，解决电脑页面点不动
-function clearAllLockMask() {
-  document.body.classList.remove("lock-scroll");
-  document.querySelectorAll(".modal-mask,.find-replace-mask").forEach(m => {
-    m.classList.remove("show");
-  });
-}
-window.addEventListener("load", clearAllLockMask);
-window.addEventListener("resize", clearAllLockMask);
-
-// 退出登录，清除免登缓存
-function logoutAdmin(){
-  localStorage.removeItem(PWD_STORE_KEY);
-  localStorage.removeItem(LOGIN_EXPIRE_KEY);
-  alert("已退出管理员登录，下次需重新输入密码");
-  location.reload();
-}
-
-async function waitNoteData(){
-  let count = 0;
-  while((!window.NOTE_DATA || !Array.isArray(window.NOTE_DATA)) && count < 20){
-    await new Promise(r=>setTimeout(r,50));
-    count++;
-  }
-}
-
-function forceReloadRemote(){
-  localStorage.removeItem(LOCAL_NOTE_KEY);
-  location.reload(true);
-}
-
-function loadNoteData(){
-  if(window.NOTE_DATA && Array.isArray(window.NOTE_DATA)){
-    dataList = JSON.parse(JSON.stringify(window.NOTE_DATA));
-    wrap.innerHTML = `<div class="empty-tip">已加载远程笔记，共${dataList.length}条</div>`;
-    localStorage.setItem(LOCAL_NOTE_KEY, JSON.stringify(dataList));
-  }else{
-    wrap.innerHTML = `<div class="empty-tip">远程data.js加载失败，读取本地缓存</div>`;
-    const localRaw = localStorage.getItem(LOCAL_NOTE_KEY);
-    try{
-      dataList = localRaw ? JSON.parse(localRaw) : [];
-    }catch(e){
-      dataList = [];
-    }
-  }
-  try{
-    if(dataList.length > 0){
-      bindTitleLongPress();
-      renderFilter();
-      renderNotes();
-    }
-  }catch(err){
-    console.error("渲染异常：", err);
-    wrap.innerHTML += `<div style="color:red;padding:10px;">渲染出错：${err.message}</div>`;
-  }
-}
-
-window.addEventListener('load', async ()=>{
-  clearAllLockMask();
-  await waitNoteData();
-  setTimeout(()=>{
-    loadNoteData();
-  }, 100);
-});
-
+// 全屏切换逻辑，切换SVG path实现内外线条切换
 fullBtn.addEventListener('click',()=>{
   if(!document.fullscreenElement){
     document.documentElement.requestFullscreen();
-    fullSvg.innerHTML = `<path d="M7 10 H10 V7"/><path d="M17 10 H14 V7"/><path d="M17 14 H14 V17"/><path d="M7 14 H10 V17"/>`;
+    // 进入全屏：向内收拢线条
+    fullSvg.innerHTML = `
+      <path d="M7 10 H10 V7"/>
+      <path d="M17 10 H14 V7"/>
+      <path d="M17 14 H14 V17"/>
+      <path d="M7 14 H10 V17"/>
+    `;
   }else{
     document.exitFullscreen();
-    fullSvg.innerHTML = `<path d="M10 7 H7 V10"/><path d="M14 7 H17 V10"/><path d="M14 17 H17 V14"/><path d="M10 17 H7 V14"/>`;
+    // 退出全屏：朝外展开线条
+    fullSvg.innerHTML = `
+      <path d="M10 7 H7 V10"/>
+      <path d="M14 7 H17 V10"/>
+      <path d="M14 17 H17 V14"/>
+      <path d="M10 17 H7 V14"/>
+    `;
   }
 })
 
-// 带过期免登录验证函数
-function verifyAdminPwd(cb){
-  const savedPwd = localStorage.getItem(PWD_STORE_KEY);
-  const expireTs = Number(localStorage.getItem(LOGIN_EXPIRE_KEY)) || 0;
-  const now = Date.now();
-  if(savedPwd === ADMIN_PWD && expireTs > now){
-    cb();
-    return;
+trigger.addEventListener('click', ()=>{
+  clickCount++;
+  clearTimeout(timer);
+  timer = setTimeout(()=>{
+    clickCount = 0;
+  }, 2000);
+  if(clickCount >= 5){
+    const savedPwd = localStorage.getItem("admin_save_pwd");
+    if(savedPwd === "admin123"){
+      location.href = "admin-list.html";
+    }else{
+      const inputPwd = prompt("请输入管理员密码：");
+      if(inputPwd === "admin123"){
+        localStorage.setItem("admin_save_pwd", inputPwd);
+        location.href = "admin-list.html";
+      }else if(inputPwd !== null){
+        alert("密码错误，无法进入管理页面");
+      }
+      clickCount = 0;
+    }
   }
-  const inputPwd = prompt("请输入管理员密码：");
-  if(inputPwd === ADMIN_PWD){
-    localStorage.setItem(PWD_STORE_KEY, inputPwd);
-    const expireTime = Date.now() + LOGIN_EXPIRE_HOUR * 3600 * 1000;
-    localStorage.setItem(LOGIN_EXPIRE_KEY, expireTime);
-    cb();
-  }else if(inputPwd !== null){
-    alert("密码错误");
-  }
-}
-
-// 顶部标题：触屏 + 鼠标长按双兼容
-function bindTitleLongPress(){
-  let pressTimer = null,isLongPress = false,startX=0,startY=0,isScroll=false;
-  // 触摸
-  const touchStart = (e)=>{
-    isLongPress = false;isScroll = false;
-    const touch = e.touches[0];
-    startX = touch.clientX;startY = touch.clientY;
-    pressTimer = setTimeout(()=>{
-      isLongPress = true;
-      verifyAdminPwd(()=>location.href = "edit.html");
-    }, LONG_PRESS_TIME);
-  };
-  const touchMove = (e)=>{
-    const touch = e.touches[0];
-    const dx = Math.abs(touch.clientX-startX);
-    const dy = Math.abs(touch.clientY-startY);
-    if(dx>MOVE_THRESHOLD||dy>MOVE_THRESHOLD){isScroll=true;clearTimeout(pressTimer);}
-  };
-  const touchEnd = ()=>clearTimeout(pressTimer);
-  trigger.addEventListener('touchstart',touchStart);
-  trigger.addEventListener('touchmove',touchMove);
-  trigger.addEventListener('touchend',touchEnd);
-  trigger.addEventListener('touchcancel',touchEnd);
-
-  // 鼠标长按
-  let mouseTimer = null, mouseIsLong = false, mStartX, mStartY;
-  const mouseDown = (e)=>{
-    mouseIsLong = false;
-    mStartX = e.clientX;
-    mStartY = e.clientY;
-    mouseTimer = setTimeout(()=>{
-      mouseIsLong = true;
-      verifyAdminPwd(()=>location.href = "edit.html");
-    }, LONG_PRESS_TIME);
-  };
-  const mouseUp = ()=>clearTimeout(mouseTimer);
-  const mouseLeave = ()=>clearTimeout(mouseTimer);
-  trigger.addEventListener("mousedown", mouseDown);
-  trigger.addEventListener("mouseup", mouseUp);
-  trigger.addEventListener("mouseleave", mouseLeave);
-
-  trigger.addEventListener("click", ()=>{});
-}
+});
 
 function toggleFilterPanel(){
-  document.getElementById('filterBody').classList.toggle('show');
-  document.getElementById('filterArrow').classList.toggle('rotate');
+  const body = document.getElementById('filterBody');
+  const arrow = document.getElementById('filterArrow');
+  body.classList.toggle('show');
+  arrow.classList.toggle('rotate');
 }
 
 function getFirstImgFromHtml(html){
-  const str = String(html ?? "");
   const reg = /<img[^>]+src=['"]([^'"]+)['"][^>]*>/;
-  const match = str.match(reg);
+  const match = html.match(reg);
   return match ? match[1] : '';
 }
+
 function getPureTextPreview(rawContent){
-  let text = String(rawContent ?? "");
-  text = text.replace(/```[\s\S]*?```/g,"");
+  let text = rawContent.replace(/```[\s\S]*?```/g,"");
   text = text.replace(/<img[^>]*>/g,"");
-  text = text.replace(/&/g, "&amp;");
-  text = text.replace(/</g, "&lt;");
-  text = text.replace(/>/g, "&gt;");
-  text = text.replace(/"/g, "&quot;");
-  text = text.replace(/'/g, "&#039;");
-  if(text.length > 120) text = text.slice(0,120) + "…";
   return text;
 }
+
 function renderFilter(){
   allTypes.clear();
-  dataList.forEach(item=>{if(item.type) allTypes.add(item.type);})
+  dataList.forEach(item=>{
+    if(item.type) allTypes.add(item.type);
+  })
+  const filterBody = document.getElementById('filterBody');
   let html = `<button class="filter-btn ${currentFilter===''?'active':''}" onclick="filterByType('')">全部</button>`;
   allTypes.forEach(t=>{
     html += `<button class="filter-btn ${currentFilter===t?'active':''}" onclick="filterByType('${t}')">${t}</button>`;
   })
-  document.getElementById('filterBody').innerHTML = html;
+  filterBody.innerHTML = html;
 }
+
 function filterByType(type){
-  currentFilter = type;renderFilter();renderNotes();
+  currentFilter = type;
+  renderFilter();
+  renderNotes();
 }
+
 function openRead(noteId){
   localStorage.setItem('readNoteId', noteId);
   location.href = "read.html";
 }
-function openAdminPage(){
-  verifyAdminPwd(()=>location.href = "admin-list.html");
-}
-function escapeHtml(str){
-  const s = String(str ?? "");
-  return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");
-}
+
 function renderNotes(){
   let list = [...dataList];
   if(currentFilter) list = list.filter(item=>item.type === currentFilter);
-  const sorted = list.sort((a,b)=>{
-    let t1 = new Date(a.date?a.date.replace(" ","T"):0);
-    let t2 = new Date(b.date?b.date.replace(" ","T"):0);
-    if(isNaN(t2.getTime())) return -1;
-    if(isNaN(t1.getTime())) return 1;
-    return t2-t1;
-  });
+  const sorted = list.sort((a,b)=>new Date(b.date.replace(" ","T")) - new Date(a.date.replace(" ","T")));
   if(sorted.length === 0){
     wrap.innerHTML = `<div class="empty-tip">暂无笔记</div>`;
     return;
   }
   let html = '';
-  sorted.forEach(item=>{
-    let tagClass = 'tag-custom',tagText = escapeHtml(item.type);
-    if(item.type === 'note'){tagClass='tag-note';tagText='开发笔记';}
-    if(item.type === 'doc'){tagClass='tag-doc';tagText='实操教程';}
-    const safeTitle = escapeHtml(item.title);
-    const safeDate = escapeHtml(item.date);
-    const safePreview = escapeHtml(getPureTextPreview(item.content));
-    let leftImgSrc = item.cover || getFirstImgFromHtml(item.content);
-    let imgBoxHtml = leftImgSrc ? `<div class="card-img-box"><img src="${leftImgSrc}" alt=""></div>` : '';
-    html += `<div class="note-card" data-id="${escapeHtml(item.id)}">${imgBoxHtml}<div class="card-right-wrap"><div class="card-head"><div class="card-title">${safeTitle}</div><span class="tag ${tagClass}">${tagText}</span></div><div class="card-date">发布时间：${safeDate}</div><div class="card-preview">${safePreview}</div></div></div>`;
+  sorted.forEach((item)=>{
+    let tagClass = 'tag-custom';
+    if(item.type === 'note') tagClass = 'tag-note';
+    if(item.type === 'doc') tagClass = 'tag-doc';
+    let tagText = item.type;
+    if(item.type === 'note') tagText = '开发笔记';
+    if(item.type === 'doc') tagText = '实操教程';
+    
+    const previewHtml = getPureTextPreview(item.content);
+    
+    let leftImgSrc = '';
+    if(item.cover){
+      leftImgSrc = item.cover;
+    }else{
+      leftImgSrc = getFirstImgFromHtml(item.content);
+    }
+    let imgBoxHtml = '';
+    if(leftImgSrc){
+      imgBoxHtml = `<div class="card-img-box"><img src="${leftImgSrc}" alt=""></div>`;
+    }
+
+    html += `
+    <div class="note-card" onclick="openRead('${item.id}')">
+      ${imgBoxHtml}
+      <div class="card-right-wrap">
+        <div class="card-head">
+          <div class="card-title">${item.title}</div>
+          <span class="tag ${tagClass}">${tagText}</span>
+        </div>
+        <div class="card-date">发布时间：${item.date}</div>
+        <div class="card-preview">${previewHtml}</div>
+      </div>
+    </div>
+    `;
   })
   wrap.innerHTML = html;
-
-  document.querySelectorAll('.note-card').forEach(card=>{
-    let pressTimer=null,isLongPress=false,startX=0,startY=0,isScroll=false;
-    const noteId = card.dataset.id;
-
-    // 移动端触屏逻辑
-    const startPress = (e)=>{
-      isLongPress=false;isScroll=false;
-      const touch = e.touches[0];
-      startX = touch.clientX;startY = touch.clientY;
-      pressTimer = setTimeout(()=>{isLongPress=true;openAdminPage();},LONG_PRESS_TIME);
-    };
-    const movePress = (e)=>{
-      const touch = e.touches[0];
-      const dx = Math.abs(touch.clientX-startX);
-      const dy = Math.abs(touch.clientY-startY);
-      if(dx>MOVE_THRESHOLD||dy>MOVE_THRESHOLD){isScroll=true;clearTimeout(pressTimer);}
-    };
-    const endPress = ()=>{
-      clearTimeout(pressTimer);
-      if(!isScroll&&!isLongPress) openRead(noteId);
-    };
-    card.addEventListener('touchstart',startPress);
-    card.addEventListener('touchmove',movePress);
-    card.addEventListener('touchend',endPress);
-
-    // ========== 新增鼠标长按逻辑 ==========
-    let mouseTimer = null, mouseIsLong = false, mX, mY;
-    const mouseDownFn = (e)=>{
-      mouseIsLong = false;
-      mX = e.clientX;
-      mY = e.clientY;
-      mouseTimer = setTimeout(()=>{
-        mouseIsLong = true;
-        openAdminPage();
-      }, LONG_PRESS_TIME);
-    };
-    const mouseUpFn = ()=>{
-      clearTimeout(mouseTimer);
-      // 短按松开才打开，长按不触发单击
-      if(!mouseIsLong) openRead(noteId);
-    };
-    const mouseLeaveFn = ()=>clearTimeout(mouseTimer);
-    card.addEventListener("mousedown", mouseDownFn);
-    card.addEventListener("mouseup", mouseUpFn);
-    card.addEventListener("mouseleave", mouseLeaveFn);
-
-    // 鼠标右键进入管理页
-    card.addEventListener("contextmenu", (e)=>{
-      e.preventDefault();
-      openAdminPage();
-    })
-  })
 }
+
+renderFilter();
+renderNotes();
 </script>
 </body>
 </html>
