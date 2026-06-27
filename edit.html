@@ -2254,58 +2254,60 @@ if(currentEditMode === "rich") content = richBox.innerHTML.trim();
 else content = mdToHtml(mdBox.value);
 const nowTime = getNowTimeStr();
 if(targetNote){
-const idx = list.findIndex(item=>item.id === targetNote.id);
-list[idx].title = title;
-list[idx].type = type;
-list[idx].content = content;
-list[idx].date = nowTime;
-delete list[idx]._isTempNew;
+  // 编辑已有笔记，直接更新
+  const idx = list.findIndex(item=>item.id === targetNote.id);
+  list[idx].title = title;
+  list[idx].type = type;
+  list[idx].content = content;
+  list[idx].date = nowTime;
+  delete list[idx]._isTempNew;
 }else{
-const tempIdx = list.findIndex(item=>item._isTempNew === true);
-if(tempIdx > -1){
-list[tempIdx].title = title;
-list[tempIdx].type = type;
-list[tempIdx].content = content;
-list[tempIdx].date = nowTime;
-}else{
-const newNote = {
-id: Date.now(),
-title,
-type,
-content,
-date: nowTime,
-_isTempNew: true
-};
-list.push(newNote);
-}
+  // 新建草稿：找到原有草稿更新，不存在则新增
+  const tempIdx = list.findIndex(item=>item._isTempNew === true);
+  if(tempIdx > -1){
+    list[tempIdx].title = title;
+    list[tempIdx].type = type;
+    list[tempIdx].content = content;
+    list[tempIdx].date = nowTime;
+  }else{
+    const newNote = {
+      id: Date.now(),
+      title,
+      type,
+      content,
+      date: nowTime,
+      _isTempNew: true
+    };
+    list.push(newNote);
+  }
 }
 saveLocalCache();
 saveNoteToStorage(list);
 }
+
 //一键复制完整data.js
 copyAllJsonBtn.onclick = async function(){
-// 直接取页面当前内存最新笔记列表（包含刚新建未保存草稿）
-const allNotes = list;
-const validNotes = allNotes.filter(item => {
-  if(!item || !item.id) return false;
-  const titleStr = (item.title || "").trim();
-  return titleStr.length > 0;
-});
-const jsonText = "window.NOTE_DATA = " + JSON.stringify(validNotes, null, 2);
-try{
-  await navigator.clipboard.writeText(jsonText);
-  alert("已复制全部笔记JSON（包含未下载新建草稿），直接粘贴覆盖data.js即可");
-}catch(err){
-  const temp = document.createElement("textarea");
-  temp.value = jsonText;
-  document.body.appendChild(temp);
-  temp.select();
-  document.execCommand("copy");
-  document.body.removeChild(temp);
-  alert("复制成功（兼容模式，包含草稿笔记）");
-}
+  const allNotes = list;
+  // 草稿、正式笔记统一要求标题非空，无标题全部过滤
+  const validNotes = allNotes.filter(item => {
+    if (!item || !item.id) return false;
+    const titleStr = (item.title || "").trim();
+    return titleStr.length > 0;
+  });
+  const jsonText = "window.NOTE_DATA = " + JSON.stringify(validNotes, null, 2);
+  try{
+    await navigator.clipboard.writeText(jsonText);
+    alert(`复制完成，共${validNotes.length}条（含新建草稿），直接粘贴覆盖data.js即可`);
+  }catch(err){
+    const temp = document.createElement("textarea");
+    temp.value = jsonText;
+    document.body.appendChild(temp);
+    temp.select();
+    document.execCommand("copy");
+    document.body.removeChild(temp);
+    alert(`兼容复制成功，共${validNotes.length}条笔记（含草稿）`);
+  }
 };
-
 
 //生成图片复制脚本
 genCpBtn.onclick = async function(){
@@ -2351,7 +2353,6 @@ if(targetNote){
 const idx = list.findIndex(item=>item.id === targetNote.id);
 if(idx > -1) delete list[idx]._isTempNew;
 }else{
-list = list.filter(item => !(item._isTempNew === true));
 list.push({
 id: newId,
 title,
@@ -2365,6 +2366,7 @@ list = list.filter(item=>{
 const t = (item.title||"").trim();
 return t.length > 0 && item.id && item.content;
 });
+
 saveLocalCache();
 saveNoteToStorage(list);
 const jsText = getFullJsText();
