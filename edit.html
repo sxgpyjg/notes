@@ -2105,29 +2105,26 @@ function syncFormToNoteList(){
 }
 //一键复制完整data.js
 copyAllJsonBtn.onclick = async function(){
-  const title = titleInput.value.trim();
-  const contentEmpty = currentEditMode === "rich" 
-    ? richBox.innerText.trim() === "" 
-    : mdBox.value.trim() === "";
-  // 判断：标题为空 或者 正文完全空白，直接拦截
-  if(!title || contentEmpty){
-    alert("当前笔记标题/内容为空，禁止复制空数据！");
+  let e=JSON.parse(localStorage.getItem("notes")||"[]"),
+  t=e.filter(e=>e&&e.id&&(e.title?.trim()||e.content?.trim()));
+  if(t.length === 0){
+    alert("暂无有效笔记可复制");
     return;
   }
-  syncFormToNoteList();
-  const text = getFullJsText();
+  let n=JSON.stringify(t,null,2);
   try{
-    await navigator.clipboard.writeText(text);
-  }catch{
-    const tempTextarea = document.createElement("textarea");
-    tempTextarea.value = text;
-    document.body.appendChild(tempTextarea);
-    tempTextarea.select();
+    await navigator.clipboard.writeText(n);
+  }catch(i){
+    let r=document.createElement("textarea");
+    r.value=n;
+    document.body.appendChild(r);
+    r.select();
     document.execCommand("copy");
-    document.body.removeChild(tempTextarea);
+    document.body.removeChild(r);
   }
-  alert("完整data.js已复制，仅粘贴nano，禁止粘贴终端命令");
+  alert(`复制成功，共${t.length}条有效笔记，仅本段可粘贴nano`);
 };
+
 
 //生成图片复制脚本
 genCpBtn.onclick = async function(){
