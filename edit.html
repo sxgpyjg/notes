@@ -2105,25 +2105,33 @@ function syncFormToNoteList(){
 }
 //一键复制完整data.js
 copyAllJsonBtn.onclick = async function(){
-  let e=JSON.parse(localStorage.getItem("notes")||"[]"),
-  t=e.filter(e=>e&&e.id&&(e.title?.trim()||e.content?.trim()));
-  if(t.length === 0){
-    alert("暂无有效笔记可复制");
+  const allNotes = JSON.parse(localStorage.getItem("notes") || "[]");
+  // 过滤规则：存在对象、有id、标题去除空格后不为空
+  const validNotes = allNotes.filter(item => {
+    if(!item || !item.id) return false;
+    const title = (item.title || "").trim();
+    return title !== "";
+  });
+
+  if(validNotes.length === 0){
+    alert("暂无带有效标题的笔记可复制");
     return;
   }
-  let n=JSON.stringify(t,null,2);
+
+  const n = JSON.stringify(validNotes,null,2);
   try{
     await navigator.clipboard.writeText(n);
   }catch(i){
-    let r=document.createElement("textarea");
+    const r=document.createElement("textarea");
     r.value=n;
     document.body.appendChild(r);
     r.select();
     document.execCommand("copy");
     document.body.removeChild(r);
   }
-  alert(`复制成功，共${t.length}条有效笔记，仅本段可粘贴nano`);
+  alert(`复制成功，共${validNotes.length}条带标题笔记，仅本段可粘贴nano`);
 };
+
 
 
 //生成图片复制脚本
