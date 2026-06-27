@@ -26,6 +26,8 @@ header{
   justify-content:space-between;
   align-items:center;
   margin-bottom:10px;
+  flex-wrap:wrap;
+  gap:8px;
 }
 h1{
   font-size:22px;
@@ -80,6 +82,8 @@ h1{
   display:flex;
   justify-content:space-between;
   align-items:center;
+  flex-wrap:wrap;
+  gap:10px;
 }
 .item-info h3{
   font-size:16px;
@@ -174,6 +178,7 @@ h1{
       <button class="album-btn" onclick="window.open('https://sxgpyjg.github.io/blog','_blank')">图文相册</button>
       <button class="new-btn" onclick="location.href='edit.html'">+新建笔记</button>
       <button class="back-btn" onclick="location.href='index.html'">笔记首页</button>
+      <button class="back-btn" onclick="logoutAdmin()">退出登录</button>
     </div>
   </div>
 </header>
@@ -182,9 +187,22 @@ h1{
 <script>
 const ADMIN_PASSWORD = "admin123";
 const PWD_STORE_KEY = "admin_save_pwd";
+const LOGIN_EXPIRE_KEY = "admin_login_expire";
+const LOGIN_EXPIRE_HOUR = 8;
+let remoteNoteData = [];
 
-// 统一读取唯一存储 notes
+// 优先加载线上data.js远程数据，同步本地存储
+window.addEventListener("load", ()=>{
+  if(window.NOTE_DATA && Array.isArray(window.NOTE_DATA)){
+    remoteNoteData = JSON.parse(JSON.stringify(window.NOTE_DATA));
+    saveAllNotes(remoteNoteData);
+  }
+  render();
+});
+
+// 读取笔记：远程优先，兜底本地缓存
 function loadAllNotes(){
+  if(remoteNoteData.length > 0) return remoteNoteData;
   const raw = localStorage.getItem("notes");
   try{
     return raw ? JSON.parse(raw) : [];
@@ -192,10 +210,18 @@ function loadAllNotes(){
     return [];
   }
 }
+
 // 统一写入唯一存储 notes
 function saveAllNotes(list){
   localStorage.setItem("notes", JSON.stringify(list));
   window.NOTE_DATA = list;
+}
+
+// 退出登录（和编辑器逻辑完全一致）
+function logoutAdmin(){
+  localStorage.removeItem(PWD_STORE_KEY);
+  localStorage.removeItem(LOGIN_EXPIRE_KEY);
+  location.reload();
 }
 
 // 登录校验
@@ -208,8 +234,11 @@ function doLogin(){
   }
   if(remember){
     localStorage.setItem(PWD_STORE_KEY, inputPwd);
+    const expire = Date.now() + LOGIN_EXPIRE_HOUR * 3600 * 1000;
+    localStorage.setItem(LOGIN_EXPIRE_KEY, expire);
   }else{
     localStorage.removeItem(PWD_STORE_KEY);
+    localStorage.removeItem(LOGIN_EXPIRE_KEY);
   }
   document.getElementById("loginWrap").style.display = "none";
   document.getElementById("mainWrap").style.display = "block";
@@ -217,9 +246,17 @@ function doLogin(){
   render();
 }
 
-// 自动登录
+// 自动登录（增加8小时过期校验，和编辑器同步）
 (function autoLogin(){
   const saved = localStorage.getItem(PWD_STORE_KEY);
+  const expireTs = Number(localStorage.getItem(LOGIN_EXPIRE_KEY)) || 0;
+  const now = Date.now();
+  // 过期清空登录信息
+  if(expireTs < now){
+    localStorage.removeItem(PWD_STORE_KEY);
+    localStorage.removeItem(LOGIN_EXPIRE_KEY);
+    return;
+  }
   if(saved === ADMIN_PASSWORD){
     document.getElementById("loginWrap").style.display = "none";
     document.getElementById("mainWrap").style.display = "block";
@@ -236,22 +273,26 @@ window.delNote = function(id){
   let list = loadAllNotes();
   list = list.filter(item => item.id !== id);
   saveAllNotes(list);
-  alert("已删除，进入编辑器复制/下载data.js即可同步更新仓库");
+  alert("已删除，请进入编辑器下载/复制data.js同步仓库更新");
   render();
 }
 
-// 渲染列表，从唯一存储读取
+// 渲染列表：过滤临时草稿 _isTempNew，按时间倒序
 function render(){
   const wrap = document.getElementById('listWrap');
   let list = window.NOTE_DATA || loadAllNotes();
   if(!Array.isArray(list)) list = [];
 
-  if(list.length === 0){
+  // 过滤编辑器新建产生的临时草稿，只展示正式笔记
+  const realList = list.filter(item => !item._isTempNew);
+
+  if(realList.length === 0){
     wrap.innerHTML = '<div class="empty">暂无笔记，点击上方【+新建笔记】创建第一条</div>';
     return;
   }
   let html = '';
-  list.sort((a,b)=>new Date(b.date) - new Date(a.date)).forEach(item=>{
+  // 创建时间倒序，最新在顶部
+  realList.sort((a,b)=>new Date(b.date) - new Date(a.date)).forEach(item=>{
     html += `
     <div class="item-box">
       <div class="item-info">
