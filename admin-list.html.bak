@@ -181,24 +181,21 @@ h1{
 
 <script>
 const ADMIN_PASSWORD = "admin123";
-const CACHE_KEY = "note_temp_data";
 const PWD_STORE_KEY = "admin_save_pwd";
 
-// 加载缓存数据
-function loadData() {
-  const cache = localStorage.getItem(CACHE_KEY);
-  if (cache) {
-    try {
-      window.NOTE_DATA = JSON.parse(cache);
-    } catch {
-      window.NOTE_DATA = window.NOTE_DATA || [];
-    }
-  } else {
-    window.NOTE_DATA = window.NOTE_DATA || [];
+// 统一读取唯一存储 notes
+function loadAllNotes(){
+  const raw = localStorage.getItem("notes");
+  try{
+    return raw ? JSON.parse(raw) : [];
+  }catch(e){
+    return [];
   }
 }
-function saveTempCache() {
-  localStorage.setItem(CACHE_KEY, JSON.stringify(window.NOTE_DATA));
+// 统一写入唯一存储 notes
+function saveAllNotes(list){
+  localStorage.setItem("notes", JSON.stringify(list));
+  window.NOTE_DATA = list;
 }
 
 // 登录校验
@@ -209,47 +206,46 @@ function doLogin(){
     alert("密码错误");
     return;
   }
-  // 记住密码
   if(remember){
     localStorage.setItem(PWD_STORE_KEY, inputPwd);
   }else{
     localStorage.removeItem(PWD_STORE_KEY);
   }
-  // 展示主界面
   document.getElementById("loginWrap").style.display = "none";
   document.getElementById("mainWrap").style.display = "block";
-  loadData();
+  window.NOTE_DATA = loadAllNotes();
   render();
 }
 
-// 页面初始化自动检测记住的密码
+// 自动登录
 (function autoLogin(){
   const saved = localStorage.getItem(PWD_STORE_KEY);
   if(saved === ADMIN_PASSWORD){
-    // 自动登录
     document.getElementById("loginWrap").style.display = "none";
     document.getElementById("mainWrap").style.display = "block";
-    loadData();
+    window.NOTE_DATA = loadAllNotes();
     render();
   }
 })();
 
-// 删除：不再弹窗输密码，只确认删除
+// 删除函数：只操作一份存储，全局同步
 window.delNote = function(id){
   if(!confirm("确认永久删除这条笔记？删除后无法恢复")){
     return;
   }
-  window.NOTE_DATA = window.NOTE_DATA.filter(item => item.id !== id);
-  saveTempCache();
+  let list = loadAllNotes();
+  list = list.filter(item => item.id !== id);
+  saveAllNotes(list);
   alert("已删除，进入编辑器复制/下载data.js即可同步更新仓库");
   render();
 }
 
+// 渲染列表，从唯一存储读取
 function render(){
   const wrap = document.getElementById('listWrap');
-  // 每次渲染强制读取本地最新存储，不用缓存变量
-  let list = JSON.parse(localStorage.getItem("notes") || "[]");
-  window.NOTE_DATA = list;
+  let list = window.NOTE_DATA || loadAllNotes();
+  if(!Array.isArray(list)) list = [];
+
   if(list.length === 0){
     wrap.innerHTML = '<div class="empty">暂无笔记，点击上方【+新建笔记】创建第一条</div>';
     return;
@@ -271,7 +267,6 @@ function render(){
   })
   wrap.innerHTML = html;
 }
-
 </script>
 </body>
 </html>

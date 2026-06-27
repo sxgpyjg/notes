@@ -854,6 +854,11 @@ body.bg-custom .md-preview{
 </div>
 
 <script>
+// 统一写入主存储 notes，给管理页/复制按钮读取
+function saveNoteToStorage(newList){
+  localStorage.setItem("notes", JSON.stringify(newList));
+}
+
 // 全局图片序号持久化
 let globalImgSerial = Number(localStorage.getItem("img_serial") || 0);
 function addImgSerial(){
@@ -2101,8 +2106,11 @@ function syncFormToNoteList(){
     };
     list.push(newNote);
   }
-  saveLocalCache();
+    saveLocalCache();
+  saveNoteToStorage(list);
+
 }
+
 //一键复制完整data.js
 copyAllJsonBtn.onclick = async function(){
   const allNotes = JSON.parse(localStorage.getItem("notes") || "[]");
@@ -2175,8 +2183,10 @@ function downloadDataJs(isTimeStamp){
     content,
     date: nowTime
   });
-  saveLocalCache();
+    saveLocalCache();
+  saveNoteToStorage(list);
   const jsText = getFullJsText();
+
   const blob = new Blob([jsText], {type:"application/javascript"});
   const a = document.createElement("a");
   let fileName = "data.js";
@@ -2253,9 +2263,11 @@ backupFileInput.onchange = function(e){
       if(raw.startsWith("window.NOTE_DATA = ")) raw = raw.replace("window.NOTE_DATA = ","");
       const fullNoteArr = JSON.parse(raw);
       if(!Array.isArray(fullNoteArr)) throw "文件格式错误";
-      list = fullNoteArr;
+            list = fullNoteArr;
       saveLocalCache();
+      saveNoteToStorage(list);
       window.NOTE_DATA = list;
+
       alert(`导入成功，共${list.length}条笔记，切换页面即可生效`);
       loadLocalCache();
       if(editId) initLoadNote();
