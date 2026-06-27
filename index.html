@@ -269,7 +269,7 @@ const MOVE_THRESHOLD = 8;
 // 免登录缓存配置
 const PWD_STORE_KEY = "admin_save_pwd";
 const LOGIN_EXPIRE_KEY = "admin_login_expire";
-const LOGIN_EXPIRE_HOUR = 8; // 免登录时长8小时
+const LOGIN_EXPIRE_HOUR = 8;
 const LOCAL_NOTE_KEY = "notes";
 let dataList = [];
 
@@ -353,14 +353,12 @@ function verifyAdminPwd(cb){
   const savedPwd = localStorage.getItem(PWD_STORE_KEY);
   const expireTs = Number(localStorage.getItem(LOGIN_EXPIRE_KEY)) || 0;
   const now = Date.now();
-  // 密码正确且未过期，直接放行
   if(savedPwd === ADMIN_PWD && expireTs > now){
     cb();
     return;
   }
   const inputPwd = prompt("请输入管理员密码：");
   if(inputPwd === ADMIN_PWD){
-    // 保存密码+过期时间
     localStorage.setItem(PWD_STORE_KEY, inputPwd);
     const expireTime = Date.now() + LOGIN_EXPIRE_HOUR * 3600 * 1000;
     localStorage.setItem(LOGIN_EXPIRE_KEY, expireTime);
@@ -370,9 +368,11 @@ function verifyAdminPwd(cb){
   }
 }
 
+// 顶部标题：触屏 + 鼠标长按双兼容
 function bindTitleLongPress(){
   let pressTimer = null,isLongPress = false,startX=0,startY=0,isScroll=false;
-  const start = (e)=>{
+  // 触摸
+  const touchStart = (e)=>{
     isLongPress = false;isScroll = false;
     const touch = e.touches[0];
     startX = touch.clientX;startY = touch.clientY;
@@ -381,17 +381,35 @@ function bindTitleLongPress(){
       verifyAdminPwd(()=>location.href = "edit.html");
     }, LONG_PRESS_TIME);
   };
-  const move = (e)=>{
+  const touchMove = (e)=>{
     const touch = e.touches[0];
     const dx = Math.abs(touch.clientX-startX);
     const dy = Math.abs(touch.clientY-startY);
     if(dx>MOVE_THRESHOLD||dy>MOVE_THRESHOLD){isScroll=true;clearTimeout(pressTimer);}
   };
-  const end = ()=>clearTimeout(pressTimer);
-  trigger.addEventListener('touchstart',start);
-  trigger.addEventListener('touchmove',move);
-  trigger.addEventListener('touchend',end);
-  trigger.addEventListener('touchcancel',end);
+  const touchEnd = ()=>clearTimeout(pressTimer);
+  trigger.addEventListener('touchstart',touchStart);
+  trigger.addEventListener('touchmove',touchMove);
+  trigger.addEventListener('touchend',touchEnd);
+  trigger.addEventListener('touchcancel',touchEnd);
+
+  // 鼠标长按
+  let mouseTimer = null, mouseIsLong = false, mStartX, mStartY;
+  const mouseDown = (e)=>{
+    mouseIsLong = false;
+    mStartX = e.clientX;
+    mStartY = e.clientY;
+    mouseTimer = setTimeout(()=>{
+      mouseIsLong = true;
+      verifyAdminPwd(()=>location.href = "edit.html");
+    }, LONG_PRESS_TIME);
+  };
+  const mouseUp = ()=>clearTimeout(mouseTimer);
+  const mouseLeave = ()=>clearTimeout(mouseTimer);
+  trigger.addEventListener("mousedown", mouseDown);
+  trigger.addEventListener("mouseup", mouseUp);
+  trigger.addEventListener("mouseleave", mouseLeave);
+
   trigger.addEventListener("click", ()=>{});
 }
 
@@ -488,10 +506,27 @@ function renderNotes(){
     card.addEventListener('touchmove',movePress);
     card.addEventListener('touchend',endPress);
 
-    // 电脑鼠标左键点击打开笔记
-    card.addEventListener("click", ()=>{
-      openRead(noteId);
-    })
+    // ========== 新增鼠标长按逻辑 ==========
+    let mouseTimer = null, mouseIsLong = false, mX, mY;
+    const mouseDownFn = (e)=>{
+      mouseIsLong = false;
+      mX = e.clientX;
+      mY = e.clientY;
+      mouseTimer = setTimeout(()=>{
+        mouseIsLong = true;
+        openAdminPage();
+      }, LONG_PRESS_TIME);
+    };
+    const mouseUpFn = ()=>{
+      clearTimeout(mouseTimer);
+      // 短按松开才打开，长按不触发单击
+      if(!mouseIsLong) openRead(noteId);
+    };
+    const mouseLeaveFn = ()=>clearTimeout(mouseTimer);
+    card.addEventListener("mousedown", mouseDownFn);
+    card.addEventListener("mouseup", mouseUpFn);
+    card.addEventListener("mouseleave", mouseLeaveFn);
+
     // 鼠标右键进入管理页
     card.addEventListener("contextmenu", (e)=>{
       e.preventDefault();
