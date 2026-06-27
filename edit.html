@@ -916,12 +916,14 @@ autoLoginCheck();
 function loadLocalCache(){
   const cacheStr = localStorage.getItem(CACHE_KEY);
 
-  // 核心：优先加载远程data.js完整数据，本地存储不再覆盖线上
+  // 第一步：强制优先使用远程data.js里的完整笔记，不被本地覆盖
   if(window.NOTE_DATA && Array.isArray(window.NOTE_DATA)){
-    list = [...window.NOTE_DATA];
+    list = JSON.parse(JSON.stringify(window.NOTE_DATA));
+  }else{
+    list = [];
   }
 
-  // 屏蔽读取 localStorage.notes 覆盖远程的代码
+  // 彻底禁用 localStorage.notes 覆盖远程线上文件（完全注释，不留分支）
   /*
   const realStorage = localStorage.getItem("notes");
   if(realStorage){
@@ -932,13 +934,17 @@ function loadLocalCache(){
   }
   */
 
-  // 仅保留编辑临时草稿，不干扰正式笔记列表
+  // 仅单独保留临时草稿，追加到远程完整列表末尾，绝不替换主线笔记
   if(cacheStr){
     try{
       const tempCache = JSON.parse(cacheStr);
       const tempDraft = tempCache.find(item => item._isTempNew === true);
-      if(tempDraft && !list.some(i => i._isTempNew === true)){
-        list.push(tempDraft);
+      if(tempDraft){
+        // 判断远程列表里有没有草稿，没有才追加
+        const hasDraft = list.some(i => i._isTempNew === true);
+        if(!hasDraft){
+          list.push(tempDraft);
+        }
       }
     }catch(e){}
   }
@@ -1239,18 +1245,7 @@ function checkPwd(){
 
 // 【核心修复】初始化加载笔记，回填不丢失、不破坏按钮逻辑
 function initLoadNote(){
-  const storageRaw = localStorage.getItem("notes");
-  if(storageRaw){
-    try{
-      list = JSON.parse(storageRaw);
-      window.NOTE_DATA = list;
-    }catch(e){
-      list = window.NOTE_DATA || [];
-    }
-  }else{
-    list = window.NOTE_DATA || [];
-  }
-
+  // 直接复用loadLocalCache加载好的远程list，不再重读本地覆盖
   if(!editId) return;
   const target = list.find(item=>item.id === Number(editId));
   if(!target) return;
@@ -1267,6 +1262,7 @@ function initLoadNote(){
   checkFormatActive();
   calcWordCount();
 }
+
 function getLineStart(text, pos){
   let i = pos;
   while(i > 0 && text[i-1] !== "\n") i--;
