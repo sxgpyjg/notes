@@ -68,5 +68,12 @@ window.NOTE_DATA = [
     "type": "景色",
     "content": "<img loading=\"lazy\" src=\"https://origin.picgo.net/2026/06/21/IMG_20250501_160556f48ec693c6391be9.jpg\" alt=\"配图\"><img loading=\"lazy\" src=\"https://origin.picgo.net/2026/06/21/IMG_20250501_1600492845c50145553f26.jpg\" alt=\"配图\"><img loading=\"lazy\" src=\"https://origin.picgo.net/2026/06/21/IMG_20250501_1603597080a29022e0284d.jpg\" alt=\"配图\"><img loading=\"lazy\" src=\"https://origin.picgo.net/2026/06/21/IMG_20250501_1613139f81195a77a8ad60.jpg\" alt=\"配图\">",
     "date": "2026-06-21"
+  },
+  {
+    "id": 1782604422601,
+    "title": "张亚宁",
+    "type": "美图",
+    "content": "<img loading=\"lazy\" src=\"~/storage/shared/notes/images/1_1.jpg\" alt=\"本地图片\"><br><br>",
+    "date": "2026-06-28 07:53:42"
   }
 ]
