@@ -2601,58 +2601,84 @@ localStorage.removeItem("editorBgTheme");
 changeEditorBg("white");
 alert("已恢复编辑器默认纯白底色");
 }
-//主题切换主函数
+//主题切换主函数（修复自定义底色无法实时修改）
 function changeEditorBg(theme){
-const r = document.querySelector(".rich-editor");
-const m = document.querySelector(".md-editor");
-r.className = "rich-editor";
-m.className = "md-editor";
-switch(theme){
-case "cream":
-r.classList.add("bg-cream");
-m.classList.add("bg-cream");
-break;
-case "blue":
-r.classList.add("bg-blue");
-m.classList.add("bg-blue");
-break;
-case "dark":
-r.classList.add("bg-dark");
-m.classList.add("bg-dark");
-break;
-case "midnight":
-r.classList.add("bg-midnight");
-m.classList.add("bg-midnight");
-break;
-case "sepia":
-r.classList.add("bg-sepia");
-m.classList.add("bg-sepia");
-break;
-case "gray":
-r.classList.add("bg-gray");
-m.classList.add("bg-gray");
-break;
-case "paper":
-r.classList.add("bg-paper");
-m.classList.add("bg-paper");
-break;
-case "softblue":
-r.classList.add("bg-softblue");
-m.classList.add("bg-softblue");
-break;
-case "custom":
-r.classList.add("bg-custom");
-m.classList.add("bg-custom");
-customBgColorInput.style.display = "block";
-// 自定义底色取色器实时更新背景变量
-customBgColorInput.oninput = function(){
-  document.body.style.setProperty("--custom-bg", this.value);
-  // 文字自适应亮度
-  const hex = this.value.replace("#","");
-  const r = parseInt(hex.substr(0,2),16);
-  const g = parseInt(hex.substr(2,2),16);
-  const b = parseInt(hex.substr(4,2),16);
-  const brightness = (r*299 + g*587 + b*114)/1000;
+  const r = document.querySelector(".rich-editor");
+  const m = document.querySelector(".md-editor");
+  //清空全部主题class
+  r.className = "rich-editor";
+  m.className = "md-editor";
+  //隐藏取色器默认
+  customBgColorInput.style.display = "none";
+  //清空自定义变量
+  document.body.style.removeProperty("--custom-bg");
+  document.body.style.removeProperty("--custom-text");
+  document.body.style.removeProperty("--custom-border");
+
+  switch(theme){
+    case "cream":
+      r.classList.add("bg-cream");
+      m.classList.add("bg-cream");
+      break;
+    case "blue":
+      r.classList.add("bg-blue");
+      m.classList.add("bg-blue");
+      break;
+    case "dark":
+      r.classList.add("bg-dark");
+      m.classList.add("bg-dark");
+      break;
+    case "midnight":
+      r.classList.add("bg-midnight");
+      m.classList.add("bg-midnight");
+      break;
+    case "sepia":
+      r.classList.add("bg-sepia");
+      m.classList.add("bg-sepia");
+      break;
+    case "gray":
+      r.classList.add("bg-gray");
+      m.classList.add("bg-gray");
+      break;
+    case "paper":
+      r.classList.add("bg-paper");
+      m.classList.add("bg-paper");
+      break;
+    case "softblue":
+      r.classList.add("bg-softblue");
+      m.classList.add("bg-softblue");
+      break;
+    case "custom":
+      r.classList.add("bg-custom");
+      m.classList.add("bg-custom");
+      customBgColorInput.style.display = "flex";
+      //读取上次保存的自定义颜色
+      const savedCustomColor = localStorage.getItem("savedCustomBg") || "#ffffff";
+      customBgColorInput.value = savedCustomColor;
+      //立即更新底色变量
+      updateCustomBgStyle(savedCustomColor);
+      //绑定取色器实时修改事件
+      customBgColorInput.oninput = function(){
+        const colorVal = this.value;
+        localStorage.setItem("savedCustomBg", colorVal);
+        updateCustomBgStyle(colorVal);
+      }
+      break;
+    default:
+      break;
+  }
+  localStorage.setItem("editorBgTheme", theme);
+}
+
+//新增：统一更新自定义底色、文字、边框亮度
+function updateCustomBgStyle(hexColor){
+  document.body.style.setProperty("--custom-bg", hexColor);
+  //计算亮度自动切换文字黑白
+  const hex = hexColor.replace("#","");
+  const r = parseInt(hex.substring(0,2),16);
+  const g = parseInt(hex.substring(2,2),16);
+  const b = parseInt(hex.substring(4,2),16);
+  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
   if(brightness < 120){
     document.body.style.setProperty("--custom-text","#eeeeee");
     document.body.style.setProperty("--custom-border","#555555");
@@ -2661,21 +2687,13 @@ customBgColorInput.oninput = function(){
     document.body.style.setProperty("--custom-border","#dddddd");
   }
 }
-break;
-default:
-customBgColorInput.style.display = "none";
-document.body.style.removeProperty("--custom-bg");
-document.body.style.removeProperty("--custom-text");
-document.body.style.removeProperty("--custom-border");
-break;
-}
-localStorage.setItem("editorBgTheme", theme);
-}
-//页面加载读取保存的主题
+
+//页面加载时同步自定义底色存储
 window.addEventListener("load", ()=>{
-const saveTheme = localStorage.getItem("editorBgTheme") || "white";
-changeEditorBg(saveTheme);
+  const saveTheme = localStorage.getItem("editorBgTheme") || "white";
+  changeEditorBg(saveTheme);
 });
+
 //存储读写封装
 function saveNoteToStorage(arr){
 localStorage.setItem("notes", JSON.stringify(arr));
