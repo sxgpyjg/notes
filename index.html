@@ -231,6 +231,7 @@ cursor: pointer;
   <h1 id="secretTrigger">笔记目录</h1>
   <div class="header-right-group">
     <button class="refresh-data-btn" onclick="forceReloadRemote()">刷新数据</button>
+    <button class="refresh-data-btn" onclick="logoutAdmin()">退出登录</button>
     <button id="fullPageBtn">
       <svg viewBox="0 0 24 24" id="fullSvg">
         <path d="M10 7 H7 V10"/>
@@ -265,7 +266,10 @@ let allTypes = new Set();
 const ADMIN_PWD = "admin123";
 const LONG_PRESS_TIME = 400;
 const MOVE_THRESHOLD = 8;
+// 免登录缓存配置
 const PWD_STORE_KEY = "admin_save_pwd";
+const LOGIN_EXPIRE_KEY = "admin_login_expire";
+const LOGIN_EXPIRE_HOUR = 8; // 免登录时长8小时
 const LOCAL_NOTE_KEY = "notes";
 let dataList = [];
 
@@ -278,6 +282,14 @@ function clearAllLockMask() {
 }
 window.addEventListener("load", clearAllLockMask);
 window.addEventListener("resize", clearAllLockMask);
+
+// 退出登录，清除免登缓存
+function logoutAdmin(){
+  localStorage.removeItem(PWD_STORE_KEY);
+  localStorage.removeItem(LOGIN_EXPIRE_KEY);
+  alert("已退出管理员登录，下次需重新输入密码");
+  location.reload();
+}
 
 async function waitNoteData(){
   let count = 0;
@@ -336,12 +348,22 @@ fullBtn.addEventListener('click',()=>{
   }
 })
 
+// 带过期免登录验证函数
 function verifyAdminPwd(cb){
   const savedPwd = localStorage.getItem(PWD_STORE_KEY);
-  if(savedPwd === ADMIN_PWD){cb();return;}
+  const expireTs = Number(localStorage.getItem(LOGIN_EXPIRE_KEY)) || 0;
+  const now = Date.now();
+  // 密码正确且未过期，直接放行
+  if(savedPwd === ADMIN_PWD && expireTs > now){
+    cb();
+    return;
+  }
   const inputPwd = prompt("请输入管理员密码：");
   if(inputPwd === ADMIN_PWD){
+    // 保存密码+过期时间
     localStorage.setItem(PWD_STORE_KEY, inputPwd);
+    const expireTime = Date.now() + LOGIN_EXPIRE_HOUR * 3600 * 1000;
+    localStorage.setItem(LOGIN_EXPIRE_KEY, expireTime);
     cb();
   }else if(inputPwd !== null){
     alert("密码错误");
@@ -466,11 +488,11 @@ function renderNotes(){
     card.addEventListener('touchmove',movePress);
     card.addEventListener('touchend',endPress);
 
-    // 电脑鼠标左键点击
+    // 电脑鼠标左键点击打开笔记
     card.addEventListener("click", ()=>{
       openRead(noteId);
     })
-    // 鼠标右键唤起管理页
+    // 鼠标右键进入管理页
     card.addEventListener("contextmenu", (e)=>{
       e.preventDefault();
       openAdminPage();
