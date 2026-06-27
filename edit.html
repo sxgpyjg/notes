@@ -2106,7 +2106,6 @@ function syncFormToNoteList(){
 //一键复制完整data.js
 copyAllJsonBtn.onclick = async function(){
   const allNotes = JSON.parse(localStorage.getItem("notes") || "[]");
-  // 只保留有id、标题非空白的笔记
   const validNotes = allNotes.filter(item => {
     if(!item || !item.id) return false;
     const titleStr = (item.title || "").trim();
@@ -2131,6 +2130,7 @@ copyAllJsonBtn.onclick = async function(){
   }
   alert(`复制成功，共${validNotes.length}条带标题笔记，仅本段可粘贴nano`);
 };
+
 
 //生成图片复制脚本
 genCpBtn.onclick = async function(){

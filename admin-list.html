@@ -234,22 +234,33 @@ function doLogin(){
   }
 })();
 
-// 删除：不再弹窗输密码，只确认删除
+// 删除函数【已修复同步本地notes存储】
 window.delNote = function(id){
   if(!confirm("确认永久删除这条笔记？删除后无法恢复")){
     return;
   }
+  // 1. 更新页面全局缓存
   window.NOTE_DATA = window.NOTE_DATA.filter(item => item.id !== id);
   saveTempCache();
+
+  // 2. 同步更新编辑页读取的主存储 notes（核心修复）
+  let allNotes = JSON.parse(localStorage.getItem("notes") || "[]");
+  allNotes = allNotes.filter(item => item.id !== id);
+  localStorage.setItem("notes", JSON.stringify(allNotes));
+
   alert("已删除，进入编辑器复制/下载data.js即可同步更新仓库");
   render();
 }
 
 function render(){
   const wrap = document.getElementById('listWrap');
-  // 每次渲染强制读取本地最新存储，不用缓存变量
-  let list = JSON.parse(localStorage.getItem("notes") || "[]");
-  window.NOTE_DATA = list;
+  // 优先全局缓存，防止列表空白
+  let list = window.NOTE_DATA;
+  if(!Array.isArray(list)){
+    list = JSON.parse(localStorage.getItem("notes") || "[]");
+    window.NOTE_DATA = list;
+  }
+
   if(list.length === 0){
     wrap.innerHTML = '<div class="empty">暂无笔记，点击上方【+新建笔记】创建第一条</div>';
     return;
