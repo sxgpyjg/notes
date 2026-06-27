@@ -16,14 +16,6 @@
     "_isTempNew": true
   },
   {
-    "id": 1782517830212,
-    "title": "红楼梦剧照",
-    "type": "女星",
-    "content": "<img loading=\"lazy\" src=\"https://origin.picgo.net/2026/06/27/Screenshot_2026_0625_123600bc27a5939876102a.png\" alt=\"配图\"><br><br>",
-    "date": "2026-06-27 07:50:30",
-    "_isTempNew": true
-  },
-  {
     "id": 1782367660671,
     "title": "备份恢复Termux",
     "type": "编程",
@@ -78,4 +70,3 @@
     "date": "2026-06-21"
   }
 ]
-
