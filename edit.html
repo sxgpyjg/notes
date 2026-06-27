@@ -795,7 +795,8 @@ body.bg-custom .md-preview{
     <button class="icon-btn" data-tip="行内代码" onclick="insertInlineCode()">`</button>
     <button class="icon-btn" data-tip="引用块" onclick="insertQuote()">></button>
     <button class="icon-btn" data-tip="无序列表" onclick="insertUl()">•</button>
-    <button class="icon-btn" data-tip="清空全部内容" id="clearAllContentBtn">🗑️</button>
+    <!-- 修复清空全部内容按钮绑定 -->
+    <button class="icon-btn" data-tip="清空全部内容" id="clearAllContentBtn" onclick="clearAllNotesContent()">🗑️</button>
     <button class="icon-btn" data-tip="表格" onclick="insertTable()">▦</button>
     <button class="icon-btn" data-tip="本地图片上传" id="localImgBtn">🖼</button>
     <button class="icon-btn" data-tip="批量图床链接" id="batchImgBtn">🔗</button>  
@@ -833,6 +834,7 @@ body.bg-custom .md-preview{
     <option value="midnight">午夜深蓝</option>
     <option value="custom">自定义底色</option>
   </select>
+  <!-- 自定义底色取色器 -->
   <input type="color" id="customBgColor" style="width:24px;height:24px;display:none;flex-shrink:0;" value="#ffffff">
 </div>
     <button class="icon-btn" data-tip="重置默认纯白" onclick="resetDefaultBg()">◇</button>
@@ -1051,6 +1053,25 @@ const backupFileInput = document.getElementById("backupFileInput");
 const wordCountTip = document.getElementById("wordCountTip");
 const matchCaseCheck = document.getElementById("matchCase");
 const customBgColorInput = document.getElementById("customBgColor");
+// 清空全部按钮DOM
+const clearAllContentBtn = document.getElementById("clearAllContentBtn");
+
+// ========== 新增：清空全部内容完整函数 ==========
+function clearAllNotesContent(){
+  if(!confirm("确认清空当前编辑器全部内容，无法撤销！")) return;
+  // 清空编辑器
+  richBox.innerHTML = "";
+  mdBox.value = "";
+  renderMdPreview();
+  // 重置撤销栈
+  richRecordStack = [""];
+  richRecordIndex = 0;
+  mdRecordStack = [""];
+  mdRecordIndex = 0;
+  // 重算字数
+  calcWordCount();
+  alert("编辑器内容已全部清空");
+}
 
 function toggleMoreTools(){
   moreToolsOpen = !moreToolsOpen;
@@ -2623,9 +2644,29 @@ case "custom":
 r.classList.add("bg-custom");
 m.classList.add("bg-custom");
 customBgColorInput.style.display = "block";
+// 自定义底色取色器实时更新背景变量
+customBgColorInput.oninput = function(){
+  document.body.style.setProperty("--custom-bg", this.value);
+  // 文字自适应亮度
+  const hex = this.value.replace("#","");
+  const r = parseInt(hex.substr(0,2),16);
+  const g = parseInt(hex.substr(2,2),16);
+  const b = parseInt(hex.substr(4,2),16);
+  const brightness = (r*299 + g*587 + b*114)/1000;
+  if(brightness < 120){
+    document.body.style.setProperty("--custom-text","#eeeeee");
+    document.body.style.setProperty("--custom-border","#555555");
+  }else{
+    document.body.style.setProperty("--custom-text","#222222");
+    document.body.style.setProperty("--custom-border","#dddddd");
+  }
+}
 break;
 default:
 customBgColorInput.style.display = "none";
+document.body.style.removeProperty("--custom-bg");
+document.body.style.removeProperty("--custom-text");
+document.body.style.removeProperty("--custom-border");
 break;
 }
 localStorage.setItem("editorBgTheme", theme);
