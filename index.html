@@ -474,10 +474,11 @@ function renderNotes(){
     if(item.type === 'doc'){tagClass='tag-doc';tagText='实操教程';}
     const safeTitle = escapeHtml(item.title);
     const safeDate = escapeHtml(item.date);
-    const safePreview = escapeHtml(getPureTextPreview(item.content));
+    // 核心修改：预览内容不转义HTML，正常渲染表格、行内代码
+    const previewHtml = getPureTextPreview(item.content);
     let leftImgSrc = item.cover || getFirstImgFromHtml(item.content);
     let imgBoxHtml = leftImgSrc ? `<div class="card-img-box"><img src="${leftImgSrc}" alt=""></div>` : '';
-    html += `<div class="note-card" data-id="${escapeHtml(item.id)}">${imgBoxHtml}<div class="card-right-wrap"><div class="card-head"><div class="card-title">${safeTitle}</div><span class="tag ${tagClass}">${tagText}</span></div><div class="card-date">发布时间：${safeDate}</div><div class="card-preview">${safePreview}</div></div></div>`;
+    html += `<div class="note-card" data-id="${escapeHtml(item.id)}">${imgBoxHtml}<div class="card-right-wrap"><div class="card-head"><div class="card-title">${safeTitle}</div><span class="tag ${tagClass}">${tagText}</span></div><div class="card-date">发布时间：${safeDate}</div><div class="card-preview">${previewHtml}</div></div></div>`;
   })
   wrap.innerHTML = html;
 
