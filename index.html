@@ -286,10 +286,10 @@ function loadNoteData(){
   // 优先线上全局变量
   if(window.NOTE_DATA && Array.isArray(window.NOTE_DATA)){
     dataList = JSON.parse(JSON.stringify(window.NOTE_DATA));
-    // 同步到本地存储，断网可用
+    wrap.innerHTML = `<div class="empty-tip">成功读到远程data.js，笔记数量：${dataList.length}</div>`;
     localStorage.setItem(LOCAL_NOTE_KEY, JSON.stringify(dataList));
   }else{
-    // 线上加载失败，读取本地缓存
+    wrap.innerHTML = `<div class="empty-tip">读取不到远程data.js，使用本地缓存</div>`;
     const localRaw = localStorage.getItem(LOCAL_NOTE_KEY);
     try{
       dataList = localRaw ? JSON.parse(localRaw) : [];
@@ -297,9 +297,9 @@ function loadNoteData(){
       dataList = [];
     }
   }
-  // 过滤编辑器临时草稿，首页不显示未保存草稿
   dataList = dataList.filter(item => !item._isTempNew);
 }
+
 
 // 页面加载入口，增加等待data.js逻辑
 window.addEventListener('load', async ()=>{
