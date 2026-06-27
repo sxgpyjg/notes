@@ -896,9 +896,16 @@ body.bg-custom .md-preview{
 
 <script>
 // 统一写入主存储 notes，给管理页/复制按钮读取
+function buildSafeCpCmd(srcPath, destFileName) {
+  const destDir = "~/storage/shared/notes/images/";
+  // 双引号包裹，兼容中文、空格、特殊符号文件名
+  return `cp "${srcPath}" "${destDir}${destFileName}"`;
+}
+
 function saveNoteToStorage(newList){
   localStorage.setItem("notes", JSON.stringify(newList));
 }
+
 
 // 全局图片序号持久化
 let globalImgSerial = Number(localStorage.getItem("img_serial") || 0);
@@ -1922,35 +1929,44 @@ globalImgSerial++;
 const uniqueId = Date.now() + "_" + globalImgSerial + Math.random().toString(36).slice(2,4);
 realName = `IMG_${uniqueId}.${ext}`;
 }
-const safeName = realName;
+// 全局序号前缀，杜绝重名覆盖
+globalImgSerial++;
+const safeName = `${globalImgSerial}_${realName}`;
 insertLocalImgTagTerminal(safeName);
+
 let fullPath = file.path || "";
 let termuxSrc;
 if (fullPath) {
-  // 转换安卓绝对路径为Termux路径，统一修正download为downloads
-  fullPath = fullPath.replace(/^\/storage\/emulated\/0\//i, "~/storage/");
-  fullPath = fullPath.replace(/\/download\//gi, "/downloads/");
+  // 修正共享目录前缀、Download标准目录名
+  fullPath = fullPath.replace(/^\/storage\/emulated\/0\//i, "~/storage/shared/");
+  fullPath = fullPath.replace(/\/download\//gi, "/Download/");
   termuxSrc = fullPath;
 } else {
-  // 兜底：拿不到原生路径时 fallback
   const fileName = file.name;
-  if (/^Screenshot/.test(fileName)) {
-    termuxSrc = `~/storage/dcim/Screenshots/${fileName}`;
-  } else if (/wx|wechat/.test(fileName.toLowerCase())) {
-    termuxSrc = `~/storage/downloads/${fileName}`;
-  } else if (/mmexport/.test(fileName)) {
-    termuxSrc = `~/storage/downloads/VideoDownloader/${fileName}`;
+  const fnLower = fileName.toLowerCase();
+  // 扩充多目录匹配，全部使用正确 ~/storage/shared 路径
+  if (/screenshot/.test(fnLower)) {
+    termuxSrc = `~/storage/shared/DCIM/Screenshots/${fileName}`;
+  } else if (/wx_|wechat|mmexport/.test(fnLower)) {
+    termuxSrc = `~/storage/shared/tencent/MicroMsg/WeiXin/${fileName}`;
+  } else if (/qq/.test(fnLower)) {
+    termuxSrc = `~/storage/shared/tencent/QQ_images/${fileName}`;
+  } else if (/download/.test(fnLower)) {
+    termuxSrc = `~/storage/shared/Download/${fileName}`;
   } else {
-    termuxSrc = `~/storage/dcim/Camera/${fileName}`;
+    termuxSrc = `~/storage/shared/DCIM/Camera/${fileName}`;
   }
 }
-imgUploadList.push({ name: safeName, src: termuxSrc });
-
+// 传入源路径 + 带序号目标文件名
+const cpCmd = buildSafeCpCmd(termuxSrc, safeName);
+imgUploadList.push({ name: safeName, src: termuxSrc, copyCmd: cpCmd });
 });
+
 addImgSerial();
 closeModal();
 };
- 
+
+
 confirmBtn.onclick = function(){
 const url = linkInput.value.trim();
 const altText = descInput.value.trim();
@@ -2038,33 +2054,42 @@ globalImgSerial++;
 const uniqueId = Date.now() + "_" + globalImgSerial + Math.random().toString(36).slice(2,4);
 realName = `IMG_${uniqueId}.${ext}`;
 }
-const safeName = realName;
+// 全局自增序号，防止重名
+globalImgSerial++;
+const safeName = `${globalImgSerial}_${realName}`;
 insertLocalImgTagTerminal(safeName);
+
 let fullPath = file.path || "";
 let termuxSrc;
 if (fullPath) {
-  fullPath = fullPath.replace(/^\/storage\/emulated\/0\//i, "~/storage/");
-  fullPath = fullPath.replace(/\/download\//gi, "/downloads/");
+  // 系统绝对路径转Termux共享路径
+  fullPath = fullPath.replace(/^\/storage\/emulated\/0\//i, "~/storage/shared/");
+  fullPath = fullPath.replace(/\/download\//gi, "/Download/");
   termuxSrc = fullPath;
 } else {
   const fileName = file.name;
-  if (/^Screenshot/.test(fileName)) {
-    termuxSrc = `~/storage/dcim/Screenshots/${fileName}`;
-  } else if (/wx|wechat/.test(fileName.toLowerCase())) {
-    termuxSrc = `~/storage/downloads/${fileName}`;
-  } else if (/mmexport/.test(fileName)) {
-    termuxSrc = `~/storage/downloads/VideoDownloader/${fileName}`;
+  const fnLower = fileName.toLowerCase();
+  if (/screenshot/.test(fnLower)) {
+    termuxSrc = `~/storage/shared/DCIM/Screenshots/${fileName}`;
+  } else if (/wx_|wechat|mmexport/.test(fnLower)) {
+    termuxSrc = `~/storage/shared/tencent/MicroMsg/WeiXin/${fileName}`;
+  } else if (/qq/.test(fnLower)) {
+    termuxSrc = `~/storage/shared/tencent/QQ_images/${fileName}`;
+  } else if (/download/.test(fnLower)) {
+    termuxSrc = `~/storage/shared/Download/${fileName}`;
   } else {
-    termuxSrc = `~/storage/dcim/Camera/${fileName}`;
+    termuxSrc = `~/storage/shared/DCIM/Camera/${fileName}`;
   }
 }
-imgUploadList.push({ name: safeName, src: termuxSrc });
-
+const cpCmd = buildSafeCpCmd(termuxSrc, safeName);
+imgUploadList.push({ name: safeName, src: termuxSrc, copyCmd: cpCmd });
 });
+
 addImgSerial();
 closeModal();
 };
- 
+
+
 confirmBtn.onclick = function(){
 const url = linkInput.value.trim();
 const altText = descInput.value.trim();
@@ -2111,29 +2136,39 @@ globalImgSerial++;
 const uniqueId = Date.now() + "_" + globalImgSerial + Math.random().toString(36).slice(2,4);
 realName = `IMG_${uniqueId}.${ext}`;
 }
-const safeName = realName;
+// 全局序号防重名，最终存入images文件夹
+globalImgSerial++;
+const safeName = `${globalImgSerial}_${realName}`;
 insertLocalImgTagTerminal(safeName);
+
 let fullPath = file.path || "";
 let termuxSrc;
 if (fullPath) {
-  fullPath = fullPath.replace(/^\/storage\/emulated\/0\//i, "~/storage/");
-  fullPath = fullPath.replace(/\/download\//gi, "/downloads/");
+  // 转换系统真实路径为Termux共享路径
+  fullPath = fullPath.replace(/^\/storage\/emulated\/0\//i, "~/storage/shared/");
+  fullPath = fullPath.replace(/\/download\//gi, "/Download/");
   termuxSrc = fullPath;
 } else {
+  // 无真实路径时按文件名猜测源目录，统一使用 ~/storage/shared
   const fileName = file.name;
-  if (/^Screenshot/.test(fileName)) {
-    termuxSrc = `~/storage/dcim/Screenshots/${fileName}`;
-  } else if (/wx|wechat/.test(fileName.toLowerCase())) {
-    termuxSrc = `~/storage/downloads/${fileName}`;
-  } else if (/mmexport/.test(fileName)) {
-    termuxSrc = `~/storage/downloads/VideoDownloader/${fileName}`;
+  const fnLower = fileName.toLowerCase();
+  if (/screenshot/.test(fnLower)) {
+    termuxSrc = `~/storage/shared/DCIM/Screenshots/${fileName}`;
+  } else if (/wx_|wechat|mmexport/.test(fnLower)) {
+    termuxSrc = `~/storage/shared/tencent/MicroMsg/WeiXin/${fileName}`;
+  } else if (/qq/.test(fnLower)) {
+    termuxSrc = `~/storage/shared/tencent/QQ_images/${fileName}`;
+  } else if (/download/.test(fnLower)) {
+    termuxSrc = `~/storage/shared/Download/${fileName}`;
   } else {
-    termuxSrc = `~/storage/dcim/Camera/${fileName}`;
+    termuxSrc = `~/storage/shared/DCIM/Camera/${fileName}`;
   }
 }
-imgUploadList.push({ name: safeName, src: termuxSrc });
-
+// 传入源路径，函数内部拼接目标 ~/storage/shared/notes/images
+const cpCmd = buildSafeCpCmd(termuxSrc, safeName);
+imgUploadList.push({ name: safeName, src: termuxSrc, copyCmd: cpCmd });
 });
+
 addImgSerial();
 imgFileInput.value = "";
 alert(`已记录${allFiles.length}张本地图片，可生成复制命令`);
@@ -2167,6 +2202,7 @@ calcWordCount();
 }
 alert(`成功插入${urlArr.length}张网络图`);
 };
+
 //导出单篇MD
 function exportSingleNoteMd(){
 const title = titleInput.value.trim();
@@ -2273,8 +2309,7 @@ try{
 genCpBtn.onclick = async function(){
 let cpText = "# 仅复制页面选中图片，不会读取手机全部图片\n";
 imgUploadList.forEach(item=>{
-//修复文件名带空格转义单引号
-cpText += `cp -v '${item.src}' images/\n`;
+    cpText += item.copyCmd + "\n";
 });
 const gitCmd = `cd ~/storage/shared/notes
 mkdir -p images
@@ -2292,6 +2327,7 @@ document.body.removeChild(tempTextarea);
 }
 alert("图片复制脚本已复制");
 };
+
 //下载data.js文件
 function downloadDataJs(isTimeStamp){
 const title = titleInput.value.trim();
