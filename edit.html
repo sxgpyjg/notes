@@ -1892,12 +1892,32 @@ realName = `IMG_${uniqueId}.${ext}`;
 }
 const safeName = realName;
 insertLocalImgTagTerminal(safeName);
-let path = "~/storage/dcim/Camera";
-if(/^Screenshot/.test(realName)) path = "~/storage/dcim/Screenshots";
-if(/wx|wechat/.test(realName.toLowerCase())) path = "~/storage/downloads";
+let rawRelPath = file.webkitRelativePath || "";
+let termuxSrc;
 
-imgUploadList.push({name:safeName, src:`${path}/${realName}`});
-});
+if (rawRelPath) {
+  termuxSrc = `~/storage/${rawRelPath}`;
+} else {
+  let rawRelPath = file.webkitRelativePath || "";
+let termuxSrc;
+
+if (rawRelPath) {
+  termuxSrc = `~/storage/${rawRelPath}`;
+} else {
+  let rawRelPath = file.webkitRelativePath || "";
+let termuxSrc;
+
+if (rawRelPath) {
+  termuxSrc = `~/storage/${rawRelPath}`;
+} else {
+  let path = "~/storage/dcim/Camera";
+  if (/^Screenshot/.test(realName)) path = "~/storage/dcim/Screenshots";
+  if (/wx|wechat/.test(realName.toLowerCase())) path = "~/storage/downloads";
+  termuxSrc = `${path}/${realName}`;
+}
+
+imgUploadList.push({ name: safeName, src: termuxSrc });
+
 addImgSerial();
 closeModal();
 };
@@ -1994,12 +2014,32 @@ realName = `IMG_${uniqueId}.${ext}`;
 }
 const safeName = realName;
 insertLocalImgTagTerminal(safeName);
-let path = "~/storage/dcim/Camera";
-if(/^Screenshot/.test(realName)) path = "~/storage/dcim/Screenshots";
-if(/wx|wechat/.test(realName.toLowerCase())) path = "~/storage/downloads";
+let rawRelPath = file.webkitRelativePath || "";
+let termuxSrc;
 
-imgUploadList.push({name:safeName, src:`${path}/${realName}`});
-});
+if (rawRelPath) {
+  termuxSrc = `~/storage/${rawRelPath}`;
+} else {
+  let rawRelPath = file.webkitRelativePath || "";
+let termuxSrc;
+
+if (rawRelPath) {
+  termuxSrc = `~/storage/${rawRelPath}`;
+} else {
+  let rawRelPath = file.webkitRelativePath || "";
+let termuxSrc;
+
+if (rawRelPath) {
+  termuxSrc = `~/storage/${rawRelPath}`;
+} else {
+  let path = "~/storage/dcim/Camera";
+  if (/^Screenshot/.test(realName)) path = "~/storage/dcim/Screenshots";
+  if (/wx|wechat/.test(realName.toLowerCase())) path = "~/storage/downloads";
+  termuxSrc = `${path}/${realName}`;
+}
+
+imgUploadList.push({ name: safeName, src: termuxSrc });
+
 addImgSerial();
 closeModal();
 };
@@ -2055,12 +2095,32 @@ realName = `IMG_${uniqueId}.${ext}`;
 }
 const safeName = realName;
 insertLocalImgTagTerminal(safeName);
-let path = "~/storage/dcim/Camera";
-if(/^Screenshot/.test(realName)) path = "~/storage/dcim/Screenshots";
-if(/wx|wechat/.test(realName.toLowerCase())) path = "~/storage/downloads";
+let rawRelPath = file.webkitRelativePath || "";
+let termuxSrc;
 
-imgUploadList.push({name:safeName, src:`${path}/${realName}`});
-});
+if (rawRelPath) {
+  termuxSrc = `~/storage/${rawRelPath}`;
+} else {
+  let rawRelPath = file.webkitRelativePath || "";
+let termuxSrc;
+
+if (rawRelPath) {
+  termuxSrc = `~/storage/${rawRelPath}`;
+} else {
+  let rawRelPath = file.webkitRelativePath || "";
+let termuxSrc;
+
+if (rawRelPath) {
+  termuxSrc = `~/storage/${rawRelPath}`;
+} else {
+  let path = "~/storage/dcim/Camera";
+  if (/^Screenshot/.test(realName)) path = "~/storage/dcim/Screenshots";
+  if (/wx|wechat/.test(realName.toLowerCase())) path = "~/storage/downloads";
+  termuxSrc = `${path}/${realName}`;
+}
+
+imgUploadList.push({ name: safeName, src: termuxSrc });
+
 addImgSerial();
 imgFileInput.value = "";
 alert(`已记录${allFiles.length}张本地图片，可生成复制命令`);
