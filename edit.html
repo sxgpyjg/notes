@@ -242,6 +242,13 @@ body.keyboard-opened .edit-toolbar-wrap{
   line-height:1.7;
 }
 
+/* 代码块强制换行兼容vivo浏览器 */
+.rich-editor pre code,
+.md-editor pre code {
+  white-space:pre-wrap !important;
+  word-break:break-all !important;
+}
+
 /* 模式切换按钮 左右完全一样大 */
 .mode-switch{
   margin-bottom:8px;
@@ -451,6 +458,18 @@ body.keyboard-opened{
   cursor: move;
   will-change: left, top;
 }
+/* 深色主题查找替换弹窗适配 */
+body.bg-dark .find-replace-box,
+body.bg-midnight .find-replace-box{
+  background:rgba(30,30,40,0.9);
+  color:#eee;
+}
+body.bg-dark .find-replace-item input,
+body.bg-midnight .find-replace-item input{
+  background:#222;
+  color:#fff;
+  border-color:#555;
+}
 
 .find-replace-top{
   display:flex;
@@ -469,6 +488,10 @@ body.keyboard-opened{
   color:#666;
   cursor:pointer;
 }
+body.bg-dark .find-replace-close,
+body.bg-midnight .find-replace-close{
+  color:#ddd;
+}
 .find-replace-item{
   margin-bottom:10px;
 }
@@ -477,6 +500,10 @@ body.keyboard-opened{
   font-size:12px;
   color:#444;
   margin-bottom:3px;
+}
+body.bg-dark .find-replace-item label,
+body.bg-midnight .find-replace-item label{
+  color:#ddd;
 }
 .find-replace-item input{
   width:100%;
@@ -507,11 +534,6 @@ body.keyboard-opened{
   color:#fff;
 }
 
-.rich-editor pre code {
-  display: block;
-  min-height: 16px;
-  line-height: 1.5;
-}
 /* 下拉框样式，和字号选择器统一 */
 .editor-bg-select{
   border:1px solid #ddd;
@@ -526,7 +548,7 @@ body.keyboard-opened{
 .rich-editor, .md-editor, .md-preview {
   transition: background 0.25s, color 0.25s, border-color 0.25s;
 }
-/* 默认白色，不用写 */
+/* 默认白色 */
 /* 米黄 */
 body.bg-cream .rich-editor{
   background:#fffbeb;
@@ -720,7 +742,6 @@ body.bg-custom .md-preview{
       <button class="tool-btn" onclick="exportSingleNoteHtml()">导出本篇HTML</button>
       <button class="tool-btn" id="insertCodeBtn" onclick="insertMdCode()">插入代码块模板</button>
       <button class="tool-btn" onclick="forceReloadRemote()">刷新远程data.js</button>
-
     </div>
     <input type="file" id="imgFileInput" multiple>
   </div>
@@ -814,6 +835,7 @@ body.bg-custom .md-preview{
   </select>
   <input type="color" id="customBgColor" style="width:24px;height:24px;display:none;flex-shrink:0;" value="#ffffff">
 </div>
+    <button class="icon-btn" data-tip="重置默认纯白" onclick="resetDefaultBg()">◇</button>
     <button class="icon-btn" data-tip="长分割线" onclick="splitLine2()">===</button>
     <button class="icon-btn" data-tip="切换MD模式" onclick="switchMode('md')">MD</button>
     <button class="icon-btn" data-tip="切换富文本" onclick="switchMode('rich')">富</button>
@@ -867,6 +889,32 @@ let globalImgSerial = Number(localStorage.getItem("img_serial") || 0);
 function addImgSerial(){
   globalImgSerial++;
   localStorage.setItem("img_serial", globalImgSerial);
+}
+// 本地图片插入通用方法（无多余空白，纯净路径）
+function insertLocalImgTag(fileName){
+  const imgHtml = `<img loading="lazy" src="/notes/images/${fileName}" alt="配图" style="max-width:100%;margin:8px 0;"><br><br>`;
+  if(currentEditMode === "rich"){
+    document.execCommand("insertHTML",false,imgHtml);
+  }else{
+    mdBox.value += `![配图](/notes/images/${fileName})\n\n`;
+    saveMdRecord();
+    renderMdPreview();
+    calcWordCount();
+  }
+}
+// 本地图片插入终端路径版本（弹窗上传使用）
+function insertLocalImgTagTerminal(safeName){
+  const srcPath = `~/storage/shared/notes/images/${safeName}`;
+  if(currentEditMode === "rich"){
+    const imgHtml = `<img loading="lazy" src="${srcPath}" alt="本地图片" style="max-width:100%;margin:8px 0;"><br><br>`;
+    document.execCommand("insertHTML",false,imgHtml);
+    richBox.focus();
+  }else{
+    mdBox.value += `![本地图](${srcPath})\n\n`;
+    saveMdRecord();
+    renderMdPreview();
+    calcWordCount();
+  }
 }
 // 强制刷新远程数据，清空本地缓存
 function forceReloadRemote(){
@@ -931,7 +979,7 @@ function loadLocalCache(){
     list = [];
   }
 
-  // 彻底禁用 localStorage.notes 覆盖远程线上文件（完全注释，不留分支）
+  // 彻底禁用 localStorage.notes 覆盖远程线上文件
   /*
   const realStorage = localStorage.getItem("notes");
   if(realStorage){
@@ -948,7 +996,6 @@ function loadLocalCache(){
       const tempCache = JSON.parse(cacheStr);
       const tempDraft = tempCache.find(item => item._isTempNew === true);
       if(tempDraft){
-        // 判断远程列表里有没有草稿，没有才追加
         const hasDraft = list.some(i => i._isTempNew === true);
         if(!hasDraft){
           list.push(tempDraft);
@@ -957,9 +1004,6 @@ function loadLocalCache(){
     }catch(e){}
   }
 }
-
-
-
 
 function saveLocalCache(){
   localStorage.setItem(CACHE_KEY, JSON.stringify(list));
@@ -1006,6 +1050,7 @@ const importBackupBtn = document.getElementById("importBackup");
 const backupFileInput = document.getElementById("backupFileInput");
 const wordCountTip = document.getElementById("wordCountTip");
 const matchCaseCheck = document.getElementById("matchCase");
+const customBgColorInput = document.getElementById("customBgColor");
 
 function toggleMoreTools(){
   moreToolsOpen = !moreToolsOpen;
@@ -1122,11 +1167,9 @@ function switchMode(mode){
 // 优化md转html
 function mdToHtml(mdStr){
   return mdStr
-    // 块级公式
     .replace(/\$\$([\s\S]*?)\$\$/g, (m,formula)=>{
       try{ return katex.renderToString(formula,{displayMode:true}) }catch{ return m; }
     })
-    // 行内公式
     .replace(/\$([^\$]+?)\$/g, (m,formula)=>{
       try{ return katex.renderToString(formula,{displayMode:false}) }catch{ return m; }
     })
@@ -1144,7 +1187,7 @@ function mdToHtml(mdStr){
     .replace(/!\[(.*?)\]\((https?:\/\/[^\s)]+)\)/g, '<img src="$2" alt="$1" style="max-width:100%;margin:8px 0;">')
     .replace(/\n/g, '<br>');
 }
-// 优化html转md：保留表格、u、居中标签，不粗暴删除
+// 优化html转md：保留表格、u、居中标签
 function htmlToMd(htmlStr){
   let text = htmlStr
     .replace(/<pre style="background:#f5f5f5;padding:10px;border-radius:6px;white-space:pre-wrap;"><code>([\s\S]*?)<\/code><\/pre>/g, '```\n$1\n```')
@@ -1158,7 +1201,6 @@ function htmlToMd(htmlStr){
     .replace(/<img.*?width="(\d+)px".*?src="(.*?)".*?alt="(.*?)".*?>/g, '![$3]($2){width=$1}')
     .replace(/<img.*?src="(.*?)".*?alt="(.*?)".*?>/g, '![$2]($1)')
     .replace(/<br>/g, '\n');
-  // 仅过滤无关标签，保留table/tr/th/td/u/居中p
   text = text.replace(/<(?!p style="text-align:center"|u|table|tr|th|td)[^>]+>/g, '');
   return text;
 }
@@ -1181,7 +1223,7 @@ richBox.addEventListener("input", ()=>{
   calcWordCount();
 });
 
-// 格式按钮高亮检测（修复H2/H3错乱）
+// 格式按钮高亮检测（修复H2/H3错乱、语法缺失classList）
 function checkFormatActive(){
   document.querySelectorAll(".icon-btn").forEach(btn=>btn.classList.remove("active-format"));
   if(currentEditMode !== "rich") return;
@@ -1190,10 +1232,9 @@ function checkFormatActive(){
   const isUnder = document.queryCommandState("underline");
   const isStrike = document.queryCommandState("strikeThrough");
   if(isBold) document.querySelector('[onclick="formatBold()"]').classList.add("active-format");
-  if(isItalic) document.querySelector('[onclick="formatItalic()"]').classList.add("active-format");
   if(isUnder) document.querySelector('[onclick="insertUnderline()"]').classList.add("active-format");
   if(isStrike) document.querySelector('[onclick="formatStrikeThrough()"]').classList.add("active-format");
-
+ 
   const sel = window.getSelection();
   const rng = sel.getRangeAt(0);
   let tagEl = rng.commonAncestorContainer;
@@ -1210,7 +1251,7 @@ function checkFormatActive(){
   if(curTag === "h1") document.querySelector('[onclick="insertH1()"]').classList.add("active-format");
   if(curTag === "h2") document.querySelector('[onclick="insertH2()"]').classList.add("active-format");
   if(curTag === "h3") document.querySelector('[onclick="insertH3()"]').classList.add("active-format");
-
+ 
   let curBlock = rng.commonAncestorContainer;
   while(curBlock.nodeType !== 1 || !["P","H1","H2","H3","DIV"].includes(curBlock.tagName)){
     curBlock = curBlock.parentNode;
@@ -1221,1151 +1262,1082 @@ function checkFormatActive(){
   }
 }
 richBox.addEventListener("selectionchange", checkFormatActive);
-
+ 
 // 字数统计
 function calcWordCount(){
-  let text = "";
-  if(currentEditMode === "rich"){
-    text = richBox.innerText || "";
-  }else{
-    text = mdBox.value;
-  }
-  const charAll = text.length;
-  const word = text.replace(/\s/g,"").length;
-  wordCountTip.innerText = `纯文字数：${word} | 总字符(含空格换行)：${charAll}`;
+let text = "";
+if(currentEditMode === "rich"){
+text = richBox.innerText || "";
+}else{
+text = mdBox.value;
 }
-
+const charAll = text.length;
+const word = text.replace(/\s/g,"").length;
+wordCountTip.innerText = `纯文字数：${word} | 总字符(含空格换行)：${charAll}`;
+}
+ 
 // 登录校验
 function checkPwd(){
-  const inputPwd = document.getElementById("pwdInput").value.trim();
-  if(inputPwd !== ADMIN_PASSWORD){
-    alert("密码错误，无法进入编辑器");
-    return;
-  }
-  localStorage.setItem(PWD_STORE_KEY, inputPwd);
-  const expire = Date.now() + LOGIN_EXPIRE_HOUR * 3600 * 1000;
-  localStorage.setItem(LOGIN_EXPIRE_KEY, expire);
-  document.getElementById("loginWrap").style.display = "none";
-  document.getElementById("mainWrap").style.display = "block";
-  loadLocalCache();
-  setTimeout(initLoadNote,100);
+const inputPwd = document.getElementById("pwdInput").value.trim();
+if(inputPwd !== ADMIN_PASSWORD){
+alert("密码错误，无法进入编辑器");
+return;
 }
-
+localStorage.setItem(PWD_STORE_KEY, inputPwd);
+const expire = Date.now() + LOGIN_EXPIRE_HOUR * 3600 * 1000;
+localStorage.setItem(LOGIN_EXPIRE_KEY, expire);
+document.getElementById("loginWrap").style.display = "none";
+document.getElementById("mainWrap").style.display = "block";
+loadLocalCache();
+setTimeout(initLoadNote,100);
+}
+ 
 // 【核心修复】初始化加载笔记，回填不丢失、不破坏按钮逻辑
 function initLoadNote(){
-  // 直接复用loadLocalCache加载好的远程list，不再重读本地覆盖
-  if(!editId) return;
-  const target = list.find(item=>item.id === Number(editId));
-  if(!target) return;
-  targetNote = target;
-  titleInput.value = target.title;
-  typeInput.value = target.type;
-  richBox.innerHTML = target.content || "";
-  richRecordStack = [richBox.innerHTML];
-  richRecordIndex = 0;
-  // 转换md并清理多余换行，不新增变量冲突
-  mdBox.value = htmlToMd(target.content || "").replace(/\n{3,}/g,"\n\n");
-  saveMdRecord();
-  renderMdPreview();
-  checkFormatActive();
-  calcWordCount();
+imgUploadList = [];
+if(!editId) return;
+const target = list.find(item=>item.id === Number(editId));
+if(!target) return;
+targetNote = target;
+titleInput.value = target.title;
+typeInput.value = target.type;
+richBox.innerHTML = target.content || "";
+richRecordStack = [richBox.innerHTML];
+richRecordIndex = 0;
+mdBox.value = htmlToMd(target.content || "").replace(/\n{3,}/g,"\n\n");
+saveMdRecord();
+renderMdPreview();
+checkFormatActive();
+calcWordCount();
 }
-
+ 
 function getLineStart(text, pos){
-  let i = pos;
-  while(i > 0 && text[i-1] !== "\n") i--;
-  return i;
+let i = pos;
+while(i > 0 && text[i-1] !== "\n") i--;
+return i;
 }
-
+ 
 // ========== 全部格式化函数（修复纯文本光标定位）==========
 //清除文字格式
 function clearTextFormat(){
-  if(currentEditMode === "rich"){
-    richBox.focus();
-    document.execCommand("removeFormat",false,null);
-    checkFormatActive();
-    calcWordCount();
-  }else{
-    alert("Markdown模式请手动删除格式标记");
-  }
+if(currentEditMode === "rich"){
+richBox.focus();
+document.execCommand("removeFormat",false,null);
+checkFormatActive();
+calcWordCount();
+}else{
+alert("Markdown模式请手动删除格式标记");
+}
 }
 //加粗
 function formatBold(){
-  if(currentEditMode === "rich"){
-    richBox.focus();
-    document.execCommand("bold", false, null);
-    checkFormatActive();
-    calcWordCount();
-  }else{
-    const tpl = "****";
-    mdBox.value += tpl;
-    saveMdRecord();
-    renderMdPreview();
-    calcWordCount();
-    const pos = mdBox.value.length - 2;
-    mdBox.selectionStart = pos;
-    mdBox.selectionEnd = pos;
-  }
+if(currentEditMode === "rich"){
+richBox.focus();
+document.execCommand("bold", false, null);
+checkFormatActive();
+calcWordCount();
+}else{
+const tpl = "****";
+mdBox.value += tpl;
+saveMdRecord();
+renderMdPreview();
+calcWordCount();
+const pos = mdBox.value.length - 2;
+mdBox.selectionStart = pos;
+mdBox.selectionEnd = pos;
+}
 }
 //斜体
 function formatItalic(){
-  if(currentEditMode === "rich"){
-    richBox.focus();
-    document.execCommand("italic", false, null);
-    checkFormatActive();
-    calcWordCount();
-  }else{
-    const tpl = "**";
-    mdBox.value += tpl;
-    saveMdRecord();
-    renderMdPreview();
-    calcWordCount();
-    const pos = mdBox.value.length - 1;
-    mdBox.selectionStart = pos;
-    mdBox.selectionEnd = pos;
-  }
+if(currentEditMode === "rich"){
+richBox.focus();
+document.execCommand("italic", false, null);
+checkFormatActive();
+calcWordCount();
+}else{
+const tpl = "**";
+mdBox.value += tpl;
+saveMdRecord();
+renderMdPreview();
+calcWordCount();
+const pos = mdBox.value.length - 1;
+mdBox.selectionStart = pos;
+mdBox.selectionEnd = pos;
+}
 }
 //删除线
 function formatStrikeThrough(){
-  if(currentEditMode === "rich"){
-    richBox.focus();
-    document.execCommand("strikeThrough", false, null);
-    checkFormatActive();
-    calcWordCount();
-  }else{
-    const tpl = "~~~~";
-    mdBox.value += tpl;
-    saveMdRecord();
-    renderMdPreview();
-    calcWordCount();
-    const pos = mdBox.value.length - 2;
-    mdBox.selectionStart = pos;
-    mdBox.selectionEnd = pos;
-  }
+if(currentEditMode === "rich"){
+richBox.focus();
+document.execCommand("strikeThrough", false, null);
+checkFormatActive();
+calcWordCount();
+}else{
+const tpl = "~~~~";
+mdBox.value += tpl;
+saveMdRecord();
+renderMdPreview();
+calcWordCount();
+const pos = mdBox.value.length - 2;
+mdBox.selectionStart = pos;
+mdBox.selectionEnd = pos;
+}
 }
 //下划线
 function insertUnderline(){
-  if(currentEditMode === "rich"){
-    richBox.focus();
-    document.execCommand("underline", false, null);
-    checkFormatActive();
-    calcWordCount();
-  }else{
-    const tpl = "<u></u>";
-    mdBox.value += tpl;
-    saveMdRecord();
-    renderMdPreview();
-    calcWordCount();
-    const pos = mdBox.value.length - 4;
-    mdBox.selectionStart = pos;
-    mdBox.selectionEnd = pos;
-  }
+if(currentEditMode === "rich"){
+richBox.focus();
+document.execCommand("underline", false, null);
+checkFormatActive();
+calcWordCount();
+}else{
+const tpl = "<u></u>";
+mdBox.value += tpl;
+saveMdRecord();
+renderMdPreview();
+calcWordCount();
+const pos = mdBox.value.length - 4;
+mdBox.selectionStart = pos;
+mdBox.selectionEnd = pos;
+}
 }
 //代码块（修复光标+图片面板按钮共用）
 function insertMdCode(){
-  const richTpl = `<pre style="background:#f5f5f5;padding:10px;border-radius:6px;white-space:pre-wrap;"><code style="display:block;min-height:16px;">\n</code></pre><br><br>`;
-  const mdTpl = "```\n\n```\n";
-  if(currentEditMode === "rich"){
-    richBox.focus();
-    document.execCommand("insertHTML", false, richTpl);
-    checkFormatActive();
-    calcWordCount();
-  }else{
-    mdBox.value += mdTpl;
-    saveMdRecord();
-    renderMdPreview();
-    calcWordCount();
-    // 精准定位两段```中间
-    const targetPos = mdBox.value.length - 4;
-    mdBox.selectionStart = targetPos;
-    mdBox.selectionEnd = targetPos;
-  }
+const richTpl = `<pre style="background:#f5f5f5;padding:10px;border-radius:6px;white-space:pre-wrap;"><code style="display:block;min-height:16px;">\n</code></pre><br><br>`;
+const mdTpl = "```\n\n```\n";
+if(currentEditMode === "rich"){
+richBox.focus();
+document.execCommand("insertHTML", false, richTpl);
+checkFormatActive();
+calcWordCount();
+}else{
+mdBox.value += mdTpl;
+saveMdRecord();
+renderMdPreview();
+calcWordCount();
+const targetPos = mdBox.value.length - 4;
+mdBox.selectionStart = targetPos;
+mdBox.selectionEnd = targetPos;
+}
 }
 //折叠详情块
 function insertDetails(){
-  const mdTpl = "<details>\n<summary>点击展开</summary>\n内容\n</details>\n";
-  const richTpl = `<details style="border:1px solid #ddd;padding:8px;border-radius:6px;margin:6px 0;">
-<summary style="cursor:pointer;font-weight:500;margin-bottom:6px;">点击展开</summary>
-内容
-</details>`;
-  if(currentEditMode === "rich"){
-    document.execCommand("insertHTML",false,richTpl);
-    calcWordCount();
-  }else{
-    mdBox.value += mdTpl;
-    saveMdRecord();
-    renderMdPreview();
-    calcWordCount();
-    mdBox.selectionStart = mdBox.value.length - 8;
-    mdBox.selectionEnd = mdBox.value.length - 8;
-  }
+const mdTpl = "\n<details>\n<summary>点击展开</summary>\n内容\n</details>\n";
+const richTpl = `<details><summary>点击展开</summary>内容</details>`;
+if(currentEditMode === "rich"){
+document.execCommand("insertHTML",false,richTpl);
+calcWordCount();
+}else{
+mdBox.value += mdTpl;
+saveMdRecord();
+renderMdPreview();
+calcWordCount();
+mdBox.selectionStart = mdBox.value.length - 8;
+mdBox.selectionEnd = mdBox.value.length - 8;
+}
 }
 //行内公式
 function insertInlineMath(){
-  if(currentEditMode === "rich"){
-    document.execCommand("insertText",false,"$ $");
-    const sel = window.getSelection();
-    const range = sel.getRangeAt(0);
-    range.setStart(range.startContainer, range.startOffset -1);
-    range.collapse(true);
-    sel.removeAllRanges();
-    sel.addRange(range);
-    richBox.focus();
-    calcWordCount();
-  }else{
-    mdBox.value += "$ $";
-    saveMdRecord();
-    renderMdPreview();
-    calcWordCount();
-    mdBox.selectionStart = mdBox.value.length -1;
-    mdBox.selectionEnd = mdBox.value.length -1;
-  }
+if(currentEditMode === "rich"){
+document.execCommand("insertText",false,"$ $");
+const sel = window.getSelection();
+const range = sel.getRangeAt(0);
+range.setStart(range.startContainer, range.startOffset -1);
+range.collapse(true);
+sel.removeAllRanges();
+sel.addRange(range);
+richBox.focus();
+calcWordCount();
+}else{
+mdBox.value += "$ $";
+saveMdRecord();
+renderMdPreview();
+calcWordCount();
+mdBox.selectionStart = mdBox.value.length -1;
+mdBox.selectionEnd = mdBox.value.length -1;
+}
 }
 //块级公式
 function insertBlockLatex(){
-  if(currentEditMode === "rich"){
-    document.execCommand("insertHTML",false,"<p>$$<br><br>$$</p>");
-    calcWordCount();
-  }else{
-    mdBox.value += "$$\n\n$$\n";
-    saveMdRecord();
-    renderMdPreview();
-    calcWordCount();
-    mdBox.selectionStart = mdBox.value.length -4;
-    mdBox.selectionEnd = mdBox.value.length -4;
-  }
+if(currentEditMode === "rich"){
+document.execCommand("insertHTML",false,"<p>$$<br><br>$$</p>");
+calcWordCount();
+}else{
+mdBox.value += "$$\n\n$$\n";
+saveMdRecord();
+renderMdPreview();
+calcWordCount();
+mdBox.selectionStart = mdBox.value.length -4;
+mdBox.selectionEnd = mdBox.value.length -4;
+}
 }
 function insertLink(){
-  const tpl = "[](链接地址)";
-  if(currentEditMode === "rich"){
-    document.execCommand("insertHTML",false,'<a href="">文字</a>');
-    const sel = window.getSelection();
-    const range = sel.getRangeAt(0);
-    range.setStart(range.startContainer, range.startOffset - 4);
-    range.collapse(true);
-    sel.removeAllRanges();
-    sel.addRange(range);
-    richBox.focus();
-    calcWordCount();
-  }else{
-    mdBox.value += tpl;
-    saveMdRecord();
-    renderMdPreview();
-    calcWordCount();
-    const pos = mdBox.value.length - "](链接地址)".length;
-    mdBox.selectionStart = pos;
-    mdBox.selectionEnd = pos;
-  }
+const tpl = "[文字](链接地址)";
+if(currentEditMode === "rich"){
+document.execCommand("insertHTML",false,'<a href="">文字</a>');
+const sel = window.getSelection();
+const range = sel.getRangeAt(0);
+range.setStart(range.startContainer, range.startOffset - 4);
+range.collapse(true);
+sel.removeAllRanges();
+sel.addRange(range);
+richBox.focus();
+calcWordCount();
+}else{
+mdBox.value += tpl;
+saveMdRecord();
+renderMdPreview();
+calcWordCount();
+const pos = mdBox.value.length - "(链接地址)".length;
+mdBox.selectionStart = pos;
+mdBox.selectionEnd = pos;
+}
 }
 function insertInlineCode(){
-  const tpl = "``";
-  if(currentEditMode === "rich"){
-    document.execCommand("insertText",false,tpl);
-    const sel = window.getSelection();
-    const range = sel.getRangeAt(0);
-    range.setStart(range.startContainer, range.startOffset - 1);
-    range.collapse(true);
-    sel.removeAllRanges();
-    sel.addRange(range);
-    richBox.focus();
-    calcWordCount();
-  }else{
-    mdBox.value += tpl;
-    saveMdRecord();
-    renderMdPreview();
-    calcWordCount();
-    const pos = mdBox.value.length - 1;
-    mdBox.selectionStart = pos;
-    mdBox.selectionEnd = pos;
-  }
+const tpl = "``";
+if(currentEditMode === "rich"){
+document.execCommand("insertText",false,tpl);
+const sel = window.getSelection();
+const range = sel.getRangeAt(0);
+range.setStart(range.startContainer, range.startOffset - 1);
+range.collapse(true);
+sel.removeAllRanges();
+sel.addRange(range);
+richBox.focus();
+calcWordCount();
+}else{
+mdBox.value += tpl;
+saveMdRecord();
+renderMdPreview();
+calcWordCount();
+const pos = mdBox.value.length - 1;
+mdBox.selectionStart = pos;
+mdBox.selectionEnd = pos;
+}
 }
 function insertCenter(){
-  if(currentEditMode === "rich"){
-    richBox.focus();
-    const sel = window.getSelection();
-    const range = sel.getRangeAt(0);
-    let block = range.commonAncestorContainer;
-    while(block.nodeType !== 1 || !["P","H1","H2","H3","DIV"].includes(block.tagName)){
-      block = block.parentNode;
-      if(!block || block === richBox) break;
-    }
-    let isCenter = block && block.style.textAlign === "center";
-    if(isCenter){
-      document.execCommand("justifyLeft", false, null);
-      block.style.textAlign = "";
-    }else{
-      document.execCommand("justifyCenter", false, null);
-    }
-    checkFormatActive();
-    calcWordCount();
-  }else{
-    const tpl = '<p style="text-align:center"></p>';
-    mdBox.value += tpl;
-    saveMdRecord();
-    renderMdPreview();
-    calcWordCount();
-    const pos = mdBox.value.length - 4;
-    mdBox.selectionStart = pos;
-    mdBox.selectionEnd = pos;
-  }
+if(currentEditMode === "rich"){
+richBox.focus();
+const sel = window.getSelection();
+const range = sel.getRangeAt(0);
+let block = range.commonAncestorContainer;
+while(block.nodeType !== 1 || !["P","H1","H2","H3","DIV"].includes(block.tagName)){
+block = block.parentNode;
+if(!block || block === richBox) break;
+}
+let isCenter = block && block.style.textAlign === "center";
+if(isCenter){
+document.execCommand("justifyLeft", false, null);
+block.style.textAlign = "";
+}else{
+document.execCommand("justifyCenter", false, null);
+}
+checkFormatActive();
+calcWordCount();
+}else{
+const tpl = '<p style="text-align:center"></p>';
+mdBox.value += tpl;
+saveMdRecord();
+renderMdPreview();
+calcWordCount();
+const pos = mdBox.value.length - 4;
+mdBox.selectionStart = pos;
+mdBox.selectionEnd = pos;
+}
 }
 function insertH1(){
-  if(currentEditMode === "rich"){
-    richBox.focus();
-    const sel = window.getSelection();
-    const rng = sel.getRangeAt(0);
-    let tagEl = rng.commonAncestorContainer;
-    let curTag = "";
-    while(tagEl.nodeType === 1){
-      const tag = tagEl.tagName.toLowerCase();
-      if(["h1","h2","h3"].includes(tag)){
-        curTag = tag;
-        break;
-      }
-      tagEl = tagEl.parentNode;
-      if(tagEl === richBox) break;
-    }
-    if(curTag === "h1") document.execCommand("formatBlock", false, "<p>");
-    else document.execCommand("formatBlock", false, "<h1>");
-    checkFormatActive();
-    calcWordCount();
-  }else{
-    mdBox.value += "# ";
-    saveMdRecord();
-    renderMdPreview();
-    calcWordCount();
-  }
+if(currentEditMode === "rich"){
+richBox.focus();
+const sel = window.getSelection();
+const rng = sel.getRangeAt(0);
+let tagEl = rng.commonAncestorContainer;
+let curTag = "";
+while(tagEl.nodeType === 1){
+const tag = tagEl.tagName.toLowerCase();
+if(["h1","h2","h3"].includes(tag)){
+curTag = tag;
+break;
+}
+tagEl = tagEl.parentNode;
+if(tagEl === richBox) break;
+}
+if(curTag === "h1") document.execCommand("formatBlock", false, "p");
+else document.execCommand("formatBlock", false, "h1");
+checkFormatActive();
+calcWordCount();
+}else{
+mdBox.value += "# ";
+saveMdRecord();
+renderMdPreview();
+calcWordCount();
+}
 }
 function insertH2(){
-  if(currentEditMode === "rich"){
-    richBox.focus();
-    const sel = window.getSelection();
-    const rng = sel.getRangeAt(0);
-    let tagEl = rng.commonAncestorContainer;
-    let curTag = "";
-    while(tagEl.nodeType === 1){
-      const tag = tagEl.tagName.toLowerCase();
-      if(["h1","h2","h3"].includes(tag)){
-        curTag = tag;
-        break;
-      }
-      tagEl = tagEl.parentNode;
-      if(tagEl === richBox) break;
-    }
-    if(curTag === "h2") document.execCommand("formatBlock", false, "<p>");
-    else document.execCommand("formatBlock", false, "<h2>");
-    checkFormatActive();
-    calcWordCount();
-  }else{
-    mdBox.value += "## ";
-    saveMdRecord();
-    renderMdPreview();
-    calcWordCount();
-  }
+if(currentEditMode === "rich"){
+richBox.focus();
+const sel = window.getSelection();
+const rng = sel.getRangeAt(0);
+let tagEl = rng.commonAncestorContainer;
+let curTag = "";
+while(tagEl.nodeType === 1){
+const tag = tagEl.tagName.toLowerCase();
+if(["h1","h2","h3"].includes(tag)){
+curTag = tag;
+break;
+}
+tagEl = tagEl.parentNode;
+if(tagEl === richBox) break;
+}
+if(curTag === "h2") document.execCommand("formatBlock", false, "p");
+else document.execCommand("formatBlock", false, "h2");
+checkFormatActive();
+calcWordCount();
+}else{
+mdBox.value += "## ";
+saveMdRecord();
+renderMdPreview();
+calcWordCount();
+}
 }
 function insertH3(){
-  if(currentEditMode === "rich"){
-    richBox.focus();
-    const sel = window.getSelection();
-    const rng = sel.getRangeAt(0);
-    let tagEl = rng.commonAncestorContainer;
-    let curTag = "";
-    while(tagEl.nodeType === 1){
-      const tag = tagEl.tagName.toLowerCase();
-      if(["h1","h2","h3"].includes(tag)){
-        curTag = tag;
-        break;
-      }
-      tagEl = tagEl.parentNode;
-      if(tagEl === richBox) break;
-    }
-    if(curTag === "h3") document.execCommand("formatBlock", false, "<p>");
-    else document.execCommand("formatBlock", false, "<h3>");
-    checkFormatActive();
-    calcWordCount();
-  }else{
-    mdBox.value += "### ";
-    saveMdRecord();
-    renderMdPreview();
-    calcWordCount();
-  }
+if(currentEditMode === "rich"){
+richBox.focus();
+const sel = window.getSelection();
+const rng = sel.getRangeAt(0);
+let tagEl = rng.commonAncestorContainer;
+let curTag = "";
+while(tagEl.nodeType === 1){
+const tag = tagEl.tagName.toLowerCase();
+if(["h1","h2","h3"].includes(tag)){
+curTag = tag;
+break;
+}
+tagEl = tagEl.parentNode;
+if(tagEl === richBox) break;
+}
+if(curTag === "h3") document.execCommand("formatBlock", false, "p");
+else document.execCommand("formatBlock", false, "h3");
+checkFormatActive();
+calcWordCount();
+}else{
+mdBox.value += "### ";
+saveMdRecord();
+renderMdPreview();
+calcWordCount();
+}
 }
 function insertQuote(){
-  const tpl = "> ";
-  if(currentEditMode === "rich"){
-    document.execCommand("insertText",false,tpl);
-    richBox.focus();
-    calcWordCount();
-  }else{
-    mdBox.value += tpl;
-    saveMdRecord();
-    renderMdPreview();
-    calcWordCount();
-  }
+const tpl = "> ";
+if(currentEditMode === "rich"){
+document.execCommand("insertText",false,tpl);
+richBox.focus();
+calcWordCount();
+}else{
+mdBox.value += tpl;
+saveMdRecord();
+renderMdPreview();
+calcWordCount();
+}
 }
 function insertFoldQuote(){
-  const tpl = ">> ";
-  if(currentEditMode === "rich"){
-    document.execCommand("insertText",false,tpl);
-    richBox.focus();
-    calcWordCount();
-  }else{
-    mdBox.value += tpl;
-    saveMdRecord();
-    renderMdPreview();
-    calcWordCount();
-  }
+const tpl = ">> ";
+if(currentEditMode === "rich"){
+document.execCommand("insertText",false,tpl);
+richBox.focus();
+calcWordCount();
+}else{
+mdBox.value += tpl;
+saveMdRecord();
+renderMdPreview();
+calcWordCount();
+}
 }
 function insertUl(){
-  const tpl = "- ";
-  if(currentEditMode === "rich"){
-    document.execCommand("insertText",false,tpl);
-    richBox.focus();
-    calcWordCount();
-  }else{
-    mdBox.value += tpl;
-    saveMdRecord();
-    renderMdPreview();
-    calcWordCount();
-  }
+const tpl = "- ";
+if(currentEditMode === "rich"){
+document.execCommand("insertText",false,tpl);
+richBox.focus();
+calcWordCount();
+}else{
+mdBox.value += tpl;
+saveMdRecord();
+renderMdPreview();
+calcWordCount();
+}
 }
 function insertOrderedList(){
-  const tpl = "1. ";
-  if(currentEditMode === "rich"){
-    document.execCommand("insertText",false,tpl);
-    richBox.focus();
-    calcWordCount();
-  }else{
-    mdBox.value += tpl;
-    saveMdRecord();
-    renderMdPreview();
-    calcWordCount();
-  }
+const tpl = "1. ";
+if(currentEditMode === "rich"){
+document.execCommand("insertText",false,tpl);
+richBox.focus();
+calcWordCount();
+}else{
+mdBox.value += tpl;
+saveMdRecord();
+renderMdPreview();
+calcWordCount();
+}
 }
 function insertTaskList(){
-  const tpl = "- [ ] ";
-  if(currentEditMode === "rich"){
-    document.execCommand("insertText",false,tpl);
-    richBox.focus();
-    calcWordCount();
-  }else{
-    mdBox.value += tpl;
-    saveMdRecord();
-    renderMdPreview();
-    calcWordCount();
-  }
+const tpl = "- [ ] ";
+if(currentEditMode === "rich"){
+document.execCommand("insertText",false,tpl);
+richBox.focus();
+calcWordCount();
+}else{
+mdBox.value += tpl;
+saveMdRecord();
+renderMdPreview();
+calcWordCount();
+}
 }
 function insertEmptyCheckbox(){
-  const tpl = "[ ]";
-  if(currentEditMode === "rich"){
-    document.execCommand("insertText",false,tpl);
-    const sel = window.getSelection();
-    const range = sel.getRangeAt(0);
-    range.setStart(range.startContainer, range.startOffset - 1);
-    range.collapse(true);
-    sel.removeAllRanges();
-    sel.addRange(range);
-    richBox.focus();
-    calcWordCount();
-  }else{
-    mdBox.value += tpl;
-    saveMdRecord();
-    renderMdPreview();
-    calcWordCount();
-    const pos = mdBox.value.length - 1;
-    mdBox.selectionStart = pos;
-    mdBox.selectionEnd = pos;
-  }
+const tpl = "[ ]";
+if(currentEditMode === "rich"){
+document.execCommand("insertText",false,tpl);
+const sel = window.getSelection();
+const range = sel.getRangeAt(0);
+range.setStart(range.startContainer, range.startOffset - 1);
+range.collapse(true);
+sel.removeAllRanges();
+sel.addRange(range);
+richBox.focus();
+calcWordCount();
+}else{
+mdBox.value += tpl;
+saveMdRecord();
+renderMdPreview();
+calcWordCount();
+const pos = mdBox.value.length - 1;
+mdBox.selectionStart = pos;
+mdBox.selectionEnd = pos;
+}
 }
 function insertCheckedCheckbox(){
-  const tpl = "[x]";
-  if(currentEditMode === "rich"){
-    document.execCommand("insertText",false,tpl);
-    const sel = window.getSelection();
-    const range = sel.getRangeAt(0);
-    range.setStart(range.startContainer, range.startOffset - 2);
-    range.collapse(true);
-    sel.removeAllRanges();
-    sel.addRange(range);
-    richBox.focus();
-    calcWordCount();
-  }else{
-    mdBox.value += tpl;
-    saveMdRecord();
-    renderMdPreview();
-    calcWordCount();
-    const pos = mdBox.value.length - 2;
-    mdBox.selectionStart = pos;
-    mdBox.selectionEnd = pos;
-  }
+const tpl = "[x]";
+if(currentEditMode === "rich"){
+document.execCommand("insertText",false,tpl);
+const sel = window.getSelection();
+const range = sel.getRangeAt(0);
+range.setStart(range.startContainer, range.startOffset - 2);
+range.collapse(true);
+sel.removeAllRanges();
+sel.addRange(range);
+richBox.focus();
+calcWordCount();
+}else{
+mdBox.value += tpl;
+saveMdRecord();
+renderMdPreview();
+calcWordCount();
+const pos = mdBox.value.length - 2;
+mdBox.selectionStart = pos;
+mdBox.selectionEnd = pos;
+}
 }
 //表格（自带边框样式，手机可见）
 function insertTable(){
-  const tableHtml = `<table style="width:100%;border-collapse:collapse;margin:8px 0;">
-<tr>
-<th style="border:1px solid #999;padding:6px 8px;">标题1</th>
-<th style="border:1px solid #999;padding:6px 8px;">标题2</th>
-</tr>
-<tr>
-<td style="border:1px solid #999;padding:6px 8px;">内容</td>
-<td style="border:1px solid #999;padding:6px 8px;">内容</td>
-</tr>
-</table><br>`;
-  const mdTpl = "|标题1|标题2|\n|----|----|\n|内容|内容|\n";
-  if(currentEditMode === "rich"){
-    richBox.focus();
-    document.execCommand("insertHTML",false,tableHtml);
-    checkFormatActive();
-    calcWordCount();
-  }else{
-    mdBox.value += mdTpl;
-    saveMdRecord();
-    renderMdPreview();
-    calcWordCount();
-  }
+const tableHtml = `<table style="width:100%;border-collapse:collapse;margin:8px 0;"><tr><th>标题1</th><th>标题2</th></tr><tr><td>内容</td><td>内容</td></tr></table>`;
+const mdTpl = "|标题1|标题2|\n|----|----|\n|内容|内容|\n";
+if(currentEditMode === "rich"){
+richBox.focus();
+document.execCommand("insertHTML",false,tableHtml);
+checkFormatActive();
+calcWordCount();
+}else{
+mdBox.value += mdTpl;
+saveMdRecord();
+renderMdPreview();
+calcWordCount();
 }
-
+}
 //短分割线
 function splitLine1(){
-  const tpl = "---\n";
-  if(currentEditMode === "rich"){
-    document.execCommand("insertText",false,tpl);
-    richBox.focus();
-    calcWordCount();
-  }else{
-    mdBox.value += tpl;
-    saveMdRecord();
-    renderMdPreview();
-    calcWordCount();
-  }
+const tpl = "---\n";
+if(currentEditMode === "rich"){
+document.execCommand("insertText",false,tpl);
+richBox.focus();
+calcWordCount();
+}else{
+mdBox.value += tpl;
+saveMdRecord();
+renderMdPreview();
+calcWordCount();
+}
 }
 //长分割线
 function splitLine2(){
-  const tpl = "===\n";
-  if(currentEditMode === "rich"){
-    document.execCommand("insertText",false,tpl);
-    richBox.focus();
-    calcWordCount();
-  }else{
-    mdBox.value += tpl;
-    saveMdRecord();
-    renderMdPreview();
-    calcWordCount();
-  }
+const tpl = "===\n";
+if(currentEditMode === "rich"){
+document.execCommand("insertText",false,tpl);
+richBox.focus();
+calcWordCount();
+}else{
+mdBox.value += tpl;
+saveMdRecord();
+renderMdPreview();
+calcWordCount();
+}
 }
 //取色器
 function openColorPicker(){
-  fontColorInput.click();
+fontColorInput.click();
 }
 //复制选中内容
 function copySelect(){
-  const selText = window.getSelection().toString();
-  navigator.clipboard.writeText(selText).catch(()=>{
-    const tempTextarea = document.createElement("textarea");
-    tempTextarea.value = selText;
-    document.body.appendChild(tempTextarea);
-    tempTextarea.select();
-    document.execCommand("copy");
-    document.body.removeChild(tempTextarea);
-  });
-  alert("选中内容已复制");
+const selText = window.getSelection().toString();
+navigator.clipboard.writeText(selText).catch(()=>{
+const tempTextarea = document.createElement("textarea");
+tempTextarea.value = selText;
+document.body.appendChild(tempTextarea);
+tempTextarea.select();
+document.execCommand("copy");
+document.body.removeChild(tempTextarea);
+});
+alert("选中内容已复制");
 }
 //段落上下移
 function moveUp(){alert("段落上移功能待完善");}
 function moveDown(){alert("段落下移功能待完善");}
 //图片面板展开收起
 function toggleImgPanel(){
-  const panel = document.getElementById("imgPanelBody");
-  const arrow = document.getElementById("imgArrow");
-  panel.classList.toggle("show");
-  arrow.classList.toggle("rotate");
+const panel = document.getElementById("imgPanelBody");
+const arrow = document.getElementById("imgArrow");
+panel.classList.toggle("show");
+arrow.classList.toggle("rotate");
 }
 //网络图床图片弹窗（Via浏览器文件名修复·全浏览器通用）
 function insertImage(){
-  const mask = document.createElement("div");
-  mask.className = "modal-mask lock-scroll";
-  const box = document.createElement("div");
-  box.className = "modal-box";
-  const winHtml = `
-    <h2 style="margin:0 0 18px 0;font-weight:normal;color:#111;">插入Markdown图片</h2>
-    <div style="font-size:15px;color:#666;line-height:1.6;margin-bottom:26px;">
-      请在下面输入您要插入的网络图片链接。<br>
-      或者您可以点击左下角的「本地图片」来选取本地图片并自动获取该图片的本地链接。
-    </div>
-    <div style="margin-bottom:20px;">
-      <input id="imgLink" class="modal-input" placeholder="图片链接">
-    </div>
-    <div style="margin-bottom:34px;">
-      <input id="imgDesc" class="modal-input" placeholder="图片描述（可不填）">
-    </div>
-    <div style="display:flex;justify-content:space-between;align-items:center;">
-      <button id="localImgTrigger1" class="modal-btn">本地图片</button>
-      <div style="display:flex;gap:40px;">
-        <button id="cancelImgWin" class="modal-btn">取消</button>
-        <button id="confirmImgWin" class="modal-btn">好的</button>
-      </div>
-    </div>
-  `;
-  box.innerHTML = winHtml;
-  mask.appendChild(box);
-  document.body.appendChild(mask);
-  const linkInput = box.querySelector("#imgLink");
-  const descInput = box.querySelector("#imgDesc");
-  const localBtn = box.querySelector("#localImgTrigger1");
-  const cancelBtn = box.querySelector("#cancelImgWin");
-  const confirmBtn = box.querySelector("#confirmImgWin");
-  const fileInput = hiddenImgFile1;
-
-  function closeModal(){
-    mask.remove();
-    document.body.classList.remove("lock-scroll");
-  }
-  mask.onclick = e => e.target === mask && closeModal();
-  cancelBtn.onclick = closeModal;
-  localBtn.onclick = ()=> fileInput.click();
-
-  // Via兼容：网页干净文件名，终端保留真实原图路径
-  fileInput.onchange = function(e){
-  const allFiles = Array.from(e.target.files);
-  if(allFiles.length === 0) return closeModal();
-  // 新增vivo多选提示
-  if(allFiles.length === 1){
-    alert("vivo提示：弹出窗口点右上角【文件管理】，长按图片可批量多选");
-  }
-  if(allFiles.length > 5){
-    alert("最多只能选择5张图片");
-    fileInput.value = "";
-    return;
-  }
-  imgUploadList = [];
-  allFiles.forEach((file, idx)=>{
-    // 只用标准file.name，兼容所有浏览器
-    let realName = file.name;
-    // blob乱码兜底，全局自增序号保证分次添加不重名
-    if(!realName || realName.startsWith("blob") || realName.length < 3){
-        const ext = file.type.split("/")[1] || "jpg";
-        globalImgSerial++;
-        const uniqueId = Date.now() + "_" + globalImgSerial + Math.random().toString(36).slice(2,4);
-        realName = `IMG_${uniqueId}.${ext}`;
-    }
-    
-    // 原图名直接作为保存名
-    const safeName = realName;
-
-    insertLocalImgTag(safeName);
-    let path = "~/storage/dcim/Camera";
-    if(/^Screenshot/.test(realName)) path = "~/storage/Pictures/Screenshots";
-    if(/wx|wechat/.test(realName.toLowerCase())) path = "~/storage/Download";
-    imgUploadList.push({name:safeName, src:`${path}/${realName}`});
-  });
-  closeModal();
-};
-
-
-  confirmBtn.onclick = function(){
-    const url = linkInput.value.trim();
-    const altText = descInput.value.trim();
-    if(!url){
-      alert("请填写图片链接地址");
-      return;
-    }
-    if(currentEditMode === "rich"){
-      const imgHtml = `<img loading="lazy" src="${url}" alt="${altText}" style="max-width:100%;margin:8px 0;"><br><br>`;
-      document.execCommand("insertHTML",false,imgHtml);
-      richBox.focus();
-    }else{
-      const alt = altText || "配图";
-      mdBox.value += `![${alt}](${url})\n\n`;
-      saveMdRecord();
-      renderMdPreview();
-      calcWordCount();
-    }
-    closeModal();
-  };
-  setTimeout(()=>linkInput.focus(),60);
+const mask = document.createElement("div");
+mask.className = "modal-mask lock-scroll";
+const box = document.createElement("div");
+box.className = "modal-box";
+const winHtml = `<h2 style="margin:0 0 18px 0;font-weight:normal;color:#111;">插入Markdown图片</h2>
+<div style="font-size:15px;color:#666;line-height:1.6;margin-bottom:26px;">
+请在下面输入您要插入的网络图片链接。<br>
+或者您可以点击左下角的「本地图片」来选取本地图片并自动获取该图片的本地链接。
+</div>
+<div style="margin-bottom:20px;">
+<input id="imgLink" class="modal-input" placeholder="图片链接">
+</div>
+<div style="margin-bottom:34px;">
+<input id="imgDesc" class="modal-input" placeholder="图片描述（可不填）">
+</div>
+<div style="display:flex;justify-content:space-between;align-items:center;">
+<button id="localImgTrigger1" class="modal-btn">本地图片</button>
+<div style="display:flex;gap:40px;">
+<button id="cancelImgWin" class="modal-btn">取消</button>
+<button id="confirmImgWin" class="modal-btn">好的</button>
+</div>
+</div>`;
+box.innerHTML = winHtml;
+mask.appendChild(box);
+document.body.appendChild(mask);
+const linkInput = box.querySelector("#imgLink");
+const descInput = box.querySelector("#imgDesc");
+const localBtn = box.querySelector("#localImgTrigger1");
+const cancelBtn = box.querySelector("#cancelImgWin");
+const confirmBtn = box.querySelector("#confirmImgWin");
+const fileInput = hiddenImgFile1;
+ 
+function closeModal(){
+mask.remove();
+document.body.classList.remove("lock-scroll");
 }
-
+mask.onclick = e => e.target === mask && closeModal();
+cancelBtn.onclick = closeModal;
+localBtn.onclick = ()=> fileInput.click();
+ 
+// Via兼容：网页干净文件名，终端保留真实原图路径
+fileInput.onchange = function(e){
+const allFiles = Array.from(e.target.files);
+if(allFiles.length === 0) return closeModal();
+if(imgUploadList.length + allFiles.length > 5){
+alert("图片记录总数不能超过5张，请先清空历史图片记录");
+fileInput.value = "";
+return closeModal();
+}
+if(allFiles.length === 1){
+alert("vivo提示：弹出窗口点右上角【文件管理】，长按图片可批量多选");
+}
+imgUploadList = [];
+allFiles.forEach((file, idx)=>{
+let realName = file.name;
+if(!realName || realName.startsWith("blob") || realName.length < 3){
+const ext = file.type.split("/")[1] || "jpg";
+globalImgSerial++;
+const uniqueId = Date.now() + "_" + globalImgSerial + Math.random().toString(36).slice(2,4);
+realName = `IMG_${uniqueId}.${ext}`;
+}
+const safeName = realName;
+insertLocalImgTagTerminal(safeName);
+let path = "~/storage/dcim/Camera";
+if(/^Screenshot/.test(realName)) path = "~/storage/Pictures/Screenshots";
+if(/wx|wechat/.test(realName.toLowerCase())) path = "~/storage/Download";
+imgUploadList.push({name:safeName, src:`${path}/${realName}`});
+});
+addImgSerial();
+closeModal();
+};
+ 
+confirmBtn.onclick = function(){
+const url = linkInput.value.trim();
+const altText = descInput.value.trim();
+if(!url){
+alert("请填写图片链接地址");
+return;
+}
+if(currentEditMode === "rich"){
+const imgHtml = `<img loading="lazy" src="${url}" alt="${altText}" style="max-width:100%;margin:8px 0;"><br><br>`;
+document.execCommand("insertHTML",false,imgHtml);
+richBox.focus();
+}else{
+const alt = altText || "配图";
+mdBox.value += `![${alt}](${url})\n\n`;
+saveMdRecord();
+renderMdPreview();
+calcWordCount();
+}
+closeModal();
+};
+setTimeout(()=>linkInput.focus(),60);
+}
 //固定宽度图片弹窗（Via+所有浏览器兼容版）
 function insertImgWidth(){
-  const mask = document.createElement("div");
-  mask.className = "modal-mask lock-scroll";
-  const box = document.createElement("div");
-  box.className = "modal-box";
-  const winHtml = `
-    <h2 style="margin:0 0 18px 0;font-weight:normal;color:#111;">插入Markdown图片</h2>
-    <div style="font-size:15px;color:#666;line-height:1.6;margin-bottom:26px;">
-      请在下面输入您要插入的网络图片链接。<br>
-      或者您可以点击左下角的「本地图片」来选取本地图片并自动获取该图片的本地链接。
-    </div>
-    <div style="margin-bottom:20px;">
-      <input id="imgLinkW" class="modal-input" placeholder="图片链接">
-    </div>
-    <div style="display:flex;gap:16px;margin-bottom:34px;">
-      <div style="flex:1;">
-        <input id="imgDescW" class="modal-input" placeholder="图片描述（可不填...）">
-      </div>
-      <div style="flex:0.45;">
-        <input id="imgWidthW" class="modal-input" placeholder="宽度" type="number">
-      </div>
-    </div>
-    <div style="display:flex;justify-content:space-between;align-items:center;">
-      <button id="localImgTrigger2" class="modal-btn">本地图片</button>
-      <div style="display:flex;gap:40px;">
-        <button id="cancelImgWinW" class="modal-btn">取消</button>
-        <button id="confirmImgWinW" class="modal-btn">好的</button>
-      </div>
-    </div>
-  `;
-  box.innerHTML = winHtml;
-  mask.appendChild(box);
-  document.body.appendChild(mask);
-  const linkInput = box.querySelector("#imgLinkW");
-  const descInput = box.querySelector("#imgDescW");
-  const widthInput = box.querySelector("#imgWidthW");
-  const localBtn = box.querySelector("#localImgTrigger2");
-  const cancelBtn = box.querySelector("#cancelImgWinW");
-  const confirmBtn = box.querySelector("#confirmImgWinW");
-  const fileInput = hiddenImgFile2;
-
-  function closeModal(){
-    mask.remove();
-    document.body.classList.remove("lock-scroll");
-  }
-  mask.onclick = e => e.target === mask && closeModal();
-  cancelBtn.onclick = closeModal;
-  localBtn.onclick = ()=> fileInput.click();
-
-  // ========== Via浏览器文件名修复 ==========
-  fileInput.onchange = function(e){
-  const allFiles = Array.from(e.target.files);
-  if(allFiles.length === 0) return closeModal();
-  // 新增vivo多选提示
-  if(allFiles.length === 1){
-    alert("vivo提示：弹出窗口点右上角【文件管理】，长按图片可批量多选");
-  }
-  if(allFiles.length > 5){
-    alert("最多只能选择5张图片");
-    fileInput.value = "";
-    return;
-  }
-  imgUploadList = [];
-  allFiles.forEach((file, idx)=>{
-    // 只用标准file.name，兼容所有浏览器
-    let realName = file.name;
-    // blob乱码兜底，全局自增序号保证分次添加不重名
-    if(!realName || realName.startsWith("blob") || realName.length < 3){
-        const ext = file.type.split("/")[1] || "jpg";
-        globalImgSerial++;
-        const uniqueId = Date.now() + "_" + globalImgSerial + Math.random().toString(36).slice(2,4);
-        realName = `IMG_${uniqueId}.${ext}`;
-    }
-    
-    // 原图名直接作为保存名
-    const safeName = realName;
-
-    insertLocalImgTag(safeName);
-    let path = "~/storage/dcim/Camera";
-    if(/^Screenshot/.test(realName)) path = "~/storage/Pictures/Screenshots";
-    if(/wx|wechat/.test(realName.toLowerCase())) path = "~/storage/Download";
-    imgUploadList.push({name:safeName, src:`${path}/${realName}`});
-  });
-  closeModal();
-};
-
-
-  confirmBtn.onclick = function(){
-    const url = linkInput.value.trim();
-    const altText = descInput.value.trim();
-    const wNum = widthInput.value.trim();
-    if(!url){
-      alert("请填写图片链接地址");
-      return;
-    }
-    if(currentEditMode === "rich"){
-      let wStyle = "";
-      if(wNum && Number(wNum) > 0) wStyle = `width:${wNum}px;`;
-      const imgHtml = `<img loading="lazy" src="${url}" alt="${altText}" style="max-width:100%;margin:8px 0;${wStyle}"><br><br>`;
-      document.execCommand("insertHTML",false,imgHtml);
-      richBox.focus();
-    }else{
-      const alt = altText || "配图";
-      let mdImg = `![${alt}](${url})`;
-      if(wNum && Number(wNum) > 0) mdImg += `{width=${wNum}}`;
-      mdBox.value += `${mdImg}\n\n`;
-      saveMdRecord();
-      renderMdPreview();
-      calcWordCount();
-    }
-    closeModal();
-  };
-  setTimeout(()=>linkInput.focus(),60);
+const mask = document.createElement("div");
+mask.className = "modal-mask lock-scroll";
+const box = document.createElement("div");
+box.className = "modal-box";
+const winHtml = `<h2 style="margin:0 0 18px 0;font-weight:normal;color:#111;">插入Markdown图片</h2>
+<div style="font-size:15px;color:#666;line-height:1.6;margin-bottom:26px;">
+请在下面输入您要插入的网络图片链接。<br>
+或者您可以点击左下角的「本地图片」来选取本地图片并自动获取该图片的本地链接。
+</div>
+<div style="margin-bottom:20px;">
+<input id="imgLinkW" class="modal-input" placeholder="图片链接">
+</div>
+<div style="display:flex;gap:16px;margin-bottom:34px;">
+<div style="flex:1;">
+<input id="imgDescW" class="modal-input" placeholder="图片描述（可不填...）">
+</div>
+<div style="flex:0.45;">
+<input id="imgWidthW" class="modal-input" placeholder="宽度" type="number">
+</div>
+</div>
+<div style="display:flex;justify-content:space-between;align-items:center;">
+<button id="localImgTrigger2" class="modal-btn">本地图片</button>
+<div style="display:flex;gap:40px;">
+<button id="cancelImgWinW" class="modal-btn">取消</button>
+<button id="confirmImgWinW" class="modal-btn">好的</button>
+</div>
+</div>`;
+box.innerHTML = winHtml;
+mask.appendChild(box);
+document.body.appendChild(mask);
+const linkInput = box.querySelector("#imgLinkW");
+const descInput = box.querySelector("#imgDescW");
+const widthInput = box.querySelector("#imgWidthW");
+const localBtn = box.querySelector("#localImgTrigger2");
+const cancelBtn = box.querySelector("#cancelImgWinW");
+const confirmBtn = box.querySelector("#confirmImgWinW");
+const fileInput = hiddenImgFile2;
+ 
+function closeModal(){
+mask.remove();
+document.body.classList.remove("lock-scroll");
 }
-
-//本地图片插入通用方法
-function insertLocalImgTag(fileName){
-  addImgSerial();
-  const imgHtml = `<img loading="lazy" src="/notes/images/${fileName}" alt="配图" style="max-width:100%;margin:8px 0;"><br><br>`;
-  if(currentEditMode === "rich"){
-    document.execCommand("insertHTML",false,imgHtml);
-  }else{
-    mdBox.value += `![配图](/notes/images/${fileName})\n\n`;
-    saveMdRecord();
-    renderMdPreview();
-    calcWordCount();
-  }
+mask.onclick = e => e.target === mask && closeModal();
+cancelBtn.onclick = closeModal;
+localBtn.onclick = ()=> fileInput.click();
+ 
+fileInput.onchange = function(e){
+const allFiles = Array.from(e.target.files);
+if(allFiles.length === 0) return closeModal();
+if(imgUploadList.length + allFiles.length > 5){
+alert("图片记录总数不能超过5张，请先清空历史图片记录");
+fileInput.value = "";
+return closeModal();
+}
+if(allFiles.length === 1){
+alert("vivo提示：弹出窗口点右上角【文件管理】，长按图片可批量多选");
+}
+imgUploadList = [];
+allFiles.forEach((file, idx)=>{
+let realName = file.name;
+if(!realName || realName.startsWith("blob") || realName.length < 3){
+const ext = file.type.split("/")[1] || "jpg";
+globalImgSerial++;
+const uniqueId = Date.now() + "_" + globalImgSerial + Math.random().toString(36).slice(2,4);
+realName = `IMG_${uniqueId}.${ext}`;
+}
+const safeName = realName;
+insertLocalImgTagTerminal(safeName);
+let path = "~/storage/dcim/Camera";
+if(/^Screenshot/.test(realName)) path = "~/storage/Pictures/Screenshots";
+if(/wx|wechat/.test(realName.toLowerCase())) path = "~/storage/Download";
+imgUploadList.push({name:safeName, src:`${path}/${realName}`});
+});
+addImgSerial();
+closeModal();
+};
+ 
+confirmBtn.onclick = function(){
+const url = linkInput.value.trim();
+const altText = descInput.value.trim();
+const wNum = widthInput.value.trim();
+if(!url){
+alert("请填写图片链接地址");
+return;
+}
+if(currentEditMode === "rich"){
+let wStyle = "";
+if(wNum && Number(wNum) > 0) wStyle = `width:${wNum}px;`;
+const imgHtml = `<img loading="lazy" src="${url}" alt="${altText}" style="max-width:100%;margin:8px 0;${wStyle}"><br><br>`;
+document.execCommand("insertHTML",false,imgHtml);
+richBox.focus();
+}else{
+const alt = altText || "配图";
+let mdImg = `![${alt}](${url})`;
+if(wNum && Number(wNum) > 0) mdImg += `{width=${wNum}}`;
+mdBox.value += `${mdImg}\n\n`;
+saveMdRecord();
+renderMdPreview();
+calcWordCount();
+}
+closeModal();
+};
+setTimeout(()=>linkInput.focus(),60);
 }
 //本地图片上传按钮
 localImgBtn.onclick = ()=> imgFileInput.click();
 imgFileInput.onchange = function(e){
-  const allFiles = Array.from(e.target.files);
-  if(allFiles.length === 0) return;
-  if(allFiles.length === 1){
-    alert("vivo提示：弹出窗口点右上角【文件管理】，长按图片可批量多选");
-  }
-  if(allFiles.length > 5){
-    alert("最多只能选择5张图片，请重新勾选");
-    imgFileInput.value = "";
-    return;
-  }
-  imgUploadList = [];
-  allFiles.forEach((file, idx)=>{
-    // 只使用标准file.name，和blog一致，兼容所有浏览器
-    let realName = file.name;
-    // blob乱码兜底，全局自增序号保证分次选也绝不重名
-    if(!realName || realName.startsWith("blob") || realName.length < 3){
-        const ext = file.type.split("/")[1] || "jpg";
-        globalImgSerial++;
-        const uniqueId = Date.now() + "_" + globalImgSerial + Math.random().toString(36).slice(2,4);
-        realName = `IMG_${uniqueId}.${ext}`;
-    }
-    
-    // 原图名直接作为保存名，不统一套IMG前缀
-    const safeName = realName;
-
-    insertLocalImgTag(safeName);
-    let path = "~/storage/dcim/Camera";
-    if(/^Screenshot/.test(realName)) path = "~/storage/Pictures/Screenshots";
-    if(/wx|wechat/.test(realName.toLowerCase())) path = "~/storage/Download";
-    imgUploadList.push({name:safeName, src:`${path}/${realName}`});
-  });
-  imgFileInput.value = "";
-  alert(`已记录${allFiles.length}张本地图片，可生成复制命令`);
+const allFiles = Array.from(e.target.files);
+if(allFiles.length === 0) return;
+if(imgUploadList.length + allFiles.length > 5){
+alert("图片记录总数不能超过5张，请先清空历史图片记录");
+imgFileInput.value = "";
+return;
+}
+if(allFiles.length === 1){
+alert("vivo提示：弹出窗口点右上角【文件管理】，长按图片可批量多选");
+}
+imgUploadList = [];
+allFiles.forEach((file, idx)=>{
+let realName = file.name;
+if(!realName || realName.startsWith("blob") || realName.length < 3){
+const ext = file.type.split("/")[1] || "jpg";
+globalImgSerial++;
+const uniqueId = Date.now() + "_" + globalImgSerial + Math.random().toString(36).slice(2,4);
+realName = `IMG_${uniqueId}.${ext}`;
+}
+const safeName = realName;
+insertLocalImgTagTerminal(safeName);
+let path = "~/storage/dcim/Camera";
+if(/^Screenshot/.test(realName)) path = "~/storage/Pictures/Screenshots";
+if(/wx|wechat/.test(realName.toLowerCase())) path = "~/storage/Download";
+imgUploadList.push({name:safeName, src:`${path}/${realName}`});
+});
+addImgSerial();
+imgFileInput.value = "";
+alert(`已记录${allFiles.length}张本地图片，可生成复制命令`);
 };
-
 //清空图片列表
 clearImgListBtn.onclick = function(){
-  imgUploadList = [];
-  alert("已清空所有图片复制脚本记录");
+imgUploadList = [];
+alert("已清空所有图片复制脚本记录");
 };
-
 //批量图床链接
 batchImgBtn.onclick = function(){
-  const multiUrl = prompt("批量粘贴图床链接，一行一张：");
-  if(!multiUrl || multiUrl.trim() === "") return;
-  const urlArr = multiUrl.split(/\r?\n/).map(item=>item.trim()).filter(u=>u.startsWith("http"));
-  if(urlArr.length === 0){
-    alert("未识别有效图片链接");
-    return;
-  }
-  urlArr.forEach(url=>{
-    if(currentEditMode === "rich"){
-      const imgHtml = `<img loading="lazy" src="${url}" alt="配图" style="max-width:100%;margin:8px 0;"><br><br>`;
-      document.execCommand("insertHTML",false,imgHtml);
-    }else{
-      mdBox.value += `![配图](${url})\n\n`;
-    }
-  });
-  if(currentEditMode === "md"){
-    saveMdRecord();
-    renderMdPreview();
-    calcWordCount();
-  }
-  alert(`成功插入${urlArr.length}张网络图`);
+const multiUrl = prompt("批量粘贴图床链接，一行一张：");
+if(!multiUrl || multiUrl.trim() === "") return;
+const urlArr = multiUrl.split(/\r?\n/).map(item=>item.trim()).filter(u=>u.startsWith("http"));
+if(urlArr.length === 0){
+alert("未识别有效图片链接");
+return;
+}
+urlArr.forEach(url=>{
+if(currentEditMode === "rich"){
+const imgHtml = `<img loading="lazy" src="${url}" alt="配图" style="max-width:100%;margin:8px 0;"><br><br>`;
+document.execCommand("insertHTML",false,imgHtml);
+}else{
+mdBox.value += `![配图](${url})\n\n`;
+}
+});
+if(currentEditMode === "md"){
+saveMdRecord();
+renderMdPreview();
+calcWordCount();
+}
+alert(`成功插入${urlArr.length}张网络图`);
 };
-
 //导出单篇MD
 function exportSingleNoteMd(){
-  const title = titleInput.value.trim();
-  if(!title) return alert("请先填写标题");
-  syncFormToNoteList();
-  const md = mdBox.value;
-  const blob = new Blob([md], {type:"text/markdown"});
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = `${title}.md`;
-  a.click();
-  URL.revokeObjectURL(a.href);
+const title = titleInput.value.trim();
+if(!title) return alert("请先填写标题");
+syncFormToNoteList();
+const md = mdBox.value;
+const blob = new Blob([md], {type:"text/markdown"});
+const a = document.createElement("a");
+a.href = URL.createObjectURL(blob);
+a.download = `${title}.md`;
+a.click();
+URL.revokeObjectURL(a.href);
 }
 //导出单篇HTML
 function exportSingleNoteHtml(){
-  syncFormToNoteList();
-  const title = titleInput.value.trim();
-  // 过滤系统禁止的文件名符号
-  const safeTitle = title.replace(/[\/\\:*?"<>|]/g, "_");
-  const html = `<!DOCTYPE html><html lang="zh-CN">
+syncFormToNoteList();
+const title = titleInput.value.trim();
+const safeTitle = title.replace(/[/\:*?"<>|]/g, "_");
+const html = `<!DOCTYPE html>
+<html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
 <title>${title}</title>
-<style>body{max-width:900px;margin:20px auto;padding:0 15px;font-size:16px;line-height:1.7;} img{max-width:100%;}</style>
+<style>
+body{max-width:900px;margin:20px auto;padding:0 15px;font-size:16px;line-height:1.7;}
+img{max-width:100%;}
+</style>
 </head>
 <body>
 ${richBox.innerHTML}
-</body></html>`;
-  const blob = new Blob([html], {type:"text/html"});
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = `${safeTitle}.html`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(a.href);
+</body>
+</html>`;
+const blob = new Blob([html], {type:"text/html"});
+const a = document.createElement("a");
+a.href = URL.createObjectURL(blob);
+a.download = `${safeTitle}.html`;
+document.body.appendChild(a);
+a.click();
+document.body.removeChild(a);
+URL.revokeObjectURL(a.href);
 }
-
 //同步表单数据到笔记数组（修复重复空白草稿）
 function syncFormToNoteList(){
-  const title = titleInput.value.trim();
-  const type = typeInput.value.trim();
-  let content = "";
-  if(currentEditMode === "rich") content = richBox.innerHTML.trim();
-  else content = mdToHtml(mdBox.value);
-  const nowTime = getNowTimeStr();
-  if(targetNote){
-    // 编辑已有笔记，直接覆盖
-    const idx = list.findIndex(item=>item.id === targetNote.id);
-    list[idx].title = title;
-    list[idx].type = type;
-    list[idx].content = content;
-    list[idx].date = nowTime;
-    // 编辑正式笔记，移除草稿标记
-    delete list[idx]._isTempNew;
-  }else{
-    // 新建场景：先查找已有临时草稿，复用不新增
-    const tempIdx = list.findIndex(item=>item._isTempNew === true);
-    if(tempIdx > -1){
-      list[tempIdx].title = title;
-      list[tempIdx].type = type;
-      list[tempIdx].content = content;
-      list[tempIdx].date = nowTime;
-    }else{
-      // 无草稿才新建一条临时笔记
-      const newNote = {
-        id: Date.now(),
-        title,
-        type,
-        content,
-        date: nowTime,
-        _isTempNew: true
-      };
-      list.push(newNote);
-    }
-  }
-  saveLocalCache();
-  saveNoteToStorage(list);
+const title = titleInput.value.trim();
+const type = typeInput.value.trim();
+let content = "";
+if(currentEditMode === "rich") content = richBox.innerHTML.trim();
+else content = mdToHtml(mdBox.value);
+const nowTime = getNowTimeStr();
+if(targetNote){
+const idx = list.findIndex(item=>item.id === targetNote.id);
+list[idx].title = title;
+list[idx].type = type;
+list[idx].content = content;
+list[idx].date = nowTime;
+delete list[idx]._isTempNew;
+}else{
+const tempIdx = list.findIndex(item=>item._isTempNew === true);
+if(tempIdx > -1){
+list[tempIdx].title = title;
+list[tempIdx].type = type;
+list[tempIdx].content = content;
+list[tempIdx].date = nowTime;
+}else{
+const newNote = {
+id: Date.now(),
+title,
+type,
+content,
+date: nowTime,
+_isTempNew: true
+};
+list.push(newNote);
 }
-
-
+}
+saveLocalCache();
+saveNoteToStorage(list);
+}
 //一键复制完整data.js
 copyAllJsonBtn.onclick = async function(){
-  const allNotes = JSON.parse(localStorage.getItem("notes") || "[]");
-  // 过滤临时草稿、无ID、无标题笔记
-  const validNotes = allNotes.filter(item => {
-    if(!item || !item.id) return false;
-    if(item._isTempNew === true) return false;
-    const titleStr = (item.title || "").trim();
-    return titleStr.length > 0;
-  });
-
-
-  if(validNotes.length === 0){
-    alert("暂无带有效标题的笔记可复制");
-    return;
-  }
-
-  const jsonText = JSON.stringify(validNotes,null,2);
-  try{
-    await navigator.clipboard.writeText(jsonText);
-  }catch(err){
-    const tempTextarea = document.createElement("textarea");
-    tempTextarea.value = jsonText;
-    document.body.appendChild(tempTextarea);
-    tempTextarea.select();
-    document.execCommand("copy");
-    document.body.removeChild(tempTextarea);
-  }
-  alert(`复制成功，共${validNotes.length}条带标题笔记，仅本段可粘贴nano`);
+const allNotes = JSON.parse(localStorage.getItem("notes") || "[]");
+const validNotes = allNotes.filter(item => {
+if(!item || !item.id) return false;
+if(item._isTempNew === true) return false;
+const titleStr = (item.title || "").trim();
+return titleStr.length > 0;
+});
+if(validNotes.length === 0){
+alert("暂无带有效标题的笔记可复制");
+return;
+}
+const jsonText = JSON.stringify(validNotes,null,2);
+try{
+await navigator.clipboard.writeText(jsonText);
+}catch(err){
+const tempTextarea = document.createElement("textarea");
+tempTextarea.value = jsonText;
+document.body.appendChild(tempTextarea);
+tempTextarea.select();
+document.execCommand("copy");
+document.body.removeChild(tempTextarea);
+}
+alert(`复制成功，共${validNotes.length}条带标题笔记，仅本段可粘贴nano`);
 };
-
-
 //生成图片复制脚本
 genCpBtn.onclick = async function(){
-  let cpText = "# 仅复制页面选中图片，不会读取手机全部图片\n";
-  imgUploadList.forEach(item=>{
-    cpText += `cp -v ${item.src} images/\n`;
-  });
-  const gitCmd = `cd ~/storage/shared/notes\nmkdir -p images\n${cpText}\nrm -f data.js && nano data.js && git add . && git diff --cached --quiet || (git commit -m "更新笔记 ${getNowTimeStr()}" && git push origin main)`;
-  try{
-    await navigator.clipboard.writeText(gitCmd);
-  }catch{
-    const tempTextarea = document.createElement("textarea");
-    tempTextarea.value = gitCmd;
-    document.body.appendChild(tempTextarea);
-    tempTextarea.select();
-    document.execCommand("copy");
-    document.body.removeChild(tempTextarea);
-  }
-  alert("图片复制脚本已复制");
+let cpText = "# 仅复制页面选中图片，不会读取手机全部图片\n";
+imgUploadList.forEach(item=>{
+cpText += `cp -v ${item.src} images/\n`;
+});
+const gitCmd = `cd ~/storage/shared/notes
+mkdir -p images
+${cpText}
+rm -f data.js && nano data.js && git add . && git diff --cached --quiet || (git commit -m "更新笔记 ${getNowTimeStr()}" && git push origin main)`;
+try{
+await navigator.clipboard.writeText(gitCmd);
+}catch{
+const tempTextarea = document.createElement("textarea");
+tempTextarea.value = gitCmd;
+document.body.appendChild(tempTextarea);
+tempTextarea.select();
+document.execCommand("copy");
+document.body.removeChild(tempTextarea);
+}
+alert("图片复制脚本已复制");
 };
 //下载data.js文件
 function downloadDataJs(isTimeStamp){
-  const title = titleInput.value.trim();
-  const type = typeInput.value.trim();
-  let content = "";
-  if(currentEditMode === "rich") content = richBox.innerHTML.trim();
-  else content = mdToHtml(mdBox.value);
-  if(!title){
-    alert("笔记标题不能为空");
-    return;
-  }
-  if(!type){
-    alert("分类不能为空");
-    return;
-  }
-  const nowTime = getNowTimeStr();
-  const newId = Date.now();
-
-  if(targetNote){
-    // 编辑旧笔记：只移除当前这条草稿标记，不动其他所有笔记
-    const idx = list.findIndex(item=>item.id === targetNote.id);
-    if(idx > -1) delete list[idx]._isTempNew;
-  }else{
-    // 新建笔记：只删除临时草稿，保留全部正式笔记
-    list = list.filter(item => !(item._isTempNew === true));
-    list.push({
-      id: newId,
-      title,
-      type,
-      content,
-      date: nowTime
-    });
-  }
-
-  saveLocalCache();
-  saveNoteToStorage(list);
-  const jsText = getFullJsText();
-
-  const blob = new Blob([jsText], {type:"application/javascript"});
-  const a = document.createElement("a");
-  let fileName = "data.js";
-  if(isTimeStamp){
-    const safeTime = nowTime.replace(/[: ]/g,"-");
-    fileName = `data_${safeTime}.js`;
-  }
-  a.href = URL.createObjectURL(blob);
-  a.download = fileName;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(a.href);
-  alert(`${fileName} 下载完成，可同步仓库`);
+const title = titleInput.value.trim();
+const type = typeInput.value.trim();
+let content = "";
+if(currentEditMode === "rich") content = richBox.innerHTML.trim();
+else content = mdToHtml(mdBox.value);
+if(!title){
+alert("笔记标题不能为空");
+return;
 }
-
+if(!type){
+alert("分类不能为空");
+return;
+}
+const nowTime = getNowTimeStr();
+const newId = Date.now();
+if(targetNote){
+const idx = list.findIndex(item=>item.id === targetNote.id);
+if(idx > -1) delete list[idx]._isTempNew;
+}else{
+list = list.filter(item => !(item._isTempNew === true));
+list.push({
+id: newId,
+title,
+type,
+content,
+date: nowTime
+});
+}
+//过滤无效笔记
+list = list.filter(item=>{
+const t = (item.title||"").trim();
+return t.length > 0 && item.id && item.content;
+});
+saveLocalCache();
+saveNoteToStorage(list);
+const jsText = getFullJsText();
+const blob = new Blob([jsText], {type:"application/javascript"});
+const a = document.createElement("a");
+let fileName = "data.js";
+if(isTimeStamp){
+const safeTime = nowTime.replace(/[: ]/g,"-");
+fileName = `data_${safeTime}.js`;
+}
+a.href = URL.createObjectURL(blob);
+a.download = fileName;
+document.body.appendChild(a);
+a.click();
+document.body.removeChild(a);
+URL.revokeObjectURL(a.href);
+alert(`${fileName} 下载完成，可同步仓库`);
+}
 saveNormalBtn.onclick = ()=>downloadDataJs(false);
 saveTimeBtn.onclick = ()=>downloadDataJs(true);
 //Ctrl+S 快捷键复制代码
 window.addEventListener("keydown", function(e){
-  // Ctrl+S 原有逻辑保留
-  if(e.ctrlKey && e.key === "s"){
-    e.preventDefault();
-    copyAllJsonBtn.click();
-  }
-  // Ctrl+Z 撤销
-  if(e.ctrlKey && e.key.toLowerCase() === "z"){
-    e.preventDefault();
-    globalUndo();
-  }
-  // Ctrl+Y 重做
-  if(e.ctrlKey && e.key.toLowerCase() === "y"){
-    e.preventDefault();
-    globalRedo();
-  }
-  // Ctrl+F 打开查找替换
-  if(e.ctrlKey && e.key.toLowerCase() === "f"){
-    e.preventDefault();
-    findReplaceBtn.click();
-  }
-  // Ctrl+B 加粗
-  if(e.ctrlKey && e.key.toLowerCase() === "b"){
-    e.preventDefault();
-    formatBold();
-  }
+if(e.ctrlKey && e.key === "s"){
+e.preventDefault();
+copyAllJsonBtn.click();
+}
+if(e.ctrlKey && e.key.toLowerCase() === "z"){
+e.preventDefault();
+globalUndo();
+}
+if(e.ctrlKey && e.key.toLowerCase() === "y"){
+e.preventDefault();
+globalRedo();
+}
+if(e.ctrlKey && e.key.toLowerCase() === "f"){
+e.preventDefault();
+findReplaceBtn.click();
+}
+if(e.ctrlKey && e.key.toLowerCase() === "b"){
+e.preventDefault();
+formatBold();
+}
 });
 //导出完整备份json
 exportBackupBtn.onclick = function(){
-  const jsonRaw = JSON.stringify(list, null, 2);
-  const blob = new Blob([jsonRaw], {type:"application/json"});
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "notes完整备份.json";
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(a.href);
-  alert("大容量备份JSON已下载，无5MB限制");
+const jsonRaw = JSON.stringify(list, null, 2);
+const blob = new Blob([jsonRaw], {type:"application/json"});
+const a = document.createElement("a");
+a.href = URL.createObjectURL(blob);
+a.download = "notes完整备份.json";
+document.body.appendChild(a);
+a.click();
+document.body.removeChild(a);
+URL.revokeObjectURL(a.href);
+alert("大容量备份JSON已下载，无5MB限制");
 };
 //导入备份文件
 importBackupBtn.onclick = ()=> backupFileInput.click();
 backupFileInput.onchange = function(e){
-  const file = e.target.files[0];
-  if(!file) return;
-  //限制20MB
-  const maxSize = 20 * 1024 * 1024;
-  if(file.size > maxSize){
-    alert("备份文件不能超过20MB，请拆分后导入");
-    return;
-  }
-  const reader = new FileReader();
-  reader.onload = function(res){
-    try{
-      let raw = res.target.result;
-      if(raw.startsWith("window.NOTE_DATA = ")) raw = raw.replace("window.NOTE_DATA = ","");
-      const fullNoteArr = JSON.parse(raw);
-      if(!Array.isArray(fullNoteArr)) throw "文件格式错误";
-            list = fullNoteArr;
-      saveLocalCache();
-      saveNoteToStorage(list);
-      window.NOTE_DATA = list;
-
-      alert(`导入成功，共${list.length}条笔记，切换页面即可生效`);
-      loadLocalCache();
-      if(editId) initLoadNote();
-    }catch(err){
-      alert("文件解析失败，请选择notes.json或data.js备份");
-      console.error(err);
-    }
-  };
-  reader.readAsText(file);
+const file = e.target.files[0];
+if(!file) return;
+const maxSize = 20 * 1024 * 1024;
+if(file.size > maxSize){
+alert("备份文件不能超过20MB，请拆分后导入");
+return;
+}
+if(!confirm("导入会覆盖当前所有笔记，确定继续？")) return;
+const reader = new FileReader();
+reader.onload = function(res){
+try{
+let raw = res.target.result;
+if(raw.startsWith("window.NOTE_DATA = ")) raw = raw.replace("window.NOTE_DATA = ","");
+const fullNoteArr = JSON.parse(raw);
+if(!Array.isArray(fullNoteArr)) throw "文件格式错误";
+list = fullNoteArr;
+saveLocalCache();
+saveNoteToStorage(list);
+window.NOTE_DATA = list;
+alert(`导入成功，共${list.length}条笔记，切换页面即可生效`);
+loadLocalCache();
+if(editId) initLoadNote();
+}catch(err){
+alert("文件解析失败，请选择notes.json或data.js备份");
+console.error(err);
+}
 };
-
+reader.readAsText(file);
+};
 //字号、文字颜色、文字底色监听
 fontSizeSelect.addEventListener("change", function(){
-  document.execCommand("fontSize", false, this.value);
-  richBox.focus();
-  checkFormatActive();
-  calcWordCount();
+document.execCommand("fontSize", false, this.value);
+richBox.focus();
+checkFormatActive();
+calcWordCount();
 });
 fontColorInput.addEventListener("input", function(){
-  document.execCommand("foreColor", false, this.value);
-  richBox.focus();
-  checkFormatActive();
-  calcWordCount();
+document.execCommand("foreColor", false, this.value);
+richBox.focus();
+checkFormatActive();
+calcWordCount();
 });
 bgColorInput.addEventListener("input", function(){
-  document.execCommand("hiliteColor", false, this.value);
-  richBox.focus();
-  checkFormatActive();
-  calcWordCount();
+document.execCommand("hiliteColor", false, this.value);
+richBox.focus();
+checkFormatActive();
+calcWordCount();
 });
-
 // ========== 查找替换功能（纯文本/富文本双模式兼容） ==========
 const findReplaceBtn = document.getElementById('findReplaceBtn');
 const findReplaceMask = document.getElementById('findReplaceMask');
@@ -2375,392 +2347,366 @@ const replaceInput = document.getElementById('replaceInput');
 const findNextBtn = document.getElementById('findNextBtn');
 const replaceAllBtn = document.getElementById('replaceAllBtn');
 const replaceSingleBtn = document.getElementById('replaceSingleBtn');
-
 let searchIndex = 0;
 let matchList = [];
-
 matchCaseCheck.addEventListener("change", ()=>{
-  matchCase = matchCaseCheck.checked;
+matchCase = matchCaseCheck.checked;
 });
-
 // 打开弹窗
 findReplaceBtn.addEventListener('click', ()=>{
-  document.body.classList.add("lock-scroll");
-  findReplaceMask.classList.add('show');
-  // 获取当前选中文字，自动填入查找框
-  const selText = window.getSelection().toString().trim();
-  if(selText) findInput.value = selText;
-  findInput.focus();
-  searchIndex = 0;
-  matchList = [];
-  resetBoxPos();
+document.body.classList.add("lock-scroll");
+findReplaceMask.classList.add('show');
+const selText = window.getSelection().toString().trim();
+if(selText) findInput.value = selText;
+findInput.focus();
+searchIndex = 0;
+matchList = [];
+resetBoxPos();
 });
-
 // 关闭弹窗按钮
 findReplaceClose.addEventListener('click', ()=>{
-  document.body.classList.remove("lock-scroll");
-  findReplaceMask.classList.remove('show');
+document.body.classList.remove("lock-scroll");
+findReplaceMask.classList.remove('show');
 });
-// 点击遮罩空白关闭弹窗
 findReplaceMask.addEventListener('click', (e)=>{
-  if(e.target === findReplaceMask){
-    document.body.classList.remove("lock-scroll");
-    findReplaceMask.classList.remove('show');
-  }
+if(e.target === findReplaceMask){
+document.body.classList.remove("lock-scroll");
+findReplaceMask.classList.remove('show');
+}
 });
-
 // 选中富文本匹配文字
 function selectRichText(start, len){
-  const sel = window.getSelection();
-  const range = document.createRange();
-  let pos = 0, targetNode = null, targetOffset = 0;
-  function traverse(node){
-    if(node.nodeType === 3){
-      if(pos + node.length >= start){
-        targetNode = node;
-        targetOffset = start - pos;
-        return true;
-      }
-      pos += node.length;
-    }
-    for(let n of node.childNodes){
-      if(traverse(n)) return true;
-    }
-    return false;
-  }
-  traverse(richBox);
-  if(targetNode){
-    range.setStart(targetNode, targetOffset);
-    range.setEnd(targetNode, targetOffset + len);
-    sel.removeAllRanges();
-    sel.addRange(range);
-    richBox.focus();
-  }
+const sel = window.getSelection();
+const range = document.createRange();
+let pos = 0, targetNode = null, targetOffset = 0;
+function traverse(node){
+if(node.nodeType === 3){
+if(pos + node.length >= start){
+targetNode = node;
+targetOffset = start - pos;
+return true;
 }
-
+pos += node.length;
+}
+for(let n of node.childNodes){
+if(traverse(n)) return true;
+}
+return false;
+}
+traverse(richBox);
+if(targetNode){
+range.setStart(targetNode, targetOffset);
+range.setEnd(targetNode, targetOffset + len);
+sel.removeAllRanges();
+sel.addRange(range);
+richBox.focus();
+}
+}
 // 自动识别当前激活编辑器读取内容
 function getEditorText(){
-  const txtEditor = document.getElementById('mdEditor');
-  const richEditor = document.getElementById('richEditor');
-  // 纯文本框显示就读value，富文本显示就读innerHTML
-  if(txtEditor.style.display !== 'none'){
-    return txtEditor.value;
-  }else{
-    return richEditor.innerHTML;
-  }
+const txtEditor = document.getElementById('mdEditor');
+const richEditor = document.getElementById('richEditor');
+if(txtEditor.style.display !== 'none'){
+return txtEditor.value;
+}else{
+return richEditor.innerText;
+}
 }
 // 写入内容到当前编辑器
 function setEditorText(val){
-  const txtEditor = document.getElementById('mdEditor');
-  const richEditor = document.getElementById('richEditor');
-  if(txtEditor.style.display !== 'none'){
-    txtEditor.value = val;
-    saveMdRecord();
-    renderMdPreview();
-    calcWordCount();
-  }else{
-    richBox.innerHTML = val;
-    calcWordCount();
-  }
+const txtEditor = document.getElementById('mdEditor');
+const richEditor = document.getElementById('richEditor');
+if(txtEditor.style.display !== 'none'){
+txtEditor.value = val;
+saveMdRecord();
+renderMdPreview();
+calcWordCount();
+}else{
+calcWordCount();
 }
-
+}
 // 查找下一处
 findNextBtn.addEventListener('click', ()=>{
-  const findText = findInput.value.trim();
-  if(!findText){
-    alert("请输入查找内容");
-    return;
-  }
-  const text = getEditorText();
-  const regFlag = matchCase ? "g" : "gi";
-  const reg = new RegExp(findText, regFlag);
-  matchList = [];
-  let match;
-  while((match = reg.exec(text)) !== null){
-    matchList.push(match.index);
-  }
-  if(matchList.length === 0){
-    alert("未找到匹配内容");
-    return;
-  }
-  if(searchIndex >= matchList.length) searchIndex = 0;
-  alert(`匹配到第${searchIndex+1}/${matchList.length}处`);
-  if(currentEditMode === "rich"){
-    selectRichText(matchList[searchIndex], findText.length);
-  }
-  searchIndex++;
+const findText = findInput.value.trim();
+if(!findText){
+alert("请输入查找内容");
+return;
+}
+const text = getEditorText();
+const regFlag = matchCase ? "g" : "gi";
+const reg = new RegExp(findText, regFlag);
+matchList = [];
+let match;
+while((match = reg.exec(text)) !== null){
+matchList.push(match.index);
+}
+if(matchList.length === 0){
+alert("未找到匹配内容");
+return;
+}
+if(searchIndex >= matchList.length) searchIndex = 0;
+alert(`匹配到第${searchIndex+1}/${matchList.length}处`);
+if(currentEditMode === "rich"){
+selectRichText(matchList[searchIndex], findText.length);
+}
+searchIndex++;
 });
-
 // 全部替换
 replaceAllBtn.addEventListener('click', ()=>{
-  const findText = findInput.value.trim();
-  const repText = replaceInput.value;
-  if(!findText){
-    alert("请输入查找内容");
-    return;
-  }
-  const oldText = getEditorText();
-  const regFlag = matchCase ? "g" : "gi";
-  const reg = new RegExp(findText, regFlag);
-  const newText = oldText.replace(reg, repText);
-  if(oldText === newText){
-    alert("未找到可替换内容");
-    return;
-  }
-  setEditorText(newText);
-  const count = (oldText.match(new RegExp(findText,regFlag)) || []).length;
-  alert(`替换完成，共替换${count}处`);
+const findText = findInput.value.trim();
+const repText = replaceInput.value;
+if(!findText){
+alert("请输入查找内容");
+return;
+}
+if(currentEditMode === "rich"){
+alert("富文本模式不支持一键全部替换，可使用单次替换逐处修改");
+return;
+}
+const oldText = getEditorText();
+const regFlag = matchCase ? "g" : "gi";
+const reg = new RegExp(findText, regFlag);
+const newText = oldText.replace(reg, repText);
+if(oldText === newText){
+alert("未找到可替换内容");
+return;
+}
+mdBox.value = newText;
+saveMdRecord();
+renderMdPreview();
+calcWordCount();
+const count = (oldText.match(new RegExp(findText,regFlag)) || []).length;
+alert(`替换完成，共替换${count}处`);
 });
-
 // 单次替换当前匹配
 replaceSingleBtn.addEventListener('click', () => {
-  const findText = findInput.value.trim();
-  const repText = replaceInput.value;
-  if (!findText) {
-    alert("请输入查找内容");
-    return;
-  }
-  if (matchList.length === 0) {
-    alert("请先点击查找下一个定位匹配内容");
-    return;
-  }
-  // 获取当前选中匹配位置
-  const curPos = matchList[searchIndex - 1 >= 0 ? searchIndex - 1 : 0];
-  let oldText = getEditorText();
-  // 只截取替换当前一处
-  const leftPart = oldText.slice(0, curPos);
-  const rightPart = oldText.slice(curPos + findText.length);
-  const newText = leftPart + repText + rightPart;
-  setEditorText(newText);
-  alert("已替换当前这一处");
-  // 替换后重新更新全部匹配位置列表
-  const freshText = getEditorText();
-  const regFlag = matchCase ? "g" : "gi";
-  const reg = new RegExp(findText, regFlag);
-  matchList = [];
-  let match;
-  while ((match = reg.exec(freshText)) !== null) {
-    matchList.push(match.index);
-  }
-  searchIndex = 0;
+const findText = findInput.value.trim();
+const repText = replaceInput.value;
+if (!findText) {
+alert("请输入查找内容");
+return;
+}
+if (matchList.length === 0) {
+alert("请先点击查找下一个定位匹配内容");
+return;
+}
+if(currentEditMode === "rich"){
+document.execCommand("insertText",false,repText);
+calcWordCount();
+}else{
+const curPos = matchList[searchIndex - 1 >= 0 ? searchIndex - 1 : 0];
+let oldText = getEditorText();
+const leftPart = oldText.slice(0, curPos);
+const rightPart = oldText.slice(curPos + findText.length);
+const newText = leftPart + repText + rightPart;
+mdBox.value = newText;
+saveMdRecord();
+renderMdPreview();
+calcWordCount();
+}
+alert("已替换当前这一处");
+findNextBtn.click();
+const freshText = getEditorText();
+const regFlag = matchCase ? "g" : "gi";
+const reg = new RegExp(findText, regFlag);
+matchList = [];
+let match;
+while ((match = reg.exec(freshText)) !== null) {
+matchList.push(match.index);
+}
+searchIndex = 0;
 });
-
 // 弹窗拖拽 修复偏移、卡顿、触屏穿透
 const mask = findReplaceMask;
 const box = document.querySelector('.find-replace-box');
 let drag = false;
 let startX, startY;
 let boxStartX, boxStartY;
-
 // 重置居中
 function resetBoxPos() {
-  box.style.left = '50%';
-  box.style.top = '50%';
-  box.style.transform = 'translate(-50%, -50%)';
+box.style.left = '50%';
+box.style.top = '50%';
+box.style.transform = 'translate(-50%, -50%)';
 }
 resetBoxPos();
-
 // 鼠标按下
 box.addEventListener('mousedown', (e) => {
-  const tag = e.target.tagName;
-  if (tag === 'INPUT' || tag === 'BUTTON') return;
-  e.preventDefault();
-  drag = true;
-  // 先把transform取消，统一用left/top定位，不再混用两套坐标
-  const rect = box.getBoundingClientRect();
-  box.style.transform = 'unset';
-  box.style.left = rect.left + 'px';
-  box.style.top = rect.top + 'px';
-  box.style.transition = 'none';
-  startX = e.clientX;
-  startY = e.clientY;
-  boxStartX = rect.left;
-  boxStartY = rect.top;
+const tag = e.target.tagName;
+if (tag === 'INPUT' || tag === 'BUTTON') return;
+e.preventDefault();
+drag = true;
+startX = e.clientX;
+startY = e.clientY;
+const rect = box.getBoundingClientRect();
+boxStartX = rect.left;
+boxStartY = rect.top;
+box.style.transform = "none";
 });
-
-// 触屏按下
-box.addEventListener('touchstart', (e) => {
-  const tag = e.target.tagName;
-  if (tag === 'INPUT' || tag === 'BUTTON') return;
-  e.preventDefault();
-  drag = true;
-  const touch = e.touches[0];
-  const rect = box.getBoundingClientRect();
-  box.style.transform = 'unset';
-  box.style.left = rect.left + 'px';
-  box.style.top = rect.top + 'px';
-  box.style.transition = 'none';
-  startX = touch.clientX;
-  startY = touch.clientY;
-  boxStartX = rect.left;
-  boxStartY = rect.top;
+document.addEventListener("mousemove", (e) => {
+if (!drag) return;
+const dx = e.clientX - startX;
+const dy = e.clientY - startY;
+box.style.left = `${boxStartX + dx}px`;
+box.style.top = `${boxStartY + dy}px`;
 });
-
-// 鼠标移动
-document.addEventListener('mousemove', (e) => {
-  if (!drag) return;
-  e.preventDefault();
-  const dx = e.clientX - startX;
-  const dy = e.clientY - startY;
-  box.style.left = boxStartX + dx + 'px';
-  box.style.top = boxStartY + dy + 'px';
+document.addEventListener("mouseup", () => drag = false);
+//触屏拖拽兼容
+box.addEventListener("touchstart", (e) => {
+const target = e.target.tagName;
+if (target === "INPUT" || target === "BUTTON") return;
+e.preventDefault();
+drag = true;
+const touch = e.touches[0];
+startX = touch.clientX;
+startY = touch.clientY;
+const rect = box.getBoundingClientRect();
+boxStartX = rect.left;
+boxStartY = rect.top;
+box.style.transform = "none";
 });
-
-// 触屏移动
-document.addEventListener('touchmove', (e) => {
-  if (!drag) return;
-  e.preventDefault();
-  const touch = e.touches[0];
-  const dx = touch.clientX - startX;
-  const dy = touch.clientY - startY;
-  box.style.left = boxStartX + dx + 'px';
-  box.style.top = boxStartY + dy + 'px';
+document.addEventListener("touchmove", (e) => {
+if (!drag) return;
+const touch = e.touches[0];
+const dx = touch.clientX - startX;
+const dy = touch.clientY - startY;
+box.style.left = `${boxStartX + dx}px`;
+box.style.top = `${boxStartY + dy}px`;
 });
-
-// 松开
-function endDrag() {
-  if (drag) {
-    drag = false;
-    box.style.transition = '0.12s ease';
+document.addEventListener("touchend", () => drag = false);
+//重置默认底色函数（新增按钮配套）
+function resetDefaultBg(){
+localStorage.removeItem("editorBgTheme");
+changeEditorBg("white");
+alert("已恢复编辑器默认纯白底色");
+}
+//主题切换主函数
+function changeEditorBg(theme){
+const r = document.querySelector(".rich-editor");
+const m = document.querySelector(".md-editor");
+r.className = "rich-editor";
+m.className = "md-editor";
+switch(theme){
+case "cream":
+r.classList.add("bg-cream");
+m.classList.add("bg-cream");
+break;
+case "blue":
+r.classList.add("bg-blue");
+m.classList.add("bg-blue");
+break;
+case "dark":
+r.classList.add("bg-dark");
+m.classList.add("bg-dark");
+break;
+case "midnight":
+r.classList.add("bg-midnight");
+m.classList.add("bg-midnight");
+break;
+case "sepia":
+r.classList.add("bg-sepia");
+m.classList.add("bg-sepia");
+break;
+case "gray":
+r.classList.add("bg-gray");
+m.classList.add("bg-gray");
+break;
+case "paper":
+r.classList.add("bg-paper");
+m.classList.add("bg-paper");
+break;
+case "softblue":
+r.classList.add("bg-softblue");
+m.classList.add("bg-softblue");
+break;
+case "custom":
+r.classList.add("bg-custom");
+m.classList.add("bg-custom");
+customBgColorInput.style.display = "block";
+break;
+default:
+customBgColorInput.style.display = "none";
+break;
+}
+localStorage.setItem("editorBgTheme", theme);
+}
+//页面加载读取保存的主题
+window.addEventListener("load", ()=>{
+const saveTheme = localStorage.getItem("editorBgTheme") || "white";
+changeEditorBg(saveTheme);
+});
+//存储读写封装
+function saveNoteToStorage(arr){
+localStorage.setItem("notes", JSON.stringify(arr));
+window.NOTE_DATA = arr;
+}
+function saveLocalCache(){
+const tempObj = {
+list: list,
+targetId: targetNote ? targetNote.id : null,
+imgUploadList: imgUploadList,
+serial: globalImgSerial
+};
+localStorage.setItem(CACHE_KEY, JSON.stringify(tempObj));
+}
+function loadLocalCache(){
+const raw = localStorage.getItem(CACHE_KEY);
+if(!raw) return;
+try{
+const cache = JSON.parse(raw);
+list = cache.list || [];
+const tid = cache.targetId;
+if(tid) targetNote = list.find(i=>i.id === tid);
+imgUploadList = cache.imgUploadList || [];
+globalImgSerial = Number(cache.serial) || 1;
+}catch(e){
+console.log("缓存读取失败",e);
+}
+}
+function getFullJsText(){
+return `window.NOTE_DATA = ${JSON.stringify(list,null,2)};`;
+}
+function getNowTimeStr(){
+const d = new Date();
+const y = d.getFullYear();
+const mo = String(d.getMonth()+1).padStart(2,"0");
+const da = String(d.getDate()).padStart(2,"0");
+const h = String(d.getHours()).padStart(2,"0");
+const mi = String(d.getMinutes()).padStart(2,"0");
+const s = String(d.getSeconds()).padStart(2,"0");
+return `${y}-${mo}-${da} ${h}:${mi}:${s}`;
+}
+ 
+//本地图片富文本插入通用方法（终端路径版本，弹窗上传使用）
+function insertLocalImgTagTerminal(safeName){
+  const srcPath = `~/storage/shared/notes/images/${safeName}`;
+  if(currentEditMode === "rich"){
+    const imgHtml = `<img loading="lazy" src="${srcPath}" alt="本地图片" style="max-width:100%;margin:8px 0;"><br><br>`;
+    document.execCommand("insertHTML",false,imgHtml);
+    richBox.focus();
+  }else{
+    mdBox.value += `![本地图](${srcPath})\n\n`;
+    saveMdRecord();
+    renderMdPreview();
+    calcWordCount();
   }
 }
-document.addEventListener('mouseup', endDrag);
-document.addEventListener('touchend', endDrag);
-
-// 打开弹窗复位居中
-findReplaceBtn.addEventListener('click', resetBoxPos);
-
-// 一键清空编辑器所有文字、图片、表格等全部内容
-const clearAllContentBtn = document.getElementById('clearAllContentBtn');
-clearAllContentBtn.addEventListener('click', () => {
-  // 二次确认防止误触
-  if (!confirm('确定清空编辑器所有文字、图片、表格内容？无法撤销！')) return;
-
-  // 清空富文本
-  richBox.innerHTML = '';
+//图片序号自增保存
+function addImgSerial(){
+  localStorage.setItem("imgSerial", globalImgSerial);
+}
+window.addEventListener("load", ()=>{
+  const s = localStorage.getItem("imgSerial");
+  globalImgSerial = s ? Number(s) : 1;
+});
+ 
+//页面初始化入口
+window.addEventListener("DOMContentLoaded", ()=>{
+  loadLocalCache();
+  calcWordCount();
+  //初始化撤销栈
   richRecordStack = [richBox.innerHTML];
   richRecordIndex = 0;
-  // 清空Markdown
-  mdBox.value = '';
-  mdRecordStack = [];
-  mdRecordIndex = -1;
-  renderMdPreview();
-  // 同步清空查找替换缓存
-  findInput.value = '';
-  replaceInput.value = '';
-  matchList = [];
-  searchIndex = 0;
-  calcWordCount();
 });
-
-// 切换底色
-function changeEditorBg(type){
-  // 清空所有预设class
-  document.body.classList.remove("bg-cream","bg-gray","bg-dark","bg-paper","bg-softblue","bg-sepia","bg-midnight","bg-custom");
-  const customColorInput = document.getElementById("customBgColor");
-  // 隐藏取色器
-  customColorInput.style.display = "none";
-
-  if(type === "custom"){
-    // 打开自定义模式，显示取色器
-    document.body.classList.add("bg-custom");
-    customColorInput.style.display = "block";
-    // 读取上次保存的自定义颜色
-    const saveCustom = localStorage.getItem("editor_custom_bg");
-    if(saveCustom) customColorInput.value = saveCustom;
-    // 实时更新自定义底色
-    customColorInput.oninput = function(){
-  const color = this.value;
-  // 兼容 #RGB / #RRGGBB / #RRGGBBAA 统一截取前6位
-  let hex = color.replace("#", "");
-  if(hex.length === 3) hex = hex.split("").map(c=>c+c).join("");
-  hex = hex.slice(0,6);
-
-  const r = parseInt(hex.slice(0,2),16) || 0;
-  const g = parseInt(hex.slice(2,4),16) || 0;
-  const b = parseInt(hex.slice(4,6),16) || 0;
-  const brightness = (r * 299 + g * 587 + b * 114) / 1000;
-
-  // 根据背景亮度自动适配文字黑白
-  if(brightness < 130){
-    richBox.style.color = "#f1f1f1";
-    mdBox.style.color = "#f1f1f1";
-    mdPreviewBox.style.color = "#f1f1f1";
-  }else{
-    richBox.style.color = "#111";
-    mdBox.style.color = "#111";
-    mdPreviewBox.style.color = "#111";
-  }
-  document.body.style.background = color;
-  localStorage.setItem("editor_custom_bg", color);
-}
-
-  }else{
-  document.body.classList.add(`bg-${type}`);
-  document.body.style.background = "";
-  // 关键修复：切回预设主题，重置文字颜色，避免白字残留
-  richBox.style.color = "";
-  mdBox.style.color = "";
-  mdPreviewBox.style.color = "";
-  localStorage.setItem("editor_last_bg", type);
-}
-
-  calcWordCount();
-}
-
-// 页面加载读取上次主题配色
-window.addEventListener("DOMContentLoaded", ()=>{
-  const lastBg = localStorage.getItem("editor_last_bg");
-  const customBg = localStorage.getItem("editor_custom_bg");
-  if(lastBg){
-    changeEditorBg(lastBg);
-    if(lastBg === "custom" && customBg){
-      document.body.style.background = customBg;
-      const r = parseInt(customBg.slice(1,3),16);
-      const g = parseInt(customBg.slice(3,5),16);
-      const b = parseInt(customBg.slice(5,7),16);
-      const brightness = (r*299 + g*587 + b*114)/1000;
-      if(brightness < 130){
-        richBox.style.color = "#f1f1f1";
-        mdBox.style.color = "#f1f1f1";
-        mdPreviewBox.style.color = "#f1f1f1";
-      }
-    }
-  }
-  // 初始化字数统计
-  calcWordCount();
-  // 大图预览关闭绑定
-  const previewMask = document.getElementById("imgPreviewMask");
-  previewMask.onclick = ()=> previewMask.classList.remove("show");
-  // 加载缓存与笔记
-  loadLocalCache();
-  if(editId) setTimeout(initLoadNote, 100);
-});
-
-// 编辑器图片点击放大预览
-richBox.addEventListener("click", function(e){
-  const target = e.target;
-  if(target.tagName === "IMG"){
-    e.preventDefault();
-    const previewImg = document.getElementById("previewImg");
-    previewImg.src = target.src;
-    document.getElementById("imgPreviewMask").classList.add("show");
-  }
-});
-mdPreviewBox.addEventListener("click", function(e){
-  const target = e.target;
-  if(target.tagName === "IMG"){
-    e.preventDefault();
-    const previewImg = document.getElementById("previewImg");
-    previewImg.src = target.src;
-    document.getElementById("imgPreviewMask").classList.add("show");
-  }
-});
-
-// 页面切后台、关闭前自动缓存
-window.addEventListener("blur", syncFormToNoteList);
-window.addEventListener("beforeunload", syncFormToNoteList);
-
 </script>
 </body>
 </html>
