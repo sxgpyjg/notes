@@ -2105,6 +2105,15 @@ function syncFormToNoteList(){
 }
 //一键复制完整data.js
 copyAllJsonBtn.onclick = async function(){
+  const title = titleInput.value.trim();
+  const contentEmpty = currentEditMode === "rich" 
+    ? richBox.innerText.trim() === "" 
+    : mdBox.value.trim() === "";
+  // 判断：标题为空 或者 正文完全空白，直接拦截
+  if(!title || contentEmpty){
+    alert("当前笔记标题/内容为空，禁止复制空数据！");
+    return;
+  }
   syncFormToNoteList();
   const text = getFullJsText();
   try{
@@ -2119,6 +2128,7 @@ copyAllJsonBtn.onclick = async function(){
   }
   alert("完整data.js已复制，仅粘贴nano，禁止粘贴终端命令");
 };
+
 //生成图片复制脚本
 genCpBtn.onclick = async function(){
   let cpText = "# 仅复制页面选中图片，不会读取手机全部图片\n";
