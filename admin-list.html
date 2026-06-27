@@ -244,11 +244,14 @@ function escapeHtml(str){
           .replace(/'/g,"&#039;");
 }
 
-// 强制刷新远程数据，清空本地缓存
+// 强制刷新远程数据，保留本地缓存兜底
 function forceReloadRemote(){
-  localStorage.removeItem("notes");
-  location.reload(true);
+  const url = new URL(location.href);
+  // 追加时间戳，绕过缓存拉取最新data.js
+  url.searchParams.set("_dt", Date.now());
+  location.href = url.toString();
 }
+
 
 // 优先加载线上data.js远程数据，同步本地存储，延时300ms适配手机弱网
 window.addEventListener("load", ()=>{
