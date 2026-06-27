@@ -35,10 +35,8 @@ h1{
   cursor: pointer;
   user-select: none;
   letter-spacing: 1px;
-  /* 支持长按 */
   -webkit-user-select: none;
 }
-/* 全屏按钮 SVG 新版 */
 #fullPageBtn{
 width:48px;height:48px;
 border:none;background:transparent;
@@ -78,7 +76,6 @@ padding:0;
   gap: 14px;
   border-radius: 16px;
   align-items: center;
-  /* 禁止长按选中文字 */
   user-select: none;
   -webkit-user-select: none;
 }
@@ -215,7 +212,6 @@ padding:0;
 <body>
 <header>
   <h1 id="secretTrigger">笔记目录</h1>
-  <!-- 全屏SVG按钮 朝外展开初始 -->
   <button id="fullPageBtn">
     <svg viewBox="0 0 24 24" id="fullSvg">
       <path d="M10 7 H7 V10"/>
@@ -248,6 +244,7 @@ let currentFilter = "";
 let allTypes = new Set();
 const ADMIN_PWD = "admin123";
 const LONG_PRESS_TIME = 400;
+const MOVE_THRESHOLD = 8; // 滑动超过8px判定为滚动，取消点击
 
 // 全屏切换逻辑
 fullBtn.addEventListener('click',()=>{
@@ -286,27 +283,53 @@ function verifyAdminPwd(cb){
   }
 }
 
-// 标题长按：进入编辑页
+// 标题长按绑定（带滑动判断）
 function bindTitleLongPress(){
   let pressTimer = null;
   let isLongPress = false;
-  const start = ()=>{
+  let startX = 0, startY = 0;
+  let isScroll = false;
+
+  const start = (e)=>{
     isLongPress = false;
+    isScroll = false;
+    const touch = e.touches[0];
+    startX = touch.clientX;
+    startY = touch.clientY;
     pressTimer = setTimeout(()=>{
       isLongPress = true;
       verifyAdminPwd(()=>location.href = "edit.html");
     }, LONG_PRESS_TIME);
   };
+  const move = (e)=>{
+    const touch = e.touches[0];
+    const dx = Math.abs(touch.clientX - startX);
+    const dy = Math.abs(touch.clientY - startY);
+    if(dx > MOVE_THRESHOLD || dy > MOVE_THRESHOLD){
+      isScroll = true;
+      clearTimeout(pressTimer);
+    }
+  };
   const end = ()=>{
     clearTimeout(pressTimer);
-    // 短按无操作，只长按触发编辑
+    // 滑动则不触发短按
   };
   const cancel = ()=> clearTimeout(pressTimer);
 
   trigger.addEventListener('touchstart', start);
+  trigger.addEventListener('touchmove', move);
   trigger.addEventListener('touchend', end);
-  trigger.addEventListener('touchmove', cancel);
+  trigger.addEventListener('touchcancel', cancel);
+  // 鼠标兼容
   trigger.addEventListener('mousedown', start);
+  trigger.addEventListener('mousemove', (e)=>{
+    const dx = Math.abs(e.clientX - startX);
+    const dy = Math.abs(e.clientY - startY);
+    if(dx > MOVE_THRESHOLD || dy > MOVE_THRESHOLD){
+      isScroll = true;
+      clearTimeout(pressTimer);
+    }
+  });
   trigger.addEventListener('mouseup', end);
   trigger.addEventListener('mouseleave', cancel);
 }
@@ -353,7 +376,6 @@ function openRead(noteId){
   localStorage.setItem('readNoteId', noteId);
   location.href = "read.html";
 }
-// 卡片长按：进入管理列表页
 function openAdminPage(){
   verifyAdminPwd(()=>location.href = "admin-list.html");
 }
@@ -404,38 +426,66 @@ function renderNotes(){
   })
   wrap.innerHTML = html;
 
-  // 卡片绑定：短按阅读，长按管理页
+  // 卡片绑定：增加滑动位移判断，解决滚动误触
   const cards = document.querySelectorAll('.note-card');
   cards.forEach(card=>{
     let pressTimer = null;
     let isLongPress = false;
+    let startX = 0, startY = 0;
+    let isScroll = false;
     const noteId = card.dataset.id;
 
-    const startPress = ()=>{
+    const startPress = (e)=>{
       isLongPress = false;
+      isScroll = false;
+      const touch = e.touches[0];
+      startX = touch.clientX;
+      startY = touch.clientY;
       pressTimer = setTimeout(()=>{
         isLongPress = true;
         openAdminPage();
       }, LONG_PRESS_TIME);
     };
+    const movePress = (e)=>{
+      const touch = e.touches[0];
+      const dx = Math.abs(touch.clientX - startX);
+      const dy = Math.abs(touch.clientY - startY);
+      if(dx > MOVE_THRESHOLD || dy > MOVE_THRESHOLD){
+        isScroll = true;
+        clearTimeout(pressTimer);
+      }
+    };
     const endPress = ()=>{
       clearTimeout(pressTimer);
-      if(!isLongPress){
+      // 只有没滑动、不是长按才打开阅读页
+      if(!isScroll && !isLongPress){
         openRead(noteId);
       }
     };
-    const cancelPress = ()=> clearTimeout(pressTimer);
+    const cancelPress = ()=>{
+      clearTimeout(pressTimer);
+    };
 
+    // 触屏事件
     card.addEventListener('touchstart', startPress);
+    card.addEventListener('touchmove', movePress);
     card.addEventListener('touchend', endPress);
-    card.addEventListener('touchmove', cancelPress);
+    card.addEventListener('touchcancel', cancelPress);
+    // 鼠标兼容
     card.addEventListener('mousedown', startPress);
+    card.addEventListener('mousemove', (e)=>{
+      const dx = Math.abs(e.clientX - startX);
+      const dy = Math.abs(e.clientY - startY);
+      if(dx > MOVE_THRESHOLD || dy > MOVE_THRESHOLD){
+        isScroll = true;
+        clearTimeout(pressTimer);
+      }
+    });
     card.addEventListener('mouseup', endPress);
     card.addEventListener('mouseleave', cancelPress);
   })
 }
 
-// 初始化绑定标题长按
 bindTitleLongPress();
 renderFilter();
 renderNotes();

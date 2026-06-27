@@ -4,7 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>笔记目录</title>
-<script src="./data.js"></script>
+<!-- 统一和管理页、编辑器一致的线上路径 /notes/data.js -->
+<script src="/notes/data.js"></script>
 <style>
 *{
   margin: 0;
@@ -19,7 +20,6 @@ body{
   margin: 0 auto;
 }
 header{
-  /* 缩小头部上下空白 */
   margin-bottom: 12px;
   padding: 8px 6px;
   border-bottom: 1px solid #e4e7f3;
@@ -236,7 +236,6 @@ padding:0;
 
 <script>
 const wrap = document.getElementById('noteWrap');
-const dataList = window.NOTE_DATA || [];
 const trigger = document.getElementById('secretTrigger');
 const fullBtn = document.getElementById('fullPageBtn');
 const fullSvg = document.getElementById('fullSvg');
@@ -244,7 +243,40 @@ let currentFilter = "";
 let allTypes = new Set();
 const ADMIN_PWD = "admin123";
 const LONG_PRESS_TIME = 400;
-const MOVE_THRESHOLD = 8; // 滑动超过8px判定为滚动，取消点击
+const MOVE_THRESHOLD = 8;
+
+// 统一存储键（和管理页/编辑器完全一致）
+const PWD_STORE_KEY = "admin_save_pwd";
+const LOCAL_NOTE_KEY = "notes";
+let dataList = [];
+
+// 1. 数据加载函数：线上data.js优先，兜底本地缓存
+function loadNoteData(){
+  // 优先线上全局变量
+  if(window.NOTE_DATA && Array.isArray(window.NOTE_DATA)){
+    dataList = JSON.parse(JSON.stringify(window.NOTE_DATA));
+    // 同步到本地存储，断网可用
+    localStorage.setItem(LOCAL_NOTE_KEY, JSON.stringify(dataList));
+  }else{
+    // 线上加载失败，读取本地缓存
+    const localRaw = localStorage.getItem(LOCAL_NOTE_KEY);
+    try{
+      dataList = localRaw ? JSON.parse(localRaw) : [];
+    }catch(e){
+      dataList = [];
+    }
+  }
+  // 过滤编辑器临时草稿，首页不显示未保存草稿
+  dataList = dataList.filter(item => !item._isTempNew);
+}
+
+// 等待页面全部资源加载完毕再渲染（修复执行时机提前空白）
+window.addEventListener('load', ()=>{
+  loadNoteData();
+  bindTitleLongPress();
+  renderFilter();
+  renderNotes();
+});
 
 // 全屏切换逻辑
 fullBtn.addEventListener('click',()=>{
@@ -267,23 +299,23 @@ fullBtn.addEventListener('click',()=>{
   }
 })
 
-// 统一密码校验函数
+// 统一密码校验函数（和后台页面逻辑对齐）
 function verifyAdminPwd(cb){
-  const savedPwd = localStorage.getItem("admin_save_pwd");
+  const savedPwd = localStorage.getItem(PWD_STORE_KEY);
   if(savedPwd === ADMIN_PWD){
     cb();
     return;
   }
   const inputPwd = prompt("请输入管理员密码：");
   if(inputPwd === ADMIN_PWD){
-    localStorage.setItem("admin_save_pwd", inputPwd);
+    localStorage.setItem(PWD_STORE_KEY, inputPwd);
     cb();
   }else if(inputPwd !== null){
-    alert("密码错误，无权限进入");
+    alert("密码错误，无权限进入后台");
   }
 }
 
-// 标题长按绑定（带滑动判断）
+// 标题长按进入编辑器
 function bindTitleLongPress(){
   let pressTimer = null;
   let isLongPress = false;
@@ -310,17 +342,13 @@ function bindTitleLongPress(){
       clearTimeout(pressTimer);
     }
   };
-  const end = ()=>{
-    clearTimeout(pressTimer);
-    // 滑动则不触发短按
-  };
+  const end = ()=> clearTimeout(pressTimer);
   const cancel = ()=> clearTimeout(pressTimer);
 
   trigger.addEventListener('touchstart', start);
   trigger.addEventListener('touchmove', move);
   trigger.addEventListener('touchend', end);
   trigger.addEventListener('touchcancel', cancel);
-  // 鼠标兼容
   trigger.addEventListener('mousedown', start);
   trigger.addEventListener('mousemove', (e)=>{
     const dx = Math.abs(e.clientX - startX);
@@ -341,18 +369,21 @@ function toggleFilterPanel(){
   arrow.classList.toggle('rotate');
 }
 
+// 提取正文第一张图片
 function getFirstImgFromHtml(html){
   const reg = /<img[^>]+src=['"]([^'"]+)['"][^>]*>/;
   const match = html.match(reg);
   return match ? match[1] : '';
 }
 
+// 纯文字预览（去除代码块、图片）
 function getPureTextPreview(rawContent){
   let text = rawContent.replace(/```[\s\S]*?```/g,"");
   text = text.replace(/<img[^>]*>/g,"");
   return text;
 }
 
+// 渲染分类筛选按钮
 function renderFilter(){
   allTypes.clear();
   dataList.forEach(item=>{
@@ -366,36 +397,46 @@ function renderFilter(){
   filterBody.innerHTML = html;
 }
 
+// 切换分类筛选
 function filterByType(type){
   currentFilter = type;
   renderFilter();
   renderNotes();
 }
 
+// 打开阅读页
 function openRead(noteId){
   localStorage.setItem('readNoteId', noteId);
   location.href = "read.html";
 }
+
+// 长按卡片进入管理列表
 function openAdminPage(){
   verifyAdminPwd(()=>location.href = "admin-list.html");
 }
 
+// 渲染笔记卡片列表
 function renderNotes(){
   let list = [...dataList];
   if(currentFilter) list = list.filter(item=>item.type === currentFilter);
+  // 按创建时间倒序，最新在前
   const sorted = list.sort((a,b)=>new Date(b.date.replace(" ","T")) - new Date(a.date.replace(" ","T")));
   if(sorted.length === 0){
-    wrap.innerHTML = `<div class="empty-tip">暂无笔记</div>`;
+    wrap.innerHTML = `<div class="empty-tip">暂无笔记，长按顶部标题新建</div>`;
     return;
   }
   let html = '';
   sorted.forEach((item)=>{
     let tagClass = 'tag-custom';
-    if(item.type === 'note') tagClass = 'tag-note';
-    if(item.type === 'doc') tagClass = 'tag-doc';
     let tagText = item.type;
-    if(item.type === 'note') tagText = '开发笔记';
-    if(item.type === 'doc') tagText = '实操教程';
+    if(item.type === 'note'){
+      tagClass = 'tag-note';
+      tagText = '开发笔记';
+    }
+    if(item.type === 'doc'){
+      tagClass = 'tag-doc';
+      tagText = '实操教程';
+    }
     
     const previewHtml = getPureTextPreview(item.content);
     
@@ -426,7 +467,7 @@ function renderNotes(){
   })
   wrap.innerHTML = html;
 
-  // 卡片绑定：增加滑动位移判断，解决滚动误触
+  // 卡片长按/点击逻辑
   const cards = document.querySelectorAll('.note-card');
   cards.forEach(card=>{
     let pressTimer = null;
@@ -457,21 +498,16 @@ function renderNotes(){
     };
     const endPress = ()=>{
       clearTimeout(pressTimer);
-      // 只有没滑动、不是长按才打开阅读页
       if(!isScroll && !isLongPress){
         openRead(noteId);
       }
     };
-    const cancelPress = ()=>{
-      clearTimeout(pressTimer);
-    };
+    const cancelPress = ()=> clearTimeout(pressTimer);
 
-    // 触屏事件
     card.addEventListener('touchstart', startPress);
     card.addEventListener('touchmove', movePress);
     card.addEventListener('touchend', endPress);
     card.addEventListener('touchcancel', cancelPress);
-    // 鼠标兼容
     card.addEventListener('mousedown', startPress);
     card.addEventListener('mousemove', (e)=>{
       const dx = Math.abs(e.clientX - startX);
@@ -485,10 +521,6 @@ function renderNotes(){
     card.addEventListener('mouseleave', cancelPress);
   })
 }
-
-bindTitleLongPress();
-renderFilter();
-renderNotes();
 </script>
 </body>
 </html>
