@@ -4,7 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
 <title>笔记编辑器（完整移植纯写作原生交互）</title>
-<script src="./data.js"></script>
+<script src="./data.js?v=1"></script>
+
 <!-- 公式渲染KaTeX -->
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
@@ -718,6 +719,8 @@ body.bg-custom .md-preview{
     <div class="tool-row">
       <button class="tool-btn" onclick="exportSingleNoteHtml()">导出本篇HTML</button>
       <button class="tool-btn" id="insertCodeBtn" onclick="insertMdCode()">插入代码块模板</button>
+      <button class="tool-btn" onclick="forceReloadRemote()">刷新远程data.js</button>
+
     </div>
     <input type="file" id="imgFileInput" multiple>
   </div>
@@ -865,6 +868,11 @@ function addImgSerial(){
   globalImgSerial++;
   localStorage.setItem("img_serial", globalImgSerial);
 }
+// 强制刷新远程数据，清空本地缓存
+function forceReloadRemote(){
+  localStorage.removeItem("notes");
+  location.reload(true);
+}
 
 const CACHE_KEY = "note_temp_data";
 const PWD_STORE_KEY = "admin_save_pwd";
@@ -907,7 +915,7 @@ function autoLoginCheck(){
     document.getElementById("mainWrap").style.display = "block";
     loadLocalCache();
     window.addEventListener("DOMContentLoaded", ()=>{
-      setTimeout(initLoadNote, 100);
+      setTimeout(initLoadNote, 300);
     })
   }
 }

@@ -4,7 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>笔记管理列表</title>
-<script src="/notes/data.js"></script>
+<!-- 同目录相对路径 + 版本号防缓存 -->
+<script src="./data.js?v=1"></script>
 <style>
 *{
   margin:0;padding:0;box-sizing:border-box;
@@ -177,6 +178,7 @@ h1{
       <button class="blog-btn" onclick="window.open('https://sxgpyjg.github.io','_blank')">博客主页</button>
       <button class="album-btn" onclick="window.open('https://sxgpyjg.github.io/blog','_blank')">图文相册</button>
       <button class="new-btn" onclick="location.href='edit.html'">+新建笔记</button>
+      <button class="back-btn" onclick="forceReloadRemote()">刷新数据</button>
       <button class="back-btn" onclick="location.href='index.html'">笔记首页</button>
       <button class="back-btn" onclick="logoutAdmin()">退出登录</button>
     </div>
@@ -191,13 +193,21 @@ const LOGIN_EXPIRE_KEY = "admin_login_expire";
 const LOGIN_EXPIRE_HOUR = 8;
 let remoteNoteData = [];
 
-// 优先加载线上data.js远程数据，同步本地存储
+// 强制刷新远程数据，清空本地缓存
+function forceReloadRemote(){
+  localStorage.removeItem("notes");
+  location.reload(true);
+}
+
+// 优先加载线上data.js远程数据，同步本地存储，延时300ms适配手机弱网
 window.addEventListener("load", ()=>{
-  if(window.NOTE_DATA && Array.isArray(window.NOTE_DATA)){
-    remoteNoteData = JSON.parse(JSON.stringify(window.NOTE_DATA));
-    saveAllNotes(remoteNoteData);
-  }
-  render();
+  setTimeout(()=>{
+    if(window.NOTE_DATA && Array.isArray(window.NOTE_DATA)){
+      remoteNoteData = JSON.parse(JSON.stringify(window.NOTE_DATA));
+      saveAllNotes(remoteNoteData);
+    }
+    render();
+  }, 300);
 });
 
 // 读取笔记：远程优先，兜底本地缓存
