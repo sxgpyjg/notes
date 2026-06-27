@@ -248,7 +248,6 @@ padding:0;
 
 <div class="note-list" id="noteWrap"></div>
 
-<!-- data.js移至页面底部，删除defer，保证先加载数据再执行渲染脚本 -->
 <script src="./data.js?v=1"></script>
 <script>
 const wrap = document.getElementById('noteWrap');
@@ -293,7 +292,6 @@ function loadNoteData(){
   }
   // 注释过滤草稿，全部笔记显示
   // dataList = dataList.filter(item => !item._isTempNew);
-  // 捕获渲染报错，防止页面空白
   try{
     if(dataList.length > 0){
       bindTitleLongPress();
@@ -365,12 +363,16 @@ function toggleFilterPanel(){
 }
 
 function getFirstImgFromHtml(html){
+  // 强制转为字符串，防止null报错
+  const str = String(html ?? "");
   const reg = /<img[^>]+src=['"]([^'"]+)['"][^>]*>/;
-  const match = html.match(reg);
+  const match = str.match(reg);
   return match ? match[1] : '';
 }
 function getPureTextPreview(rawContent){
-  let text = rawContent.replace(/```[\s\S]*?```/g,"");
+  // 修复核心：空值兜底转字符串
+  let text = String(rawContent ?? "");
+  text = text.replace(/```[\s\S]*?```/g,"");
   text = text.replace(/<img[^>]*>/g,"");
   return text;
 }
@@ -394,8 +396,8 @@ function openAdminPage(){
   verifyAdminPwd(()=>location.href = "admin-list.html");
 }
 function escapeHtml(str){
-  if(!str) return "";
-  return str.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");
+  const s = String(str ?? "");
+  return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");
 }
 function renderNotes(){
   let list = [...dataList];
@@ -420,7 +422,6 @@ function renderNotes(){
     const safeDate = escapeHtml(item.date);
     const safePreview = escapeHtml(getPureTextPreview(item.content));
     let leftImgSrc = item.cover || getFirstImgFromHtml(item.content);
-    // 修复：图片src不转义链接，不会破坏图片地址
     let imgBoxHtml = leftImgSrc ? `<div class="card-img-box"><img src="${leftImgSrc}" alt=""></div>` : '';
     html += `<div class="note-card" data-id="${escapeHtml(item.id)}">${imgBoxHtml}<div class="card-right-wrap"><div class="card-head"><div class="card-title">${safeTitle}</div><span class="tag ${tagClass}">${tagText}</span></div><div class="card-date">发布时间：${safeDate}</div><div class="card-preview">${safePreview}</div></div></div>`;
   })
