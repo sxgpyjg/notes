@@ -2154,29 +2154,27 @@ saveNoteToStorage(list);
 //一键复制完整data.js
 copyAllJsonBtn.onclick = async function(){
 const allNotes = JSON.parse(localStorage.getItem("notes") || "[]");
+// 取消过滤草稿，所有笔记（含_isTempNew:true）全部复制
 const validNotes = allNotes.filter(item => {
-if(!item || !item.id) return false;
-if(item._isTempNew === true) return false;
-const titleStr = (item.title || "").trim();
-return titleStr.length > 0;
+  if(!item || !item.id) return false;
+  const titleStr = (item.title || "").trim();
+  return titleStr.length > 0;
 });
-if(validNotes.length === 0){
-alert("暂无带有效标题的笔记可复制");
-return;
-}
-const jsonText = JSON.stringify(validNotes,null,2);
+const jsonText = "window.NOTE_DATA = " + JSON.stringify(validNotes, null, 2);
 try{
-await navigator.clipboard.writeText(jsonText);
+  await navigator.clipboard.writeText(jsonText);
+  alert("已复制全部笔记JSON（包含草稿），直接粘贴覆盖data.js即可");
 }catch(err){
-const tempTextarea = document.createElement("textarea");
-tempTextarea.value = jsonText;
-document.body.appendChild(tempTextarea);
-tempTextarea.select();
-document.execCommand("copy");
-document.body.removeChild(tempTextarea);
+  const temp = document.createElement("textarea");
+  temp.value = jsonText;
+  document.body.appendChild(temp);
+  temp.select();
+  document.execCommand("copy");
+  document.body.removeChild(temp);
+  alert("复制成功（兼容模式，包含草稿笔记）");
 }
-alert(`复制成功，共${validNotes.length}条带标题笔记，仅本段可粘贴nano`);
 };
+
 //生成图片复制脚本
 genCpBtn.onclick = async function(){
 let cpText = "# 仅复制页面选中图片，不会读取手机全部图片\n";
