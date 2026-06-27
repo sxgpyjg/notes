@@ -425,14 +425,10 @@ function getFirstImgFromHtml(html){
   return match ? match[1] : '';
 }
 function getPureTextPreview(rawContent){
-  let text = String(rawContent ?? "");
-  text = text.replace(/```[\s\S]*?```/g,"");
+  let text = rawContent.replace(/```[\s\S]*?```/g,"");
   text = text.replace(/<img[^>]*>/g,"");
-  // 限制预览最多120字符，超长自动截断加省略号
-  if(text.length > 120) text = text.slice(0,120) + "…";
   return text;
 }
-
 
 function renderFilter(){
   allTypes.clear();

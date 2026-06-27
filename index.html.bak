@@ -264,7 +264,7 @@ const fullSvg = document.getElementById('fullSvg');
 let currentFilter = "";
 let allTypes = new Set();
 const ADMIN_PWD = "admin123";
-const LONG_PRESS_TIME = 400;
+const LONG_PRESS_TIME = 600;
 const MOVE_THRESHOLD = 8;
 // 免登录缓存配置
 const PWD_STORE_KEY = "admin_save_pwd";
@@ -428,8 +428,12 @@ function getPureTextPreview(rawContent){
   let text = String(rawContent ?? "");
   text = text.replace(/```[\s\S]*?```/g,"");
   text = text.replace(/<img[^>]*>/g,"");
+  // 限制预览最多120字符，超长自动截断加省略号
+  if(text.length > 120) text = text.slice(0,120) + "…";
   return text;
 }
+
+
 function renderFilter(){
   allTypes.clear();
   dataList.forEach(item=>{if(item.type) allTypes.add(item.type);})
