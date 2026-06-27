@@ -2106,11 +2106,11 @@ function syncFormToNoteList(){
 //一键复制完整data.js
 copyAllJsonBtn.onclick = async function(){
   const allNotes = JSON.parse(localStorage.getItem("notes") || "[]");
-  // 过滤规则：存在对象、有id、标题去除空格后不为空
+  // 只保留有id、标题非空白的笔记
   const validNotes = allNotes.filter(item => {
     if(!item || !item.id) return false;
-    const title = (item.title || "").trim();
-    return title !== "";
+    const titleStr = (item.title || "").trim();
+    return titleStr.length > 0;
   });
 
   if(validNotes.length === 0){
@@ -2118,21 +2118,19 @@ copyAllJsonBtn.onclick = async function(){
     return;
   }
 
-  const n = JSON.stringify(validNotes,null,2);
+  const jsonText = JSON.stringify(validNotes,null,2);
   try{
-    await navigator.clipboard.writeText(n);
-  }catch(i){
-    const r=document.createElement("textarea");
-    r.value=n;
-    document.body.appendChild(r);
-    r.select();
+    await navigator.clipboard.writeText(jsonText);
+  }catch(err){
+    const tempTextarea = document.createElement("textarea");
+    tempTextarea.value = jsonText;
+    document.body.appendChild(tempTextarea);
+    tempTextarea.select();
     document.execCommand("copy");
-    document.body.removeChild(r);
+    document.body.removeChild(tempTextarea);
   }
   alert(`复制成功，共${validNotes.length}条带标题笔记，仅本段可粘贴nano`);
 };
-
-
 
 //生成图片复制脚本
 genCpBtn.onclick = async function(){

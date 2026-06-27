@@ -247,9 +247,7 @@ window.delNote = function(id){
 
 function render(){
   const wrap = document.getElementById('listWrap');
-  // 每次渲染强制读取本地最新存储，不用缓存变量
-  let list = JSON.parse(localStorage.getItem("notes") || "[]");
-  window.NOTE_DATA = list;
+  let list = window.NOTE_DATA || [];
   if(list.length === 0){
     wrap.innerHTML = '<div class="empty">暂无笔记，点击上方【+新建笔记】创建第一条</div>';
     return;
@@ -271,7 +269,6 @@ function render(){
   })
   wrap.innerHTML = html;
 }
-
 </script>
 </body>
 </html>
