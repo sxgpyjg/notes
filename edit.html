@@ -916,20 +916,36 @@ autoLoginCheck();
 function loadLocalCache(){
   const cacheStr = localStorage.getItem(CACHE_KEY);
   const realStorage = localStorage.getItem("notes");
+
+  // 第一步：优先加载远程data.js原始数据
+  if(window.NOTE_DATA && Array.isArray(window.NOTE_DATA)){
+    list = [...window.NOTE_DATA];
+  }
+
+  // 第二步：如果本地有缓存，只用来补草稿，不覆盖远程正式笔记
   if(cacheStr){
     try{
-      window.NOTE_DATA = JSON.parse(cacheStr);
-      list = window.NOTE_DATA;
+      const tempCache = JSON.parse(cacheStr);
+      const tempDraft = tempCache.find(item => item._isTempNew === true);
+      if(tempDraft){
+        const hasDraft = list.some(i => i._isTempNew === true);
+        if(!hasDraft) list.push(tempDraft);
+      }
     }catch(e){}
   }
-  // 强制以主存储notes为准，覆盖页面缓存，解决数据不同步
+
+  // 本地完整notes不再覆盖远程，仅导入备份时临时生效
+  // 注释掉强行覆盖逻辑
+  /*
   if(realStorage){
     try{
       list = JSON.parse(realStorage);
       window.NOTE_DATA = list;
     }catch(e){}
   }
+  */
 }
+
 
 function saveLocalCache(){
   localStorage.setItem(CACHE_KEY, JSON.stringify(list));
