@@ -2283,8 +2283,8 @@ saveNoteToStorage(list);
 }
 //一键复制完整data.js
 copyAllJsonBtn.onclick = async function(){
-const allNotes = JSON.parse(localStorage.getItem("notes") || "[]");
-// 取消过滤草稿，所有笔记（含_isTempNew:true）全部复制
+// 直接取页面当前内存最新笔记列表（包含刚新建未保存草稿）
+const allNotes = list;
 const validNotes = allNotes.filter(item => {
   if(!item || !item.id) return false;
   const titleStr = (item.title || "").trim();
@@ -2293,7 +2293,7 @@ const validNotes = allNotes.filter(item => {
 const jsonText = "window.NOTE_DATA = " + JSON.stringify(validNotes, null, 2);
 try{
   await navigator.clipboard.writeText(jsonText);
-  alert("已复制全部笔记JSON（包含草稿），直接粘贴覆盖data.js即可");
+  alert("已复制全部笔记JSON（包含未下载新建草稿），直接粘贴覆盖data.js即可");
 }catch(err){
   const temp = document.createElement("textarea");
   temp.value = jsonText;
@@ -2304,6 +2304,7 @@ try{
   alert("复制成功（兼容模式，包含草稿笔记）");
 }
 };
+
 
 //生成图片复制脚本
 genCpBtn.onclick = async function(){
