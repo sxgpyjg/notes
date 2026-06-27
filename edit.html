@@ -1080,7 +1080,12 @@ const clearAllContentBtn = document.getElementById("clearAllContentBtn");
 // 编辑区整体底色修改修复
 if(customBgColorInput){
   customBgColorInput.addEventListener("input", function(){
+    // 更新全局自定义底色变量，适配css主题
+    document.body.style.setProperty("--custom-bg", this.value);
+    // 同步三个编辑容器底色
     richBox.style.backgroundColor = this.value;
+    mdBox.style.backgroundColor = this.value;
+    mdPreviewBox.style.backgroundColor = this.value;
     calcWordCount();
   });
 }
@@ -2425,17 +2430,18 @@ calcWordCount();
 });
 bgColorInput.addEventListener("input", function(){
   richBox.focus();
-  // 必须先开启CSS样式模式，否则hiliteColor无效果
-  document.execCommand("styleWithCSS", false, true);
-  // 主流浏览器标准高亮文字背景
-  const ok = document.execCommand("hiliteColor", false, this.value);
-  // 兼容兜底：部分浏览器hilite失效时用backColor
-  if(!ok){
-    document.execCommand("backColor", false, this.value);
-  }
+  const sel = window.getSelection();
+  // 无选中文字直接退出
+  if (!sel.rangeCount || sel.getRangeAt(0).collapsed) return;
+  const range = sel.getRangeAt(0);
+  const span = document.createElement("span");
+  span.style.backgroundColor = this.value;
+  // 给选中文字包裹底色span
+  range.surroundContents(span);
   checkFormatActive();
   calcWordCount();
 });
+
 // ========== 查找替换功能（纯文本/富文本双模式兼容） ==========
 const findReplaceBtn = document.getElementById('findReplaceBtn');
 const findReplaceMask = document.getElementById('findReplaceMask');
@@ -2709,6 +2715,44 @@ function getNowTimeStr() {
   const mi = String(d.getMinutes()).padStart(2, "0");
   const s = String(d.getSeconds()).padStart(2, "0");
   return `${y}-${m}-${day} ${h}:${mi}:${s}`;
+}
+// 切换预设编辑底色，清除自定义行内背景
+function changeEditorBg(type){
+  // 清空全部主题class
+  document.body.classList.remove(
+    "bg-cream","bg-gray","bg-paper","bg-softblue",
+    "bg-sepia","bg-dark","bg-midnight","bg-custom"
+  );
+  // 清空行内自定义背景，让预设主题CSS正常生效
+  richBox.style.backgroundColor = "";
+  mdBox.style.backgroundColor = "";
+  mdPreviewBox.style.backgroundColor = "";
+
+  if(type === "custom"){
+    document.body.classList.add("bg-custom");
+    // 显示自定义取色器
+    customBgColorInput.style.display = "block";
+  }else{
+    document.body.classList.add("bg-" + type);
+    // 隐藏取色器
+    customBgColorInput.style.display = "none";
+  }
+  calcWordCount();
+}
+
+// 重置编辑区为默认纯白
+function resetDefaultBg(){
+  document.body.classList.remove(
+    "bg-cream","bg-gray","bg-paper","bg-softblue",
+    "bg-sepia","bg-dark","bg-midnight","bg-custom"
+  );
+  // 清空所有编辑容器自定义行内底色
+  richBox.style.backgroundColor = "";
+  mdBox.style.backgroundColor = "";
+  mdPreviewBox.style.backgroundColor = "";
+  // 隐藏取色器
+  customBgColorInput.style.display = "none";
+  calcWordCount();
 }
 
 // 存储读写封装
