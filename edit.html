@@ -710,6 +710,10 @@ body.bg-custom .md-preview{
   max-height:95vh;
   object-fit:contain;
 }
+.rich-editor {
+  background: #fff;
+}
+
 </style>
 </head>
 <body>
@@ -1072,6 +1076,14 @@ const matchCaseCheck = document.getElementById("matchCase");
 const customBgColorInput = document.getElementById("customBgColor");
 // 清空全部按钮DOM
 const clearAllContentBtn = document.getElementById("clearAllContentBtn");
+
+// 编辑区整体底色修改修复
+if(customBgColorInput){
+  customBgColorInput.addEventListener("input", function(){
+    richBox.style.backgroundColor = this.value;
+    calcWordCount();
+  });
+}
 
 // ========== 新增：清空全部内容完整函数 ==========
 function clearAllNotesContent(){
