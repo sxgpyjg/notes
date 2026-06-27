@@ -266,6 +266,15 @@ const PWD_STORE_KEY = "admin_save_pwd";
 const LOCAL_NOTE_KEY = "notes";
 let dataList = [];
 
+// 等待远程data.js加载完成，弱网延迟兼容
+async function waitNoteData(){
+  let count = 0;
+  while((!window.NOTE_DATA || !Array.isArray(window.NOTE_DATA)) && count < 20){
+    await new Promise(r=>setTimeout(r,50));
+    count++;
+  }
+}
+
 // 强制刷新远程data.js，清空本地缓存，解决手机缓存看不到新笔记
 function forceReloadRemote(){
   localStorage.removeItem(LOCAL_NOTE_KEY);
@@ -292,14 +301,15 @@ function loadNoteData(){
   dataList = dataList.filter(item => !item._isTempNew);
 }
 
-// 等待页面全部资源加载完毕再渲染，增加300ms延时适配手机弱网
-window.addEventListener('load', ()=>{
+// 页面加载入口，增加等待data.js逻辑
+window.addEventListener('load', async ()=>{
+  await waitNoteData();
   setTimeout(()=>{
     loadNoteData();
     bindTitleLongPress();
     renderFilter();
     renderNotes();
-  }, 300);
+  }, 100);
 });
 
 // 全屏切换逻辑
@@ -443,8 +453,16 @@ function openAdminPage(){
 function renderNotes(){
   let list = [...dataList];
   if(currentFilter) list = list.filter(item=>item.type === currentFilter);
-  // 按创建时间倒序，最新在前
-  const sorted = list.sort((a,b)=>new Date(b.date.replace(" ","T")) - new Date(a.date.replace(" ","T")));
+
+  // 修复日期排序，增加异常字段容错，不会卡死渲染
+  const sorted = list.sort((a,b)=>{
+    let t1 = new Date(a.date ? a.date.replace(" ","T") : 0);
+    let t2 = new Date(b.date ? b.date.replace(" ","T") : 0);
+    if(isNaN(t2.getTime())) return -1;
+    if(isNaN(t1.getTime())) return 1;
+    return t2 - t1;
+  });
+
   if(sorted.length === 0){
     wrap.innerHTML = `<div class="empty-tip">暂无笔记，长按顶部标题新建</div>`;
     return;

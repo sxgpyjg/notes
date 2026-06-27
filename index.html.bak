@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>笔记目录</title>
-<!-- 统一和管理页、编辑器一致的线上路径 /notes/data.js -->
-<script src="/notes/data.js"></script>
+<!-- 文件都在notes文件夹内，使用相对路径，增加版本号防缓存 -->
+<script src="./data.js?v=1"></script>
 <style>
 *{
   margin: 0;
@@ -28,6 +28,11 @@ header{
   align-items: center;
   gap: 12px;
 }
+.header-right-group{
+  display: flex;
+  gap:6px;
+  align-items:center;
+}
 h1{
   font-size: 20px;
   color: #1d2133;
@@ -36,6 +41,14 @@ h1{
   user-select: none;
   letter-spacing: 1px;
   -webkit-user-select: none;
+}
+.refresh-data-btn{
+  padding:4px 8px;
+  border:none;
+  border-radius:6px;
+  background:#e0e7ff;
+  color:#334155;
+  font-size:12px;
 }
 #fullPageBtn{
 width:48px;height:48px;
@@ -212,14 +225,17 @@ padding:0;
 <body>
 <header>
   <h1 id="secretTrigger">笔记目录</h1>
-  <button id="fullPageBtn">
-    <svg viewBox="0 0 24 24" id="fullSvg">
-      <path d="M10 7 H7 V10"/>
-      <path d="M14 7 H17 V10"/>
-      <path d="M14 17 H17 V14"/>
-      <path d="M10 17 H7 V14"/>
-    </svg>
-  </button>
+  <div class="header-right-group">
+    <button class="refresh-data-btn" onclick="forceReloadRemote()">刷新数据</button>
+    <button id="fullPageBtn">
+      <svg viewBox="0 0 24 24" id="fullSvg">
+        <path d="M10 7 H7 V10"/>
+        <path d="M14 7 H17 V10"/>
+        <path d="M14 17 H17 V14"/>
+        <path d="M10 17 H7 V14"/>
+      </svg>
+    </button>
+  </div>
 </header>
 
 <div class="filter-collapse">
@@ -250,6 +266,12 @@ const PWD_STORE_KEY = "admin_save_pwd";
 const LOCAL_NOTE_KEY = "notes";
 let dataList = [];
 
+// 强制刷新远程data.js，清空本地缓存，解决手机缓存看不到新笔记
+function forceReloadRemote(){
+  localStorage.removeItem(LOCAL_NOTE_KEY);
+  location.reload(true);
+}
+
 // 1. 数据加载函数：线上data.js优先，兜底本地缓存
 function loadNoteData(){
   // 优先线上全局变量
@@ -270,12 +292,14 @@ function loadNoteData(){
   dataList = dataList.filter(item => !item._isTempNew);
 }
 
-// 等待页面全部资源加载完毕再渲染（修复执行时机提前空白）
+// 等待页面全部资源加载完毕再渲染，增加300ms延时适配手机弱网
 window.addEventListener('load', ()=>{
-  loadNoteData();
-  bindTitleLongPress();
-  renderFilter();
-  renderNotes();
+  setTimeout(()=>{
+    loadNoteData();
+    bindTitleLongPress();
+    renderFilter();
+    renderNotes();
+  }, 300);
 });
 
 // 全屏切换逻辑
