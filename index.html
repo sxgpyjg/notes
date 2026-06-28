@@ -287,7 +287,7 @@ cursor: pointer;
 <body>
 <!-- 密码弹窗 -->
 <div class="modal-mask" id="pwdMask">
-  <div class="modal-box">
+  <div class="modal-box" id="pwdBox">
     <h3>管理员验证</h3>
     <input type="password" id="pwdInput" placeholder="输入管理员密码">
     <div class="modal-row">
@@ -334,6 +334,7 @@ const wrap = document.getElementById('noteWrap');
 const fullBtn = document.getElementById('fullPageBtn');
 const fullSvg = document.getElementById('fullSvg');
 const pwdMask = document.getElementById('pwdMask');
+const pwdBox = document.getElementById('pwdBox');
 const pwdInput = document.getElementById('pwdInput');
 const rememberPwd = document.getElementById('rememberPwd');
 const confirmPwdBtn = document.getElementById('confirmPwd');
@@ -392,7 +393,8 @@ function logoutAdmin(){
 logoutBtn.addEventListener('click', logoutAdmin);
 
 // 密码确认逻辑
-confirmPwdBtn.addEventListener('click', ()=>{
+confirmPwdBtn.addEventListener('click', (e)=>{
+  e.stopPropagation();
   const val = pwdInput.value.trim();
   if(val !== ADMIN_PWD){
     alert("密码错误");
@@ -407,12 +409,18 @@ confirmPwdBtn.addEventListener('click', ()=>{
   closePwdModal();
   renderNotes();
 });
-cancelPwdBtn.addEventListener('click', closePwdModal);
+cancelPwdBtn.addEventListener('click', (e)=>{
+  e.stopPropagation();
+  closePwdModal();
+});
+// 内部box阻止冒泡，避免点内容触发mask关闭
+pwdBox.addEventListener('click', e=>e.stopPropagation());
+// 仅点击mask本体关闭
 pwdMask.addEventListener('click', (e)=>{
   if(e.target === pwdMask) closePwdModal();
 });
 
-// 通用绑定长按函数，复用给标题、筛选头部
+// 通用绑定长按函数，增加长按触发标记、抑制后续点击
 function bindLongPress(el, normalClick){
   let pressTimer = null, startX=0, startY=0, triggeredLong=false;
   // 触屏
@@ -423,6 +431,7 @@ function bindLongPress(el, normalClick){
     pressTimer = setTimeout(()=>{
       triggeredLong = true;
       openPwdModal();
+      e.preventDefault(); // 抑制后续click/滚动连锁
     }, LONG_PRESS_TIME);
   });
   el.addEventListener('touchmove', (e)=>{
@@ -435,10 +444,12 @@ function bindLongPress(el, normalClick){
       pressTimer=null;
     }
   });
-  el.addEventListener('touchend touchcancel', ()=>{
+  el.addEventListener('touchend touchcancel', (e)=>{
     clearTimeout(pressTimer);
     pressTimer=null;
+    // 没触发长按才执行常规点击
     if(!triggeredLong && normalClick) normalClick();
+    else if(triggeredLong) e.preventDefault();
   });
   // 鼠标
   let mouseTimer=null, mTriggered=false, mX,mY;
@@ -448,17 +459,19 @@ function bindLongPress(el, normalClick){
     mouseTimer=setTimeout(()=>{
       mTriggered=true;
       openPwdModal();
+      e.preventDefault();
     },LONG_PRESS_TIME);
   });
-  el.addEventListener('mouseup mouseleave',()=>{
+  el.addEventListener('mouseup mouseleave',(e)=>{
     clearTimeout(mouseTimer);
     mouseTimer=null;
     if(!mTriggered && normalClick) normalClick();
+    else if(mTriggered) e.preventDefault();
   });
   // 右键
   el.addEventListener('contextmenu',(e)=>{
     e.preventDefault();
-    openPwdModal();
+    if(!isAdminLoggedIn()) openPwdModal();
   });
 }
 
@@ -598,6 +611,7 @@ function renderNotes(){
       pressTimer = setTimeout(()=>{
         isLongPress=true;
         openPwdModal();
+        e.preventDefault();
       },LONG_PRESS_TIME);
     };
     const movePress = (e)=>{
@@ -610,11 +624,13 @@ function renderNotes(){
         pressTimer=null;
       }
     };
-    const endPress = ()=>{
+    const endPress = (e)=>{
       clearTimeout(pressTimer);
       pressTimer=null;
       if(!isLongPress){
         openRead(noteId);
+      }else{
+        e.preventDefault();
       }
     };
     card.addEventListener('touchstart',startPress);
@@ -630,13 +646,16 @@ function renderNotes(){
       mouseTimer = setTimeout(()=>{
         mouseIsLong = true;
         openPwdModal();
+        e.preventDefault();
       }, LONG_PRESS_TIME);
     };
-    const mouseUpFn = ()=>{
+    const mouseUpFn = (e)=>{
       clearTimeout(mouseTimer);
       mouseTimer=null;
       if(!mouseIsLong){
         openRead(noteId);
+      }else{
+        e.preventDefault();
       }
     };
     const mouseLeaveFn = ()=>{
@@ -650,7 +669,7 @@ function renderNotes(){
     // 右键
     card.addEventListener("contextmenu", (e)=>{
       e.preventDefault();
-      openPwdModal();
+      if(!isAdminLoggedIn()) openPwdModal();
     });
   });
 }
