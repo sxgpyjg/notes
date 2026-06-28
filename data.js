@@ -1,14 +1,5 @@
 window.NOTE_DATA = [
   {
-    "id": 1782311326522,
-    "title": "本地",
-    "type": "图片",
-    "content": "<img loading=\"lazy\" src=\"https://cdn.jsdelivr.net/gh/sxgpyjg/notes@main/images/3_JRC_1776997437161_o.jpg\" alt=\"本地图片\"><br><br>",
-    "date": "2026-06-28 10:08:35",
-    "_isTempNew": true,
-    "private": false
-  },
-  {
     "id": 1782518114416,
     "title": "红楼梦剧照",
     "type": "女星",
