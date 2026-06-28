@@ -756,6 +756,7 @@ body.bg-custom .md-preview{
       <button class="tool-btn" onclick="exportSingleNoteHtml()">导出本篇HTML</button>
       <button class="tool-btn" id="insertCodeBtn" onclick="insertMdCode()">插入代码块模板</button>
       <button class="tool-btn" onclick="forceReloadRemote()">刷新远程data.js</button>
+      <button class="tool-btn" id="loadCleanSnapshot">加载纯净管理快照</button>
     </div>
     <input type="file" id="imgFileInput" multiple>
   </div>
@@ -1038,6 +1039,31 @@ function loadLocalCache(){
     }catch(e){}
   }
 }
+
+// 加载纯净管理快照按钮绑定
+document.getElementById('loadCleanSnapshot').addEventListener('click', ()=>{
+  const snapStr = sessionStorage.getItem('cleanNoteSnapshot');
+  if(!snapStr){
+    alert('无纯净快照！先在管理页完成删除/复制纯净data.js，再切回来点击');
+    return;
+  }
+  try{
+    const cleanList = JSON.parse(snapStr);
+    // 覆盖权威数据源+内存list，压过从data.js拉取的旧脏数据
+    window.NOTE_DATA = cleanList;
+    list = JSON.parse(JSON.stringify(cleanList));
+    // 清空易掺脏数据的持久缓存
+    localStorage.removeItem("notes");
+    localStorage.removeItem("note_temp_data");
+    // 重加载当前编辑笔记、重算字数
+    initLoadNote();
+    calcWordCount();
+    alert('已加载管理端纯净快照！当前会话内列表干净；刷新页面/重开会恢复线上旧数据，编辑完成复制推送固化即可');
+  }catch(e){
+    console.error('快照解析失败', e);
+    alert('快照加载失败，请核对管理页删除、复制纯净data.js流程');
+  }
+});
 
 function saveLocalCache(){
   const tempObj = {
@@ -2594,6 +2620,8 @@ saveMdRecord();
 renderMdPreview();
 calcWordCount();
 }else{
+// 富文本模式替换文本逻辑简化示例，按需扩展
+richEditor.innerText = val;
 calcWordCount();
 }
 }
@@ -2839,10 +2867,7 @@ window.addEventListener("DOMContentLoaded", () => {
   renderMdPreview();
   calcWordCount();
 });
-
-
-
-
 </script>
 </body>
 </html>
+

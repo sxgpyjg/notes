@@ -220,8 +220,7 @@ h1{
       <button class="album-btn" onclick="window.open('https://sxgpyjg.github.io/blog','_blank')">图文相册</button>
       <button class="new-btn" onclick="location.href='edit.html'">+新建笔记</button>
       <button class="back-btn" onclick="forceReloadRemote()">刷新数据</button>
-      <!-- 新增复制纯净JSON按钮 -->
-      <button class="back-btn" onclick="copyCleanJson()">复制全部笔记JSON</button>
+      <button class="back-btn" onclick="copyCleanJson()">复制纯净data.js</button>
       <button class="back-btn" onclick="location.href='index.html'">笔记首页</button>
       <button class="back-btn" onclick="logoutAdmin()">退出登录</button>
     </div>
@@ -246,16 +245,14 @@ function escapeHtml(str){
           .replace(/'/g,"&#039;");
 }
 
-// 强制刷新远程数据，保留本地缓存兜底
+// 强制刷新远程数据，追加时间戳绕过缓存
 function forceReloadRemote(){
   const url = new URL(location.href);
-  // 追加时间戳，绕过缓存拉取最新data.js
   url.searchParams.set("_dt", Date.now());
   location.href = url.toString();
 }
 
-
-// 优先加载线上data.js远程数据，同步本地存储，延时300ms适配手机弱网
+// 优先加载线上data.js远程数据，同步本地存储，延时适配弱网
 window.addEventListener("load", ()=>{
   setTimeout(()=>{
     if(window.NOTE_DATA && Array.isArray(window.NOTE_DATA)){
@@ -277,20 +274,20 @@ function loadAllNotes(){
   }
 }
 
-// 统一写入唯一存储 notes
+// 统一写入唯一存储 notes，同步全局NOTE_DATA
 function saveAllNotes(list){
   localStorage.setItem("notes", JSON.stringify(list));
   window.NOTE_DATA = list;
 }
 
-// 退出登录（和编辑器逻辑完全一致）
+// 退出登录
 function logoutAdmin(){
   localStorage.removeItem(PWD_STORE_KEY);
   localStorage.removeItem(LOGIN_EXPIRE_KEY);
   location.reload();
 }
 
-// 登录校验
+// 登录校验，登录后写入会话快照
 function doLogin(){
   const inputPwd = document.getElementById("pwdInput").value.trim();
   const remember = document.getElementById("rememberCheck").checked;
@@ -309,22 +306,23 @@ function doLogin(){
   document.getElementById("loginWrap").style.display = "none";
   document.getElementById("mainWrap").style.display = "block";
   window.NOTE_DATA = loadAllNotes();
+  // 初始化会话纯净快照
+  sessionStorage.setItem('cleanNoteSnapshot', JSON.stringify([...window.NOTE_DATA]));
   render();
 }
 
-// 【新增】点击遮罩空白区域关闭登录弹窗
+// 空白遮罩关闭登录弹窗
 document.getElementById("loginWrap").addEventListener("click", function(e){
   if(e.target === this){
     this.style.display = "none";
   }
 });
 
-// 自动登录（增加8小时过期校验，和编辑器同步）
+// 自动登录，登录后写入会话快照
 (function autoLogin(){
   const saved = localStorage.getItem(PWD_STORE_KEY);
   const expireTs = Number(localStorage.getItem(LOGIN_EXPIRE_KEY)) || 0;
   const now = Date.now();
-  // 过期清空登录信息
   if(expireTs < now){
     localStorage.removeItem(PWD_STORE_KEY);
     localStorage.removeItem(LOGIN_EXPIRE_KEY);
@@ -334,11 +332,13 @@ document.getElementById("loginWrap").addEventListener("click", function(e){
     document.getElementById("loginWrap").style.display = "none";
     document.getElementById("mainWrap").style.display = "block";
     window.NOTE_DATA = loadAllNotes();
+    // 初始化会话纯净快照
+    sessionStorage.setItem('cleanNoteSnapshot', JSON.stringify([...window.NOTE_DATA]));
     render();
   }
 })();
 
-// 删除函数：只操作一份存储，全局同步
+// 删除笔记，删完自动更新会话快照
 window.delNote = function(id){
   if(!confirm("确认永久删除这条笔记？删除后无法恢复")){
     return;
@@ -346,18 +346,17 @@ window.delNote = function(id){
   let list = loadAllNotes();
   list = list.filter(item => item.id !== id);
   saveAllNotes(list);
-  alert("已删除，请点击【复制全部笔记JSON】同步data.js仓库");
+  // 写入会话纯净快照，供编辑器一键加载
+  sessionStorage.setItem('cleanNoteSnapshot', JSON.stringify(list));
+  alert("已删除并更新纯净快照；复制纯净data.js后替换仓库文件并git push才能全局生效");
   render();
 }
 
-// 渲染列表：取消过滤草稿 _isTempNew，所有笔记全部展示，按时间倒序
+// 渲染列表，按时间倒序展示全部笔记
 function render(){
   const wrap = document.getElementById('listWrap');
   let list = window.NOTE_DATA || loadAllNotes();
   if(!Array.isArray(list)) list = [];
-
-  // 取消草稿过滤，草稿、正式笔记一起显示
-  // const realList = list.filter(item => !item._isTempNew);
   const realList = [...list];
 
   if(realList.length === 0){
@@ -365,7 +364,6 @@ function render(){
     return;
   }
   let html = '';
-  // 创建时间倒序，最新在顶部
   realList.sort((a,b)=>new Date(b.date) - new Date(a.date)).forEach(item=>{
     const title = escapeHtml(item.title);
     const type = escapeHtml(item.type);
@@ -386,21 +384,21 @@ function render(){
   wrap.innerHTML = html;
 }
 
-// 新增：复制本地最新纯净JSON（不含已删除笔记）
+// 复制纯净data.js（带window.NOTE_DATA = 前缀 + 存入会话快照）
 function copyCleanJson(){
   const freshList = loadAllNotes();
-  const jsonText = JSON.stringify(freshList, null, 2);
-  navigator.clipboard.writeText(jsonText).then(()=>{
-    alert("复制成功！内容已剔除所有删除笔记，直接覆盖data.js即可");
+  sessionStorage.setItem('cleanNoteSnapshot', JSON.stringify(freshList));
+  const fullJsText = `window.NOTE_DATA = ${JSON.stringify(freshList, null, 2)}`;
+  navigator.clipboard.writeText(fullJsText).then(()=>{
+    alert("复制成功！已存入会话快照，编辑器可点「加载纯净管理快照」；\n粘贴覆盖仓库data.js并git push origin main全局生效");
   }).catch(()=>{
-    // 兼容低版本浏览器
     const tempTextarea = document.createElement('textarea');
-    tempTextarea.value = jsonText;
+    tempTextarea.value = fullJsText;
     document.body.appendChild(tempTextarea);
     tempTextarea.select();
     document.execCommand('copy');
     document.body.removeChild(tempTextarea);
-    alert("复制成功！内容已剔除所有删除笔记");
+    alert("兼容复制成功，格式为完整data.js内容，已存入会话快照");
   });
 }
 </script>
