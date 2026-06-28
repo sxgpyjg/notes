@@ -932,7 +932,8 @@ function insertLocalImgTag(fileName){
 }
 // 本地图片插入终端路径版本（弹窗上传使用）
 function insertLocalImgTagTerminal(safeName){
-  const srcPath = `~/storage/shared/notes/images/${safeName}`;
+  // 替换成CDN线上路径，不再用手机本地路径
+  const srcPath = `https://cdn.jsdelivr.net/gh/sxgpyjg/notes@main/images/${safeName}`;
   if(currentEditMode === "rich"){
     const imgHtml = `<img loading="lazy" src="${srcPath}" alt="本地图片" style="max-width:100%;margin:8px 0;"><br><br>`;
     document.execCommand("insertHTML",false,imgHtml);
@@ -944,6 +945,7 @@ function insertLocalImgTagTerminal(safeName){
     calcWordCount();
   }
 }
+
 // 强制刷新远程数据，清空本地缓存
 function forceReloadRemote(){
   localStorage.removeItem("notes");
