@@ -73,7 +73,7 @@ window.NOTE_DATA = [
     "id": 1782604422601,
     "title": "张亚宁",
     "type": "美图",
-    "content": "<img loading=\"lazy\" src=\"~/storage/shared/notes/images/1_1.jpg\" alt=\"本地图片\"><br><br>",
-    "date": "2026-06-28 07:53:42"
+    "content": "![本地图片](~/storage/shared/notes/images/11_1.jpg)<br><br>",
+    "date": "2026-06-28 08:07:16"
   }
 ]
