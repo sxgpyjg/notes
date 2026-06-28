@@ -298,7 +298,7 @@ function isAdminLoggedIn(){
   return savedPwd === ADMIN_PWD && expireTs > now;
 }
 
-// 密码校验，用系统prompt避免自定义弹窗冒泡闪烁问题
+// 通用密码校验，成功执行回调
 function verifyAdminPwd(cb){
   if(isAdminLoggedIn()){
     cb();
@@ -316,20 +316,20 @@ function verifyAdminPwd(cb){
   }
 }
 
-// 通用长按绑定：支持触屏+鼠标，短按执行常规动作，长按走验证
-function bindLongPress(el, normalClick){
+// 标题专属长按：验证后进入编辑页 edit.html
+(function bindTitleLongPress(){
   let pressTimer = null, startX=0, startY=0, triggeredLong=false;
   // 触屏
-  el.addEventListener('touchstart', (e)=>{
+  trigger.addEventListener('touchstart', (e)=>{
     triggeredLong = false;
     const t = e.touches[0];
     startX = t.clientX; startY = t.clientY;
     pressTimer = setTimeout(()=>{
       triggeredLong = true;
-      verifyAdminPwd(()=>{});
+      verifyAdminPwd(()=>location.href="edit.html");
     }, LONG_PRESS_TIME);
   });
-  el.addEventListener('touchmove', (e)=>{
+  trigger.addEventListener('touchmove', (e)=>{
     if(!pressTimer) return;
     const t = e.touches[0];
     const dx = Math.abs(t.clientX - startX);
@@ -339,14 +339,65 @@ function bindLongPress(el, normalClick){
       pressTimer = null;
     }
   });
-  el.addEventListener('touchend touchcancel', ()=>{
+  trigger.addEventListener('touchend touchcancel', ()=>{
     clearTimeout(pressTimer);
     pressTimer = null;
-    if(!triggeredLong && normalClick) normalClick();
   });
   // 鼠标
   let mouseTimer=null, mTriggered=false, mX,mY;
-  el.addEventListener('mousedown',(e)=>{
+  trigger.addEventListener('mousedown',(e)=>{
+    mTriggered=false;
+    mX=e.clientX;mY=e.clientY;
+    mouseTimer=setTimeout(()=>{
+      mTriggered=true;
+      verifyAdminPwd(()=>location.href="edit.html");
+    },LONG_PRESS_TIME);
+  });
+  trigger.addEventListener('mouseup mouseleave',()=>{
+    clearTimeout(mouseTimer);
+    mouseTimer=null;
+  });
+  // 右键
+  trigger.addEventListener('contextmenu',(e)=>{
+    e.preventDefault();
+    verifyAdminPwd(()=>location.href="edit.html");
+  });
+})();
+
+// 筛选常规展开收起
+function toggleFilterPanel(){
+  document.getElementById('filterBody').classList.toggle('show');
+  document.getElementById('filterArrow').classList.toggle('rotate');
+}
+// 筛选头部长按仅做登录校验、不跳转，短按展开
+(function bindFilterLongPress(){
+  let pressTimer = null, startX=0, startY=0, triggeredLong=false;
+  filterHeader.addEventListener('touchstart', (e)=>{
+    triggeredLong = false;
+    const t = e.touches[0];
+    startX = t.clientX; startY = t.clientY;
+    pressTimer = setTimeout(()=>{
+      triggeredLong = true;
+      verifyAdminPwd(()=>{});
+    }, LONG_PRESS_TIME);
+  });
+  filterHeader.addEventListener('touchmove', (e)=>{
+    if(!pressTimer) return;
+    const t = e.touches[0];
+    const dx = Math.abs(t.clientX - startX);
+    const dy = Math.abs(t.clientY - startY);
+    if(dx>MOVE_THRESHOLD || dy>MOVE_THRESHOLD){
+      clearTimeout(pressTimer);
+      pressTimer = null;
+    }
+  });
+  filterHeader.addEventListener('touchend touchcancel', ()=>{
+    clearTimeout(pressTimer);
+    pressTimer = null;
+    if(!triggeredLong) toggleFilterPanel();
+  });
+  let mouseTimer=null, mTriggered=false, mX,mY;
+  filterHeader.addEventListener('mousedown',(e)=>{
     mTriggered=false;
     mX=e.clientX;mY=e.clientY;
     mouseTimer=setTimeout(()=>{
@@ -354,28 +405,16 @@ function bindLongPress(el, normalClick){
       verifyAdminPwd(()=>{});
     },LONG_PRESS_TIME);
   });
-  el.addEventListener('mouseup mouseleave',()=>{
+  filterHeader.addEventListener('mouseup mouseleave',()=>{
     clearTimeout(mouseTimer);
     mouseTimer=null;
-    if(!mTriggered && normalClick) normalClick();
+    if(!mTriggered) toggleFilterPanel();
   });
-  // 右键
-  el.addEventListener('contextmenu',(e)=>{
+  filterHeader.addEventListener('contextmenu',(e)=>{
     e.preventDefault();
     verifyAdminPwd(()=>{});
   });
-}
-
-// 绑定标题长按
-bindLongPress(trigger, null);
-
-// 筛选常规展开收起
-function toggleFilterPanel(){
-  document.getElementById('filterBody').classList.toggle('show');
-  document.getElementById('filterArrow').classList.toggle('rotate');
-}
-// 绑定筛选头部长按 + 短按展开
-bindLongPress(filterHeader, toggleFilterPanel);
+})();
 
 async function waitNoteData(){
   let count = 0;
@@ -495,7 +534,7 @@ function renderNotes(){
   })
   wrap.innerHTML = html;
 
-  // 单条笔记卡片长按
+  // 单条笔记卡片长按进管理页
   document.querySelectorAll('.note-card').forEach(card=>{
     let pressTimer=null,isLongPress=false,startX=0,startY=0,isScroll=false;
     const noteId = card.dataset.id;
