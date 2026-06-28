@@ -70,3 +70,4 @@ window.NOTE_DATA = [
     "date": "2026-06-21"
   }
 ]
+
