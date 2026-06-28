@@ -12,8 +12,8 @@ window.NOTE_DATA = [
     "title": "红楼梦剧照",
     "type": "女星",
     "content": "<img loading=\"lazy\" src=\"https://origin.picgo.net/2026/06/27/Screenshot_2026_0625_123600bc27a5939876102a.png\" alt=\"配图\"><br><br>",
-    "date": "2026-06-27 07:55:14",
-    "_isTempNew": true
+    "date": "2026-06-28 09:34:23",
+    "private": true
   },
   {
     "id": 1782367660671,
