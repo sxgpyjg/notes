@@ -907,7 +907,7 @@ body.bg-custom .md-preview{
 
 <script>
 // 全局常量配置
-const ADMIN_PASSWORD = "admin123456";
+const ADMIN_PASSWORD = "admin123";
 const PWD_STORE_KEY = "noteAdminPwd";
 const LOGIN_EXPIRE_KEY = "loginExpireTime";
 const LOGIN_EXPIRE_HOUR = 24;
@@ -1049,7 +1049,12 @@ function checkPwd(){
   document.getElementById("loginWrap").style.display = "none";
   document.getElementById("mainWrap").style.display = "block";
   loadLocalCache();
+  setTimeout(()=>{
+    initLoadNote();
+    calcWordCount();
+  },100);
 }
+
 function logoutAdmin(){
   localStorage.removeItem(PWD_STORE_KEY);
   localStorage.removeItem(LOGIN_EXPIRE_KEY);
@@ -1243,29 +1248,6 @@ const word = text.replace(/\s/g,"").length;
 wordCountTip.innerText = `纯文字数：${word} | 总字符(含空格换行)：${charAll}`;
 }
  
-// 登录校验
-function checkPwd(){
-    const inputPwd = document.getElementById("pwdInput").value.trim();
-    if(inputPwd !== ADMIN_PASSWORD){
-        alert("密码错误，无法进入编辑器");
-        return;
-    }
-    localStorage.setItem(PWD_STORE_KEY, inputPwd);
-    const expire = Date.now() + LOGIN_EXPIRE_HOUR * 3600 * 1000;
-    localStorage.setItem(LOGIN_EXPIRE_KEY, expire);
-    
-    // 先获取DOM对象，避免时序找不到元素
-    const loginWrapDom = document.getElementById("loginWrap");
-    const mainWrapDom = document.getElementById("mainWrap");
-    if(loginWrapDom) loginWrapDom.style.display = "none";
-    if(mainWrapDom) mainWrapDom.style.display = "block";
-
-    loadLocalCache();
-    setTimeout(()=>{
-        initLoadNote();
-        calcWordCount();
-    },150);
-}
 
  
 // 初始化加载笔记回填（修复新建残留旧内容）
