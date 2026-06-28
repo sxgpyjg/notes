@@ -302,7 +302,7 @@ cursor: pointer;
 </div>
 
 <header>
-  <h1>笔记目录</h1>
+  <h1 id="titleTrigger">笔记目录</h1>
   <div class="header-right-group">
     <button class="admin-logout-btn" id="logoutBtn" style="display:none;">退出登录</button>
     <button id="fullPageBtn">
@@ -339,6 +339,7 @@ const rememberPwd = document.getElementById('rememberPwd');
 const confirmPwdBtn = document.getElementById('confirmPwd');
 const cancelPwdBtn = document.getElementById('cancelPwd');
 const logoutBtn = document.getElementById('logoutBtn');
+const titleTrigger = document.getElementById('titleTrigger');
 const filterHeader = document.getElementById('filterHeader');
 
 let currentFilter = "";
@@ -368,8 +369,17 @@ function closePwdModal(){
   pwdInput.value = '';
 }
 function openPwdModal(){
+  if(isAdminLoggedIn()) return;
   pwdMask.classList.add('show');
   pwdInput.focus();
+}
+
+// 检查登录状态
+function isAdminLoggedIn(){
+  const savedPwd = localStorage.getItem(PWD_STORE_KEY);
+  const expireTs = Number(localStorage.getItem(LOGIN_EXPIRE_KEY)) || 0;
+  const now = Date.now();
+  return (savedPwd === ADMIN_PWD && expireTs > now);
 }
 
 // 退出登录
@@ -381,15 +391,7 @@ function logoutAdmin(){
 }
 logoutBtn.addEventListener('click', logoutAdmin);
 
-// 检查登录状态
-function isAdminLoggedIn(){
-  const savedPwd = localStorage.getItem(PWD_STORE_KEY);
-  const expireTs = Number(localStorage.getItem(LOGIN_EXPIRE_KEY)) || 0;
-  const now = Date.now();
-  return (savedPwd === ADMIN_PWD && expireTs > now);
-}
-
-// 密码确认
+// 密码确认逻辑
 confirmPwdBtn.addEventListener('click', ()=>{
   const val = pwdInput.value.trim();
   if(val !== ADMIN_PWD){
@@ -410,29 +412,20 @@ pwdMask.addEventListener('click', (e)=>{
   if(e.target === pwdMask) closePwdModal();
 });
 
-// 筛选头部常规点击展开/收起
-function toggleFilterPanel(){
-  document.getElementById('filterBody').classList.toggle('show');
-  document.getElementById('filterArrow').classList.toggle('rotate');
-}
-
-// 给筛选头部绑定长按逻辑，保留原有点击展开功能
-(function bindFilterHeaderLongPress(){
-  let pressTimer = null, startX=0, startY=0;
-  let triggeredLong = false;
-
+// 通用绑定长按函数，复用给标题、筛选头部
+function bindLongPress(el, normalClick){
+  let pressTimer = null, startX=0, startY=0, triggeredLong=false;
   // 触屏
-  filterHeader.addEventListener('touchstart', (e)=>{
+  el.addEventListener('touchstart', (e)=>{
     triggeredLong = false;
     const t = e.touches[0];
-    startX = t.clientX;
-    startY = t.clientY;
+    startX = t.clientX; startY = t.clientY;
     pressTimer = setTimeout(()=>{
       triggeredLong = true;
-      if(!isAdminLoggedIn()) openPwdModal();
+      openPwdModal();
     }, LONG_PRESS_TIME);
   });
-  filterHeader.addEventListener('touchmove', (e)=>{
+  el.addEventListener('touchmove', (e)=>{
     if(!pressTimer) return;
     const t = e.touches[0];
     const dx = Math.abs(t.clientX - startX);
@@ -442,34 +435,41 @@ function toggleFilterPanel(){
       pressTimer=null;
     }
   });
-  filterHeader.addEventListener('touchend touchcancel', ()=>{
+  el.addEventListener('touchend touchcancel', ()=>{
     clearTimeout(pressTimer);
     pressTimer=null;
-    // 没触发长按才走正常折叠
-    if(!triggeredLong) toggleFilterPanel();
+    if(!triggeredLong && normalClick) normalClick();
   });
-
   // 鼠标
   let mouseTimer=null, mTriggered=false, mX,mY;
-  filterHeader.addEventListener('mousedown',(e)=>{
+  el.addEventListener('mousedown',(e)=>{
     mTriggered=false;
     mX=e.clientX;mY=e.clientY;
     mouseTimer=setTimeout(()=>{
       mTriggered=true;
-      if(!isAdminLoggedIn()) openPwdModal();
+      openPwdModal();
     },LONG_PRESS_TIME);
   });
-  filterHeader.addEventListener('mouseup mouseleave',()=>{
+  el.addEventListener('mouseup mouseleave',()=>{
     clearTimeout(mouseTimer);
     mouseTimer=null;
-    if(!mTriggered) toggleFilterPanel();
+    if(!mTriggered && normalClick) normalClick();
   });
   // 右键
-  filterHeader.addEventListener('contextmenu',(e)=>{
+  el.addEventListener('contextmenu',(e)=>{
     e.preventDefault();
-    if(!isAdminLoggedIn()) openPwdModal();
+    openPwdModal();
   });
-})();
+}
+
+// 绑定笔记目录标题长按
+bindLongPress(titleTrigger, null);
+// 绑定筛选头部长按+常规展开收起
+function toggleFilterPanel(){
+  document.getElementById('filterBody').classList.toggle('show');
+  document.getElementById('filterArrow').classList.toggle('rotate');
+}
+bindLongPress(filterHeader, toggleFilterPanel);
 
 async function waitNoteData(){
   let count = 0;
@@ -495,7 +495,6 @@ function loadNoteData(){
     if(dataList.length > 0){
       renderFilter();
       renderNotes();
-      // 初始化状态
       if(isAdminLoggedIn()) logoutBtn.style.display='inline-block';
     }else{
       wrap.innerHTML = `<div class="empty-tip">暂无笔记</div>`;
@@ -587,11 +586,73 @@ function renderNotes(){
   })
   wrap.innerHTML = html;
 
-  // 卡片仅保留原有点击进阅读页逻辑，不再绑定长按登录
+  // 单条笔记卡片绑定长按
   document.querySelectorAll('.note-card').forEach(card=>{
     const noteId = card.dataset.id;
-    card.onclick = ()=>openRead(noteId);
-  })
+    let pressTimer=null,isLongPress=false,startX=0,startY=0;
+    // 触屏
+    const startPress = (e)=>{
+      isLongPress=false;
+      const touch = e.touches[0];
+      startX = touch.clientX;startY = touch.clientY;
+      pressTimer = setTimeout(()=>{
+        isLongPress=true;
+        openPwdModal();
+      },LONG_PRESS_TIME);
+    };
+    const movePress = (e)=>{
+      if(!pressTimer) return;
+      const touch = e.touches[0];
+      const dx = Math.abs(touch.clientX-startX);
+      const dy = Math.abs(touch.clientY-startY);
+      if(dx>MOVE_THRESHOLD||dy>MOVE_THRESHOLD){
+        clearTimeout(pressTimer);
+        pressTimer=null;
+      }
+    };
+    const endPress = ()=>{
+      clearTimeout(pressTimer);
+      pressTimer=null;
+      if(!isLongPress){
+        openRead(noteId);
+      }
+    };
+    card.addEventListener('touchstart',startPress);
+    card.addEventListener('touchmove',movePress);
+    card.addEventListener('touchend',endPress);
+    card.addEventListener('touchcancel',endPress);
+
+    // 鼠标长按
+    let mouseTimer = null, mouseIsLong = false, mX, mY;
+    const mouseDownFn = (e)=>{
+      mouseIsLong = false;
+      mX = e.clientX; mY = e.clientY;
+      mouseTimer = setTimeout(()=>{
+        mouseIsLong = true;
+        openPwdModal();
+      }, LONG_PRESS_TIME);
+    };
+    const mouseUpFn = ()=>{
+      clearTimeout(mouseTimer);
+      mouseTimer=null;
+      if(!mouseIsLong){
+        openRead(noteId);
+      }
+    };
+    const mouseLeaveFn = ()=>{
+      clearTimeout(mouseTimer);
+      mouseTimer=null;
+    };
+    card.addEventListener("mousedown", mouseDownFn);
+    card.addEventListener("mouseup", mouseUpFn);
+    card.addEventListener("mouseleave", mouseLeaveFn);
+
+    // 右键
+    card.addEventListener("contextmenu", (e)=>{
+      e.preventDefault();
+      openPwdModal();
+    });
+  });
 }
 </script>
 </body>
