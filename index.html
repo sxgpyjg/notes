@@ -35,6 +35,7 @@ h1{
   font-size: 20px;
   color: #1d2133;
   font-weight: 600;
+  cursor: pointer;
   user-select: none;
   letter-spacing: 1px;
   -webkit-user-select: none;
@@ -59,7 +60,16 @@ cursor: pointer;
   stroke-linecap:round;
   stroke-linejoin:round;
 }
-
+.admin-logout-btn{
+  padding:4px 8px;
+  border:none;
+  border-radius:6px;
+  background:#e0e7ff;
+  color:#334155;
+  font-size:12px;
+  cursor: pointer;
+  display:none;
+}
 .empty-tip{
   text-align: center;
   padding: 80px 4px;
@@ -110,7 +120,6 @@ cursor: pointer;
   gap: 4px;
   padding: 3px 0;
 }
-
 .card-head{
   display: flex;
   justify-content: space-between;
@@ -136,7 +145,6 @@ cursor: pointer;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
 .tag-note{
   background: #e8eaff;
   color: #3950cc;
@@ -149,13 +157,11 @@ cursor: pointer;
   background: #fff0e6;
   color: #b8460c;
 }
-
 .card-date{
   font-size: 10px;
   color: #6b7280;
   margin-top: -2px;
 }
-
 .card-preview{
   font-size: 13px;
   color: #6b7280;
@@ -214,97 +220,13 @@ cursor: pointer;
 .filter-btn:active{
   opacity:0.85;
 }
-
-/* 密码弹窗样式 */
-.modal-mask{
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,0.5);
-  display:none;
-  align-items:center;
-  justify-content:center;
-  z-index:999;
-}
-.modal-mask.show{
-  display:flex;
-}
-.modal-box{
-  background:#fff;
-  padding:20px;
-  border-radius:12px;
-  width:85%;
-  max-width:320px;
-}
-.modal-box h3{
-  margin-bottom:16px;
-  font-size:16px;
-  text-align:center;
-}
-.modal-box input[type="password"]{
-  width:100%;
-  padding:10px;
-  border:1px solid #ddd;
-  border-radius:8px;
-  margin-bottom:12px;
-  font-size:14px;
-}
-.modal-row{
-  display:flex;
-  align-items:center;
-  gap:6px;
-  margin-bottom:16px;
-}
-.modal-buttons{
-  display:flex;
-  gap:10px;
-  justify-content:center;
-}
-.modal-buttons button{
-  padding:8px 16px;
-  border:none;
-  border-radius:8px;
-  cursor:pointer;
-}
-.confirm-btn{
-  background:#6366F1;
-  color:#fff;
-}
-.cancel-btn{
-  background:#eee;
-  color:#333;
-}
-.admin-logout-btn{
-  padding:4px 8px;
-  border:none;
-  border-radius:6px;
-  background:#e0e7ff;
-  color:#334155;
-  font-size:12px;
-  cursor:pointer;
-}
 </style>
 </head>
 <body>
-<!-- 密码弹窗 -->
-<div class="modal-mask" id="pwdMask">
-  <div class="modal-box" id="pwdBox">
-    <h3>管理员验证</h3>
-    <input type="password" id="pwdInput" placeholder="输入管理员密码">
-    <div class="modal-row">
-      <input type="checkbox" id="rememberPwd">
-      <label for="rememberPwd">记住密码（8小时）</label>
-    </div>
-    <div class="modal-buttons">
-      <button class="confirm-btn" id="confirmPwd">确认</button>
-      <button class="cancel-btn" id="cancelPwd">取消</button>
-    </div>
-  </div>
-</div>
-
 <header>
-  <h1 id="titleTrigger">笔记目录</h1>
+  <h1 id="secretTrigger">笔记目录</h1>
   <div class="header-right-group">
-    <button class="admin-logout-btn" id="logoutBtn" style="display:none;">退出登录</button>
+    <button class="admin-logout-btn" id="logoutBtn">退出登录</button>
     <button id="fullPageBtn">
       <svg viewBox="0 0 24 24" id="fullSvg">
         <path d="M10 7 H7 V10"/>
@@ -331,22 +253,16 @@ cursor: pointer;
 <script src="./data.js?v=1"></script>
 <script>
 const wrap = document.getElementById('noteWrap');
+const trigger = document.getElementById('secretTrigger');
+const filterHeader = document.getElementById('filterHeader');
 const fullBtn = document.getElementById('fullPageBtn');
 const fullSvg = document.getElementById('fullSvg');
-const pwdMask = document.getElementById('pwdMask');
-const pwdBox = document.getElementById('pwdBox');
-const pwdInput = document.getElementById('pwdInput');
-const rememberPwd = document.getElementById('rememberPwd');
-const confirmPwdBtn = document.getElementById('confirmPwd');
-const cancelPwdBtn = document.getElementById('cancelPwd');
 const logoutBtn = document.getElementById('logoutBtn');
-const titleTrigger = document.getElementById('titleTrigger');
-const filterHeader = document.getElementById('filterHeader');
 
 let currentFilter = "";
 let allTypes = new Set();
 const ADMIN_PWD = "admin123";
-const LONG_PRESS_TIME = 500;
+const LONG_PRESS_TIME = 600;
 const MOVE_THRESHOLD = 8;
 const PWD_STORE_KEY = "admin_save_pwd";
 const LOGIN_EXPIRE_KEY = "admin_login_expire";
@@ -357,70 +273,50 @@ let dataList = [];
 // 清除遮罩残留
 function clearAllLockMask() {
   document.body.classList.remove("lock-scroll");
-  document.querySelectorAll(".modal-mask").forEach(m => {
+  document.querySelectorAll(".modal-mask,.find-replace-mask").forEach(m => {
     m.classList.remove("show");
   });
 }
 window.addEventListener("load", clearAllLockMask);
 window.addEventListener("resize", clearAllLockMask);
 
-// 弹窗控制
-function closePwdModal(){
-  pwdMask.classList.remove('show');
-  pwdInput.value = '';
-}
-function openPwdModal(){
-  if(isAdminLoggedIn()) return;
-  pwdMask.classList.add('show');
-  pwdInput.focus();
-}
-
-// 检查登录状态
-function isAdminLoggedIn(){
-  const savedPwd = localStorage.getItem(PWD_STORE_KEY);
-  const expireTs = Number(localStorage.getItem(LOGIN_EXPIRE_KEY)) || 0;
-  const now = Date.now();
-  return (savedPwd === ADMIN_PWD && expireTs > now);
-}
-
 // 退出登录
 function logoutAdmin(){
   localStorage.removeItem(PWD_STORE_KEY);
   localStorage.removeItem(LOGIN_EXPIRE_KEY);
   logoutBtn.style.display = 'none';
+  alert("已退出管理员登录");
   renderNotes();
 }
 logoutBtn.addEventListener('click', logoutAdmin);
 
-// 密码确认逻辑
-confirmPwdBtn.addEventListener('click', (e)=>{
-  e.stopPropagation();
-  const val = pwdInput.value.trim();
-  if(val !== ADMIN_PWD){
-    alert("密码错误");
+// 检查是否已登录
+function isAdminLoggedIn(){
+  const savedPwd = localStorage.getItem(PWD_STORE_KEY);
+  const expireTs = Number(localStorage.getItem(LOGIN_EXPIRE_KEY)) || 0;
+  const now = Date.now();
+  return savedPwd === ADMIN_PWD && expireTs > now;
+}
+
+// 密码校验，用系统prompt避免自定义弹窗冒泡闪烁问题
+function verifyAdminPwd(cb){
+  if(isAdminLoggedIn()){
+    cb();
     return;
   }
-  if(rememberPwd.checked){
-    localStorage.setItem(PWD_STORE_KEY, val);
+  const inputPwd = prompt("请输入管理员密码：");
+  if(inputPwd === ADMIN_PWD){
+    localStorage.setItem(PWD_STORE_KEY, inputPwd);
     const expireTime = Date.now() + LOGIN_EXPIRE_HOUR * 3600 * 1000;
     localStorage.setItem(LOGIN_EXPIRE_KEY, expireTime);
+    logoutBtn.style.display = 'inline-block';
+    cb();
+  }else if(inputPwd !== null){
+    alert("密码错误");
   }
-  logoutBtn.style.display = 'inline-block';
-  closePwdModal();
-  renderNotes();
-});
-cancelPwdBtn.addEventListener('click', (e)=>{
-  e.stopPropagation();
-  closePwdModal();
-});
-// 内部box阻止冒泡，避免点内容触发mask关闭
-pwdBox.addEventListener('click', e=>e.stopPropagation());
-// 仅点击mask本体关闭
-pwdMask.addEventListener('click', (e)=>{
-  if(e.target === pwdMask) closePwdModal();
-});
+}
 
-// 通用绑定长按函数，增加长按触发标记、抑制后续点击
+// 通用长按绑定：支持触屏+鼠标，短按执行常规动作，长按走验证
 function bindLongPress(el, normalClick){
   let pressTimer = null, startX=0, startY=0, triggeredLong=false;
   // 触屏
@@ -430,8 +326,7 @@ function bindLongPress(el, normalClick){
     startX = t.clientX; startY = t.clientY;
     pressTimer = setTimeout(()=>{
       triggeredLong = true;
-      openPwdModal();
-      e.preventDefault(); // 抑制后续click/滚动连锁
+      verifyAdminPwd(()=>{});
     }, LONG_PRESS_TIME);
   });
   el.addEventListener('touchmove', (e)=>{
@@ -441,15 +336,13 @@ function bindLongPress(el, normalClick){
     const dy = Math.abs(t.clientY - startY);
     if(dx>MOVE_THRESHOLD || dy>MOVE_THRESHOLD){
       clearTimeout(pressTimer);
-      pressTimer=null;
+      pressTimer = null;
     }
   });
-  el.addEventListener('touchend touchcancel', (e)=>{
+  el.addEventListener('touchend touchcancel', ()=>{
     clearTimeout(pressTimer);
-    pressTimer=null;
-    // 没触发长按才执行常规点击
+    pressTimer = null;
     if(!triggeredLong && normalClick) normalClick();
-    else if(triggeredLong) e.preventDefault();
   });
   // 鼠标
   let mouseTimer=null, mTriggered=false, mX,mY;
@@ -458,30 +351,30 @@ function bindLongPress(el, normalClick){
     mX=e.clientX;mY=e.clientY;
     mouseTimer=setTimeout(()=>{
       mTriggered=true;
-      openPwdModal();
-      e.preventDefault();
+      verifyAdminPwd(()=>{});
     },LONG_PRESS_TIME);
   });
-  el.addEventListener('mouseup mouseleave',(e)=>{
+  el.addEventListener('mouseup mouseleave',()=>{
     clearTimeout(mouseTimer);
     mouseTimer=null;
     if(!mTriggered && normalClick) normalClick();
-    else if(mTriggered) e.preventDefault();
   });
   // 右键
   el.addEventListener('contextmenu',(e)=>{
     e.preventDefault();
-    if(!isAdminLoggedIn()) openPwdModal();
+    verifyAdminPwd(()=>{});
   });
 }
 
-// 绑定笔记目录标题长按
-bindLongPress(titleTrigger, null);
-// 绑定筛选头部长按+常规展开收起
+// 绑定标题长按
+bindLongPress(trigger, null);
+
+// 筛选常规展开收起
 function toggleFilterPanel(){
   document.getElementById('filterBody').classList.toggle('show');
   document.getElementById('filterArrow').classList.toggle('rotate');
 }
+// 绑定筛选头部长按 + 短按展开
 bindLongPress(filterHeader, toggleFilterPanel);
 
 async function waitNoteData(){
@@ -508,6 +401,7 @@ function loadNoteData(){
     if(dataList.length > 0){
       renderFilter();
       renderNotes();
+      // 初始化登录状态，已登录显示退出按钮
       if(isAdminLoggedIn()) logoutBtn.style.display='inline-block';
     }else{
       wrap.innerHTML = `<div class="empty-tip">暂无笔记</div>`;
@@ -562,14 +456,16 @@ function openRead(noteId){
   localStorage.setItem('readNoteId', noteId);
   location.href = "read.html";
 }
+function openAdminPage(){
+  verifyAdminPwd(()=>location.href = "admin-list.html");
+}
 function escapeHtml(str){
   const s = String(str ?? "");
   return s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#039;");
 }
 function renderNotes(){
   let list = [...dataList];
-  const isAdminLogin = isAdminLoggedIn();
-  if(!isAdminLogin){
+  if(!isAdminLoggedIn()){
     list = list.filter(item => !item.private);
   }
   if(currentFilter) list = list.filter(item=>item.type === currentFilter);
@@ -595,73 +491,52 @@ function renderNotes(){
     const previewHtml = getPureTextPreview(item.content);
     let leftImgSrc = item.cover || getFirstImgFromHtml(item.content);
     let imgBoxHtml = leftImgSrc ? `<div class="card-img-box"><img src="${leftImgSrc}" alt=""></div>` : '';
-    html += `<div class="note-card" data-id="${escapeHtml(item.id)}">${imgBoxHtml}<div class="card-right-wrap"><div class="card-head"><div class="card-title">${safeTitle}</div><span class="tag ${tagClass}">${tagText}</span></div><div class="card-date">发布时间：${safeDate}</div><div class="card-preview">${previewHtml}</div></div></div>`;
+    html += `<div class="note-card" data-id="${escapeHtml(item.id)}">${imgBoxHtml}<div class="card-right-wrap"><div class="card-head"><div class="card-title">${safeTitle}</div><span class="tag ${tagClass}">${tagText}</span></div><div class="card-date">${safeDate}</div><div class="card-preview">${previewHtml}</div></div></div>`;
   })
   wrap.innerHTML = html;
 
-  // 单条笔记卡片绑定长按
+  // 单条笔记卡片长按
   document.querySelectorAll('.note-card').forEach(card=>{
+    let pressTimer=null,isLongPress=false,startX=0,startY=0,isScroll=false;
     const noteId = card.dataset.id;
-    let pressTimer=null,isLongPress=false,startX=0,startY=0;
+
     // 触屏
     const startPress = (e)=>{
-      isLongPress=false;
+      isLongPress=false;isScroll=false;
       const touch = e.touches[0];
       startX = touch.clientX;startY = touch.clientY;
-      pressTimer = setTimeout(()=>{
-        isLongPress=true;
-        openPwdModal();
-        e.preventDefault();
-      },LONG_PRESS_TIME);
+      pressTimer = setTimeout(()=>{isLongPress=true;openAdminPage();},LONG_PRESS_TIME);
     };
     const movePress = (e)=>{
-      if(!pressTimer) return;
       const touch = e.touches[0];
       const dx = Math.abs(touch.clientX-startX);
       const dy = Math.abs(touch.clientY-startY);
-      if(dx>MOVE_THRESHOLD||dy>MOVE_THRESHOLD){
-        clearTimeout(pressTimer);
-        pressTimer=null;
-      }
+      if(dx>MOVE_THRESHOLD||dy>MOVE_THRESHOLD){isScroll=true;clearTimeout(pressTimer);}
     };
-    const endPress = (e)=>{
+    const endPress = ()=>{
       clearTimeout(pressTimer);
-      pressTimer=null;
-      if(!isLongPress){
-        openRead(noteId);
-      }else{
-        e.preventDefault();
-      }
+      if(!isScroll&&!isLongPress) openRead(noteId);
     };
     card.addEventListener('touchstart',startPress);
     card.addEventListener('touchmove',movePress);
     card.addEventListener('touchend',endPress);
-    card.addEventListener('touchcancel',endPress);
 
     // 鼠标长按
     let mouseTimer = null, mouseIsLong = false, mX, mY;
     const mouseDownFn = (e)=>{
       mouseIsLong = false;
-      mX = e.clientX; mY = e.clientY;
+      mX = e.clientX;
+      mY = e.clientY;
       mouseTimer = setTimeout(()=>{
         mouseIsLong = true;
-        openPwdModal();
-        e.preventDefault();
+        openAdminPage();
       }, LONG_PRESS_TIME);
     };
-    const mouseUpFn = (e)=>{
+    const mouseUpFn = ()=>{
       clearTimeout(mouseTimer);
-      mouseTimer=null;
-      if(!mouseIsLong){
-        openRead(noteId);
-      }else{
-        e.preventDefault();
-      }
+      if(!mouseIsLong) openRead(noteId);
     };
-    const mouseLeaveFn = ()=>{
-      clearTimeout(mouseTimer);
-      mouseTimer=null;
-    };
+    const mouseLeaveFn = ()=>clearTimeout(mouseTimer);
     card.addEventListener("mousedown", mouseDownFn);
     card.addEventListener("mouseup", mouseUpFn);
     card.addEventListener("mouseleave", mouseLeaveFn);
@@ -669,9 +544,9 @@ function renderNotes(){
     // 右键
     card.addEventListener("contextmenu", (e)=>{
       e.preventDefault();
-      if(!isAdminLoggedIn()) openPwdModal();
-    });
-  });
+      openAdminPage();
+    })
+  })
 }
 </script>
 </body>
