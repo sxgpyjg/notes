@@ -40,7 +40,7 @@ h1{
   letter-spacing: 1px;
   -webkit-user-select: none;
 }
-.refresh-data-btn{
+.logout-btn{
   padding:4px 8px;
   border:none;
   border-radius:6px;
@@ -48,6 +48,10 @@ h1{
   color:#334155;
   font-size:12px;
   cursor: pointer;
+  display:none;
+}
+.logout-btn.show{
+  display:block;
 }
 #fullPageBtn{
 width:48px;height:48px;
@@ -190,6 +194,8 @@ cursor: pointer;
   align-items:center;
   font-weight:500;
   font-size:15px;
+  user-select:none;
+  -webkit-user-select:none;
 }
 .filter-body{
   padding:12px;
@@ -228,10 +234,9 @@ cursor: pointer;
 </head>
 <body>
 <header>
-  <h1 id="secretTrigger">笔记目录</h1>
+  <h1 id="titleTrigger">笔记目录</h1>
   <div class="header-right-group">
-    <button class="refresh-data-btn" onclick="forceReloadRemote()">刷新数据</button>
-    <button class="refresh-data-btn" onclick="logoutAdmin()">退出登录</button>
+    <button class="logout-btn" id="logoutBtn">退出登录</button>
     <button id="fullPageBtn">
       <svg viewBox="0 0 24 24" id="fullSvg">
         <path d="M10 7 H7 V10"/>
@@ -244,7 +249,7 @@ cursor: pointer;
 </header>
 
 <div class="filter-collapse">
-  <div class="filter-header" onclick="toggleFilterPanel()">
+  <div class="filter-header" id="filterHeader" onclick="toggleFilterPanel()">
     <span>笔记分类筛选</span>
     <span class="arrow" id="filterArrow">▼</span>
   </div>
@@ -258,22 +263,22 @@ cursor: pointer;
 <script src="./data.js?v=1"></script>
 <script>
 const wrap = document.getElementById('noteWrap');
-const trigger = document.getElementById('secretTrigger');
+const filterHeader = document.getElementById('filterHeader');
 const fullBtn = document.getElementById('fullPageBtn');
 const fullSvg = document.getElementById('fullSvg');
+const logoutBtn = document.getElementById('logoutBtn');
 let currentFilter = "";
 let allTypes = new Set();
 const ADMIN_PWD = "admin123";
 const LONG_PRESS_TIME = 600;
 const MOVE_THRESHOLD = 8;
-// 免登录缓存配置
 const PWD_STORE_KEY = "admin_save_pwd";
 const LOGIN_EXPIRE_KEY = "admin_login_expire";
 const LOGIN_EXPIRE_HOUR = 8;
 const LOCAL_NOTE_KEY = "notes";
 let dataList = [];
 
-// 清除遮罩残留，解决电脑页面点不动
+// 清除遮罩残留
 function clearAllLockMask() {
   document.body.classList.remove("lock-scroll");
   document.querySelectorAll(".modal-mask,.find-replace-mask").forEach(m => {
@@ -283,13 +288,14 @@ function clearAllLockMask() {
 window.addEventListener("load", clearAllLockMask);
 window.addEventListener("resize", clearAllLockMask);
 
-// 退出登录，清除免登缓存
+// 退出登录
 function logoutAdmin(){
   localStorage.removeItem(PWD_STORE_KEY);
   localStorage.removeItem(LOGIN_EXPIRE_KEY);
-  alert("已退出管理员登录，下次需重新输入密码");
-  location.reload();
+  logoutBtn.classList.remove('show');
+  alert("已退出管理员登录");
 }
+logoutBtn.addEventListener('click', logoutAdmin);
 
 async function waitNoteData(){
   let count = 0;
@@ -299,18 +305,11 @@ async function waitNoteData(){
   }
 }
 
-function forceReloadRemote(){
-  localStorage.removeItem(LOCAL_NOTE_KEY);
-  location.reload(true);
-}
-
 function loadNoteData(){
   if(window.NOTE_DATA && Array.isArray(window.NOTE_DATA)){
     dataList = JSON.parse(JSON.stringify(window.NOTE_DATA));
-    wrap.innerHTML = `<div class="empty-tip">已加载远程笔记，共${dataList.length}条</div>`;
     localStorage.setItem(LOCAL_NOTE_KEY, JSON.stringify(dataList));
   }else{
-    wrap.innerHTML = `<div class="empty-tip">远程data.js加载失败，读取本地缓存</div>`;
     const localRaw = localStorage.getItem(LOCAL_NOTE_KEY);
     try{
       dataList = localRaw ? JSON.parse(localRaw) : [];
@@ -318,11 +317,20 @@ function loadNoteData(){
       dataList = [];
     }
   }
+  // 初始化登录状态显示
+  const savedPwd = localStorage.getItem(PWD_STORE_KEY);
+  const expireTs = Number(localStorage.getItem(LOGIN_EXPIRE_KEY)) || 0;
+  const now = Date.now();
+  if(savedPwd === ADMIN_PWD && expireTs > now){
+    logoutBtn.classList.add('show');
+  }
   try{
     if(dataList.length > 0){
-      bindTitleLongPress();
+      bindFilterHeaderLongPress();
       renderFilter();
       renderNotes();
+    }else{
+      wrap.innerHTML = `<div class="empty-tip">暂无笔记</div>`;
     }
   }catch(err){
     console.error("渲染异常：", err);
@@ -348,7 +356,7 @@ fullBtn.addEventListener('click',()=>{
   }
 })
 
-// 带过期免登录验证函数
+// 免登录验证
 function verifyAdminPwd(cb){
   const savedPwd = localStorage.getItem(PWD_STORE_KEY);
   const expireTs = Number(localStorage.getItem(LOGIN_EXPIRE_KEY)) || 0;
@@ -362,16 +370,17 @@ function verifyAdminPwd(cb){
     localStorage.setItem(PWD_STORE_KEY, inputPwd);
     const expireTime = Date.now() + LOGIN_EXPIRE_HOUR * 3600 * 1000;
     localStorage.setItem(LOGIN_EXPIRE_KEY, expireTime);
+    logoutBtn.classList.add('show');
     cb();
   }else if(inputPwd !== null){
     alert("密码错误");
   }
 }
 
-// 顶部标题：触屏 + 鼠标长按双兼容
-function bindTitleLongPress(){
+// 筛选栏长按登录（触屏+鼠标）
+function bindFilterHeaderLongPress(){
+  // 触屏
   let pressTimer = null,isLongPress = false,startX=0,startY=0,isScroll=false;
-  // 触摸
   const touchStart = (e)=>{
     isLongPress = false;isScroll = false;
     const touch = e.touches[0];
@@ -388,10 +397,10 @@ function bindTitleLongPress(){
     if(dx>MOVE_THRESHOLD||dy>MOVE_THRESHOLD){isScroll=true;clearTimeout(pressTimer);}
   };
   const touchEnd = ()=>clearTimeout(pressTimer);
-  trigger.addEventListener('touchstart',touchStart);
-  trigger.addEventListener('touchmove',touchMove);
-  trigger.addEventListener('touchend',touchEnd);
-  trigger.addEventListener('touchcancel',touchEnd);
+  filterHeader.addEventListener('touchstart',touchStart);
+  filterHeader.addEventListener('touchmove',touchMove);
+  filterHeader.addEventListener('touchend',touchEnd);
+  filterHeader.addEventListener('touchcancel',touchEnd);
 
   // 鼠标长按
   let mouseTimer = null, mouseIsLong = false, mStartX, mStartY;
@@ -406,11 +415,9 @@ function bindTitleLongPress(){
   };
   const mouseUp = ()=>clearTimeout(mouseTimer);
   const mouseLeave = ()=>clearTimeout(mouseTimer);
-  trigger.addEventListener("mousedown", mouseDown);
-  trigger.addEventListener("mouseup", mouseUp);
-  trigger.addEventListener("mouseleave", mouseLeave);
-
-  trigger.addEventListener("click", ()=>{});
+  filterHeader.addEventListener("mousedown", mouseDown);
+  filterHeader.addEventListener("mouseup", mouseUp);
+  filterHeader.addEventListener("mouseleave", mouseLeave);
 }
 
 function toggleFilterPanel(){
@@ -455,18 +462,14 @@ function escapeHtml(str){
 }
 function renderNotes(){
   let list = [...dataList];
-  // 管理员登录判断逻辑 开始
-  const savedPwd = localStorage.getItem("admin_save_pwd");
-  const expireTs = Number(localStorage.getItem("admin_login_expire")) || 0;
+  const savedPwd = localStorage.getItem(PWD_STORE_KEY);
+  const expireTs = Number(localStorage.getItem(LOGIN_EXPIRE_KEY)) || 0;
   const now = Date.now();
-  const isAdminLogin = (savedPwd === "admin123" && expireTs > now);
-  // 未登录游客才过滤私密，已登录管理员不过滤
+  const isAdminLogin = (savedPwd === ADMIN_PWD && expireTs > now);
   if(!isAdminLogin){
     list = list.filter(item => !item.private);
   }
-  // 管理员登录判断逻辑 结束
   if(currentFilter) list = list.filter(item=>item.type === currentFilter);
-
 
   const sorted = list.sort((a,b)=>{
     let t1 = new Date(a.date?a.date.replace(" ","T"):0);
@@ -486,7 +489,6 @@ function renderNotes(){
     if(item.type === 'doc'){tagClass='tag-doc';tagText='实操教程';}
     const safeTitle = escapeHtml(item.title);
     const safeDate = escapeHtml(item.date);
-    // 核心修改：预览内容不转义HTML，正常渲染表格、行内代码
     const previewHtml = getPureTextPreview(item.content);
     let leftImgSrc = item.cover || getFirstImgFromHtml(item.content);
     let imgBoxHtml = leftImgSrc ? `<div class="card-img-box"><img src="${leftImgSrc}" alt=""></div>` : '';
@@ -498,7 +500,7 @@ function renderNotes(){
     let pressTimer=null,isLongPress=false,startX=0,startY=0,isScroll=false;
     const noteId = card.dataset.id;
 
-    // 移动端触屏逻辑
+    // 触屏
     const startPress = (e)=>{
       isLongPress=false;isScroll=false;
       const touch = e.touches[0];
@@ -519,7 +521,7 @@ function renderNotes(){
     card.addEventListener('touchmove',movePress);
     card.addEventListener('touchend',endPress);
 
-    // ========== 新增鼠标长按逻辑 ==========
+    // 鼠标长按
     let mouseTimer = null, mouseIsLong = false, mX, mY;
     const mouseDownFn = (e)=>{
       mouseIsLong = false;
@@ -532,7 +534,6 @@ function renderNotes(){
     };
     const mouseUpFn = ()=>{
       clearTimeout(mouseTimer);
-      // 短按松开才打开，长按不触发单击
       if(!mouseIsLong) openRead(noteId);
     };
     const mouseLeaveFn = ()=>clearTimeout(mouseTimer);
@@ -540,7 +541,7 @@ function renderNotes(){
     card.addEventListener("mouseup", mouseUpFn);
     card.addEventListener("mouseleave", mouseLeaveFn);
 
-    // 鼠标右键进入管理页
+    // 右键进管理页
     card.addEventListener("contextmenu", (e)=>{
       e.preventDefault();
       openAdminPage();
