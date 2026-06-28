@@ -742,7 +742,7 @@ body.bg-custom .md-preview{
   <div class="img-collapse-body" id="imgPanelBody">
     <div class="tip-red">【高危禁止】cd/cp/git终端命令不要粘贴到data.js，会损坏笔记文件！</div>
     <div class="tip-green">图片复制规则：选中图片仅生成对应cp指令，不会读取手机全部图片</div>
-    <div class="warn">不生成base64图片，仅保存images文件夹相对路径，图片需手动上传仓库
+    <div class="warn">不生成base64图片，仅保存CDN线上链接，图片需手动上传仓库
     <br>vivo手机多选提示：相册长按批量勾选，单次单选可多次叠加</div>
     <div class="tool-row">
     <button class="tool-btn" id="copyJsonBtn">一键复制完整data.js代码（仅本段可粘贴nano）</button>
@@ -889,36 +889,72 @@ body.bg-custom .md-preview{
     </div>
     <div class="find-replace-btns">
   <button class="btn-find" id="findNextBtn">下一处</button>
-  <button class="btn-find" id="replaceSingleBtn">替换</button>
-  <button class="btn-replace-all" id="replaceAllBtn">全部</button>
+<button class="btn-replace" id="replaceSingleBtn">替换当前</button>
+<button class="btn-replace-all" id="replaceAllBtn">全部替换</button>
 </div>
   </div>
 </div>
-<!-- 大图预览 -->
+
+<!-- 插入图片弹窗容器 -->
+<div class="modal-mask" id="imgModalMask"></div>
+<!-- 宽度图片弹窗 -->
+<div class="modal-mask" id="imgWidthModalMask"></div>
+<!-- 大图预览遮罩 -->
 <div class="img-preview-mask" id="imgPreviewMask">
   <img class="img-preview-img" id="previewImg">
 </div>
+</div>
 
 <script>
-// 统一写入主存储 notes，给管理页/复制按钮读取
+// 全局常量配置
+const ADMIN_PASSWORD = "admin123";
+const PWD_STORE_KEY = "noteAdminPwd";
+const LOGIN_EXPIRE_KEY = "loginExpireTime";
+const LOGIN_EXPIRE_HOUR = 24;
+const CACHE_KEY = "noteLocalCache";
+const RICH_RECORD_MAX = 50;
+let currentEditMode = "rich";
+let editId = null;
+let list = window.NOTE_DATA || [];
+let targetNote = null;
+let richRecordStack = [];
+let richRecordIndex = -1;
+let matchCase = false;
+let globalImgSerial = 0;
+let imgUploadList = [];
+// DOM缓存
+const richBox = document.getElementById("richEditor");
+const mdBox = document.getElementById("mdEditor");
+const mdPreviewBox = document.getElementById("mdPreview");
+const titleInput = document.querySelector(".title-input");
+const typeInput = document.querySelector(".type-input");
+const wordCountTip = document.getElementById("wordCountTip");
+const findReplaceBtn = document.getElementById("findReplaceBtn");
+const customBgColorInput = document.getElementById("customBgColor");
+const fontSizeSelect = document.getElementById("fontSizeSel");
+const fontColorInput = document.getElementById("fontColor");
+const bgColorInput = document.getElementById("bgColor");
+const copyAllJsonBtn = document.getElementById("copyJsonBtn");
+const genCpBtn = document.getElementById("showTemplateBtn");
+const clearImgListBtn = document.getElementById("clearImgListBtn");
+const localImgBtn = document.getElementById("localImgBtn");
+const batchImgBtn = document.getElementById("batchImgBtn");
+const saveNormalBtn = document.getElementById("saveNormalBtn");
+const saveTimeBtn = document.getElementById("saveTimeBtn");
+const exportBackupBtn = document.getElementById("exportFullBackup");
+const importBackupBtn = document.getElementById("importBackup");
+const backupFileInput = document.getElementById("backupFileInput");
+const imgFileInput = document.getElementById("imgFileInput");
+const hiddenImgFile1 = document.getElementById("hiddenImgFile1");
+const hiddenImgFile2 = document.getElementById("hiddenImgFile2");
+const matchCaseCheck = document.getElementById('matchCase');
+
+// 图片复制命令生成
 function buildSafeCpCmd(srcPath, destFileName) {
   const destDir = "/storage/emulated/0/notes/images/";
   return `cp ${srcPath} "${destDir}${destFileName}"`;
 }
-
-
-function saveNoteToStorage(newList){
-  localStorage.setItem("notes", JSON.stringify(newList));
-}
-
-
-// 全局图片序号持久化
-let globalImgSerial = Number(localStorage.getItem("img_serial") || 0);
-function addImgSerial(){
-  globalImgSerial++;
-  localStorage.setItem("img_serial", globalImgSerial);
-}
-// 本地图片插入通用方法（无多余空白，纯净路径）
+// 本地图片本地路径插入
 function insertLocalImgTag(fileName){
   const imgHtml = `<img loading="lazy" src="/notes/images/${fileName}" alt="配图" style="max-width:100%;margin:8px 0;"><br><br>`;
   if(currentEditMode === "rich"){
@@ -930,9 +966,8 @@ function insertLocalImgTag(fileName){
     calcWordCount();
   }
 }
-// 本地图片插入终端路径版本（弹窗上传使用）
+// CDN线上图片插入
 function insertLocalImgTagTerminal(safeName){
-  // 替换成CDN线上路径，不再用手机本地路径
   const srcPath = `https://cdn.jsdelivr.net/gh/sxgpyjg/notes@main/images/${safeName}`;
   if(currentEditMode === "rich"){
     const imgHtml = `<img loading="lazy" src="${srcPath}" alt="本地图片" style="max-width:100%;margin:8px 0;"><br><br>`;
@@ -945,345 +980,210 @@ function insertLocalImgTagTerminal(safeName){
     calcWordCount();
   }
 }
-
-// 强制刷新远程数据，清空本地缓存
-function forceReloadRemote(){
-  localStorage.removeItem("notes");
-  localStorage.removeItem("note_temp_data");
-  location.reload(true);
+// 图片序号自增持久化
+function addImgSerial(){
+  globalImgSerial++;
+  localStorage.setItem("img_serial", globalImgSerial);
 }
-
-
-const CACHE_KEY = "note_temp_data";
-const PWD_STORE_KEY = "admin_save_pwd";
-const LOGIN_EXPIRE_KEY = "admin_login_expire";
-const LOGIN_EXPIRE_HOUR = 8;
-let list = [];
-let targetNote = null;
-const editId = new URLSearchParams(location.search).get("id");
-let imgUploadList = [];
-let currentEditMode = "rich";
+// MD撤销记录保存
+function saveMdRecord(){
+  mdRecordStack.splice(mdRecordIndex+1);
+  mdRecordStack.push(mdBox.value);
+  mdRecordIndex = mdRecordStack.length - 1;
+}
+// 页面事件绑定占位（当前为空函数）
+function bindAllEvent(){}
+// 加载本地缓存
+function loadLocalCache(){
+  const cacheStr = localStorage.getItem(CACHE_KEY);
+  if(cacheStr){
+    try{
+      const tempCache = JSON.parse(cacheStr);
+      targetNote = tempCache.targetId ? list.find(i=>i.id === tempCache.targetId) : null;
+      imgUploadList = tempCache.imgUploadList || [];
+      globalImgSerial = Number(tempCache.serial || 0);
+    }catch(e){}
+  }
+  globalImgSerial = Number(localStorage.getItem("img_serial") || 0);
+}
+// 统一保存笔记别名
+function saveAllNotes(arr){
+  saveNoteToStorage(arr);
+}
+// 全局MD撤销栈（缺失定义）
 let mdRecordStack = [];
 let mdRecordIndex = -1;
-let richRecordStack = [];
-let richRecordIndex = -1;
-const RICH_RECORD_MAX = 50;
-let moreToolsOpen = false;
-let initViewHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-const ADMIN_PASSWORD = "admin123";
-let matchCase = false;
 
+// 页面加载初始化
+window.onload = function(){
+  initLoginCheck();
+  bindAllEvent();
+  loadLocalCache();
+  initUndoStack();
+  calcWordCount();
+  customBgColor.addEventListener("input", setCustomBg);
+};
 
-// 退出登录
+// 登录校验
+function initLoginCheck(){
+  const savedPwd = localStorage.getItem(PWD_STORE_KEY);
+  const expire = Number(localStorage.getItem(LOGIN_EXPIRE_KEY) || 0);
+  const now = Date.now();
+  if(savedPwd && savedPwd === ADMIN_PASSWORD && now < expire){
+    document.getElementById("loginWrap").style.display = "none";
+    document.getElementById("mainWrap").style.display = "block";
+  }else{
+    document.getElementById("loginWrap").style.display = "flex";
+    document.getElementById("mainWrap").style.display = "none";
+  }
+}
+function checkPwd(){
+  const inputPwd = document.getElementById("pwdInput").value.trim();
+  if(inputPwd !== ADMIN_PASSWORD){
+    alert("密码错误，无法进入编辑器");
+    return;
+  }
+  localStorage.setItem(PWD_STORE_KEY, inputPwd);
+  const expire = Date.now() + LOGIN_EXPIRE_HOUR * 3600 * 1000;
+  localStorage.setItem(LOGIN_EXPIRE_KEY, expire);
+  document.getElementById("loginWrap").style.display = "none";
+  document.getElementById("mainWrap").style.display = "block";
+  loadLocalCache();
+  setTimeout(()=>{
+    initLoadNote();
+    calcWordCount();
+  },100);
+}
+
 function logoutAdmin(){
   localStorage.removeItem(PWD_STORE_KEY);
   localStorage.removeItem(LOGIN_EXPIRE_KEY);
   location.reload();
 }
 
-// 自动登录+延迟加载笔记，解决DOM未渲染回填空白
-function autoLoginCheck(){
-  const savedPwd = localStorage.getItem(PWD_STORE_KEY);
-  const expireTs = Number(localStorage.getItem(LOGIN_EXPIRE_KEY)) || 0;
-  const now = Date.now();
-  if(expireTs < now){
-    localStorage.removeItem(PWD_STORE_KEY);
-    localStorage.removeItem(LOGIN_EXPIRE_KEY);
-    return;
-  }
-  if(savedPwd && savedPwd === ADMIN_PASSWORD){
-    document.getElementById("loginWrap").style.display = "none";
-    document.getElementById("mainWrap").style.display = "block";
-    loadLocalCache();
-    window.addEventListener("DOMContentLoaded", ()=>{
-      setTimeout(initLoadNote, 300);
-    })
-  }
-}
-autoLoginCheck();
-
-function loadLocalCache(){
-  const cacheStr = localStorage.getItem(CACHE_KEY);
-
-  // 第一步：强制优先使用远程data.js里的完整笔记，不被本地覆盖
-  if(window.NOTE_DATA && Array.isArray(window.NOTE_DATA)){
-    list = JSON.parse(JSON.stringify(window.NOTE_DATA));
-  }else{
-    list = [];
-  }
-
-  // 彻底禁用 localStorage.notes 覆盖远程线上文件
-  /*
-  const realStorage = localStorage.getItem("notes");
-  if(realStorage){
-    try{
-      list = JSON.parse(realStorage);
-      window.NOTE_DATA = list;
-    }catch(e){}
-  }
-  */
-
-  // 仅单独保留临时草稿，追加到远程完整列表末尾，绝不替换主线笔记
-  if(cacheStr){
-    try{
-      const tempCache = JSON.parse(cacheStr);
-      const tempDraft = tempCache.find(item => item._isTempNew === true);
-      if(tempDraft){
-        const hasDraft = list.some(i => i._isTempNew === true);
-        if(!hasDraft && !list.some(n => n.id === tempDraft.id)){
-
-          list.push(tempDraft);
-        }
-      }
-    }catch(e){}
-  }
-}
-
-function saveLocalCache(){
-  const tempObj = {
-    list: list,
-    targetId: targetNote ? targetNote.id : null,
-    imgUploadList: imgUploadList,
-    serial: globalImgSerial
-  };
-  localStorage.setItem(CACHE_KEY, JSON.stringify(tempObj));
-}
-function getFullJsText(){
-  return `window.NOTE_DATA = ${JSON.stringify(list, null, 2)};`;
-}
-function getNowTimeStr(){
-  const date = new Date();
-  const y = date.getFullYear();
-  const m = String(date.getMonth()+1).padStart(2,"0");
-  const d = String(date.getDate()).padStart(2,"0");
-  const h = String(date.getHours()).padStart(2,"0");
-  const mi = String(date.getMinutes()).padStart(2,"0");
-  const s = String(date.getSeconds()).padStart(2,"0");
-  return `${y}-${m}-${d} ${h}:${mi}:${s}`;
-}
-
-// DOM缓存
-const titleInput = document.querySelector(".title-input");
-const typeInput = document.querySelector(".type-input");
-const saveNormalBtn = document.getElementById("saveNormalBtn");
-const saveTimeBtn = document.getElementById("saveTimeBtn");
-const imgFileInput = document.getElementById("imgFileInput");
-const hiddenImgFile1 = document.getElementById("hiddenImgFile1");
-const hiddenImgFile2 = document.getElementById("hiddenImgFile2");
-const copyAllJsonBtn = document.getElementById("copyJsonBtn");
-const genCpBtn = document.getElementById("showTemplateBtn");
-const clearImgListBtn = document.getElementById("clearImgListBtn");
-const codeInsertBtn = document.getElementById("insertCodeBtn");
-const batchImgBtn = document.getElementById("batchImgBtn");
-const localImgBtn = document.getElementById("localImgBtn");
-const richBox = document.getElementById("richEditor");
-const mdBox = document.getElementById("mdEditor");
-const mdPreviewBox = document.getElementById("mdPreview");
-const fontSizeSelect = document.getElementById("fontSizeSel");
-const fontColorInput = document.getElementById("fontColor");
-const bgColorInput = document.getElementById("bgColor");
-const richModeBtn = document.getElementById("modeRich");
-const mdModeBtn = document.getElementById("modeMd");
-const moreToolsPanel = document.getElementById("moreToolsPanel");
-const exportBackupBtn = document.getElementById("exportFullBackup");
-const importBackupBtn = document.getElementById("importBackup");
-const backupFileInput = document.getElementById("backupFileInput");
-const wordCountTip = document.getElementById("wordCountTip");
-const matchCaseCheck = document.getElementById("matchCase");
-const customBgColorInput = document.getElementById("customBgColor");
-// 清空全部按钮DOM
-const clearAllContentBtn = document.getElementById("clearAllContentBtn");
-
-// 编辑区整体底色修改修复
-if(customBgColorInput){
-  customBgColorInput.addEventListener("input", function(){
-    // 更新全局自定义底色变量，适配css主题
-    document.body.style.setProperty("--custom-bg", this.value);
-    // 同步三个编辑容器底色
-    richBox.style.backgroundColor = this.value;
-    mdBox.style.backgroundColor = this.value;
-    mdPreviewBox.style.backgroundColor = this.value;
-    calcWordCount();
-  });
-}
-
-// ========== 新增：清空全部内容完整函数 ==========
-function clearAllNotesContent(){
-  if(!confirm("确认清空当前编辑器全部内容，无法撤销！")) return;
-  // 清空编辑器
-  richBox.innerHTML = "";
-  mdBox.value = "";
-  renderMdPreview();
-  // 重置撤销栈
-  richRecordStack = [""];
+// 撤销重做初始化
+function initUndoStack(){
+  const richBox = document.getElementById("richEditor");
+  richRecordStack = [richBox.innerHTML];
   richRecordIndex = 0;
-  mdRecordStack = [""];
-  mdRecordIndex = 0;
-  // 重算字数
-  calcWordCount();
-  alert("编辑器内容已全部清空");
-}
-
-function toggleMoreTools(){
-  moreToolsOpen = !moreToolsOpen;
-  moreToolsPanel.classList.toggle("show", moreToolsOpen);
-}
-function saveMdRecord(){
-  mdRecordStack.splice(mdRecordIndex+1);
-  mdRecordStack.push(mdBox.value);
-  mdRecordIndex = mdRecordStack.length - 1;
-}
-function mdUndo(){
-  if(mdRecordIndex <= 0) return;
-  mdRecordIndex--;
-  mdBox.value = mdRecordStack[mdRecordIndex];
-  renderMdPreview();
-  calcWordCount();
-}
-function mdRedo(){
-  if(mdRecordIndex >= mdRecordStack.length - 1) return;
-  mdRecordIndex++;
-  mdBox.value = mdRecordStack[mdRecordIndex];
-  renderMdPreview();
-  calcWordCount();
 }
 function globalUndo(){
   if(currentEditMode === "rich"){
-    if(richRecordIndex <= 0) return alert("已到最早操作记录");
+    if(richRecordIndex <= 0) return alert("已经是最早一步，无法撤销");
     richRecordIndex--;
-    richBox.innerHTML = richRecordStack[richRecordIndex];
-    checkFormatActive();
+    document.getElementById("richEditor").innerHTML = richRecordStack[richRecordIndex];
     calcWordCount();
-  }else mdUndo();
+  }else{
+    alert("Markdown模式暂不支持撤销重做");
+  }
 }
 function globalRedo(){
   if(currentEditMode === "rich"){
-    if(richRecordIndex >= richRecordStack.length - 1) return alert("无后续操作");
+    if(richRecordIndex >= richRecordStack.length -1) return alert("已是最新一步，无法重做");
     richRecordIndex++;
-    richBox.innerHTML = richRecordStack[richRecordIndex];
-    checkFormatActive();
+    document.getElementById("richEditor").innerHTML = richRecordStack[richRecordIndex];
     calcWordCount();
-  }else mdRedo();
+  }else{
+    alert("Markdown模式暂不支持撤销重做");
+  }
 }
 
-function viewportResizeHandle(){
-  const curH = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-  if(curH < initViewHeight - 100) document.body.classList.add("keyboard-opened");
-  else document.body.classList.remove("keyboard-opened");
-}
-if(window.visualViewport) window.visualViewport.addEventListener("resize", viewportResizeHandle);
-else window.addEventListener("resize", viewportResizeHandle);
+// 富文本输入监听，保存撤销栈
+document.getElementById("richEditor").addEventListener("input", function(){
+  richRecordStack.splice(richRecordIndex + 1);
+  richRecordStack.push(this.innerHTML);
+  if(richRecordStack.length > RICH_RECORD_MAX) richRecordStack.shift();
+  richRecordIndex = richRecordStack.length - 1;
+  calcWordCount();
+});
 
-// 修复切换函数：表格双向转换、清理多余换行、不重复增行
+// 字数统计
+function calcWordCount(){
+  let text = "";
+  if(currentEditMode === "rich"){
+    text = document.getElementById("richEditor").innerText || "";
+  }else{
+    text = document.getElementById("mdEditor").value;
+  }
+  const allChar = text.length;
+  const pureText = text.replace(/\s/g, "").length;
+  document.getElementById("wordCountTip").innerText = `纯文字数：${pureText} | 总字符(含空格换行)：${allChar}`;
+}
+
+// 模式切换
 function switchMode(mode){
   currentEditMode = mode;
-  richModeBtn.classList.toggle("active", mode === "rich");
-  mdModeBtn.classList.toggle("active", mode === "md");
+  const richBtn = document.getElementById("modeRich");
+  const mdBtn = document.getElementById("modeMd");
+  const richDom = document.getElementById("richEditor");
+  const mdDom = document.getElementById("mdEditor");
+  const previewDom = document.getElementById("mdPreview");
   if(mode === "rich"){
-    let mdText = mdBox.value;
-    let parseHtml = mdText.replace(/(^|\n)(\|.+\|\n)(\|----.+\|\n)+(\|.+\|)(\n|$)/g, (_, pre, hRow, sepRow, cRow, suf)=>{
-      const block = `${hRow}${sepRow}${cRow}`.trim();
-      const rows = block.split("\n");
-      let tableDom = `<table style="width:100%;border-collapse:collapse;margin:8px 0;">`;
-      rows.forEach((row, idx)=>{
-        const cells = row.split("|").filter(s=>s.trim() !== "");
-        tableDom += "<tr>";
-        cells.forEach(txt=>{
-          const tag = idx === 0 ? "th" : "td";
-          tableDom += `<${tag} style="border:1px solid #999;padding:6px 8px;">${txt.trim()}</${tag}>`;
-        });
-        tableDom += "</tr>";
-      });
-      tableDom += "</table>";
-      return `${pre}${tableDom}${suf}`;
-    });
-    richBox.innerHTML = mdToHtml(parseHtml);
-    richBox.style.display = "block";
-    mdBox.style.display = "none";
-    mdPreviewBox.style.display = "none";
-    checkFormatActive();
+    richBtn.classList.add("active");
+    mdBtn.classList.remove("active");
+    richDom.style.display = "block";
+    mdDom.style.display = "none";
+    previewDom.style.display = "none";
+    // MD转富文本
+    const mdText = mdDom.value;
+    richDom.innerHTML = mdToHtml(mdText);
+    initUndoStack();
   }else{
-    let htmlText = richBox.innerHTML;
-    let parseMd = htmlText.replace(/<table[\s\S]*?<\/table>/g, tab=>{
-      const trList = tab.match(/<tr[\s\S]*?<\/tr>/g) || [];
-      let mdTable = "";
-      trList.forEach((tr, rowIdx)=>{
-        const cellList = tr.match(/<t[hd][\s\S]*?<\/t[hd]>/g) || [];
-        let line = "";
-        cellList.forEach(cell=>{
-          const text = cell.replace(/<\/?t[hd].*?>/g,"").trim();
-          line += `|${text}`;
-        });
-        line += "|\n";
-        mdTable += line;
-        if(rowIdx === 0){
-          let sepLine = "";
-          cellList.forEach(()=> sepLine += "|----");
-          sepLine += "|\n";
-          mdTable += sepLine;
-        }
-      });
-      return "\n" + mdTable.trim() + "\n";
-    });
-    parseMd = parseMd.replace(/\n{3,}/g,"\n\n");
-    mdBox.value = htmlToMd(parseMd);
-    saveMdRecord();
+    richBtn.classList.remove("active");
+    mdBtn.classList.add("active");
+    richDom.style.display = "none";
+    mdDom.style.display = "block";
+    previewDom.style.display = "block";
+    // 富文本转MD
+    const htmlText = richDom.innerHTML;
+    mdDom.value = htmlToMd(htmlText);
     renderMdPreview();
-    richBox.style.display = "none";
-    mdBox.style.display = "block";
-    mdPreviewBox.style.display = "block";
   }
   calcWordCount();
 }
 
-// 优化md转html
-function mdToHtml(mdStr){
-  return mdStr
-    .replace(/\$\$([\s\S]*?)\$\$/g, (m,formula)=>{
-      try{ return katex.renderToString(formula,{displayMode:true}) }catch{ return m; }
-    })
-    .replace(/\$([^\$]+?)\$/g, (m,formula)=>{
-      try{ return katex.renderToString(formula,{displayMode:false}) }catch{ return m; }
-    })
-    .replace(/```([\s\S]*?)```/g, '<pre style="background:#f5f5f5;padding:10px;border-radius:6px;white-space:pre-wrap;"><code>$1</code></pre>')
-    .replace(/<u>(.*?)<\/u>/g, '<u>$1</u>')
-    .replace(/<p style="text-align:center">(.*?)<\/p>/g, '<p style="text-align:center">$1</p>')
-    .replace(/^### (.*)$/gm, '<h3>$1</h3>')
-    .replace(/^## (.*)$/gm, '<h2>$1</h2>')
-    .replace(/^# (.*)$/gm, '<h1>$1</h1>')
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.*?)\*/g, '<em>$1</em>')
-    .replace(/~~(.*?)~~/g, '<s>$1</s>')
-    .replace(/^\- (.*)$/gm, '<li>$1</li>')
-    .replace(/!\[(.*?)\]\((https?:\/\/[^\s)]+)\)\{width=(\d+)\}/g, '<img src="$2" alt="$1" style="max-width:100%;margin:8px 0;width:$3px;">')
-    .replace(/!\[(.*?)\]\((https?:\/\/[^\s)]+)\)/g, '<img src="$2" alt="$1" style="max-width:100%;margin:8px 0;">')
-    .replace(/\n/g, '<br>');
-}
-// 优化html转md：保留表格、u、居中标签
-function htmlToMd(htmlStr){
-  let text = htmlStr
-    .replace(/<pre style="background:#f5f5f5;padding:10px;border-radius:6px;white-space:pre-wrap;"><code>([\s\S]*?)<\/code><\/pre>/g, '```\n$1\n```')
-    .replace(/<h1>(.*?)<\/h1>/g, '# $1')
-    .replace(/<h2>(.*?)<\/h2>/g, '## $1')
-    .replace(/<h3>(.*?)<\/h3>/g, '### $1')
-    .replace(/<strong>(.*?)<\/strong>/g, '**$1**')
-    .replace(/<em>(.*?)<\/em>/g, '*$1*')
-    .replace(/<s>(.*?)<\/s>/g, '~~$1~~')
-    .replace(/<li>(.*?)<\/li>/g, '- $1')
-    .replace(/<img.*?width="(\d+)px".*?src="(.*?)".*?alt="(.*?)".*?>/g, '![![$3]($2){width=$1}')
-    .replace(/<img.*?src="(.*?)".*?alt="(.*?)".*?>/g, '![$2]($1)')
-    .replace(/<br>/g, '\n');
+// HTML转Markdown
+function htmlToMd(html){
+  let text = html
+.replace(/<h1>(.*?)<\/h1>/g, '# $1')
+.replace(/<h2>(.*?)<\/h2>/g, '## $1')
+.replace(/<h3>(.*?)<\/h3>/g, '### $1')
+.replace(/<strong>(.*?)<\/strong>/g, '**$1**')
+.replace(/<em>(.*?)<\/em>/g, '*$1*')
+.replace(/<s>(.*?)<\/s>/g, '~~$1~~')
+.replace(/<li>(.*?)<\/li>/g, '- $1')
+.replace(/<img.*?width="(\d+)px".*?src="(.*?)".*?alt="(.*?)".*?>/g, '![![$3]($2){width=$1}')
+.replace(/<img.*?src="(.*?)".*?alt="(.*?)".*?>/g, '![$2]($1)')
+.replace(/<br>/g, '\n');
   text = text.replace(/<(?!p style="text-align:center"|u|table|tr|th|td)[^>]+>/g, '');
   return text;
 }
-function renderMdPreview(){
-  mdPreviewBox.innerHTML = mdToHtml(mdBox.value);
+
+// Markdown转HTML
+function mdToHtml(md){
+  let html = md
+.replace(/^### (.*)$/gm, '<h3>$1</h3>')
+.replace(/^## (.*)$/gm, '<h2>$1</h2>')
+.replace(/^# (.*)$/gm, '<h1>$1</h1>')
+.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+.replace(/\*(.*?)\*/g, '<em>$1</em>')
+.replace(/~~(.*?)~~/g, '<s>$1</s>')
+.replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="$2" alt="$1" style="max-width:100%;">')
+.replace(/\n/g, '<br>');
+  return html;
 }
-mdBox.addEventListener("input", ()=>{
-  saveMdRecord();
+
+// MD预览渲染
+function renderMdPreview(){
+  const md = document.getElementById("mdEditor").value;
+  document.getElementById("mdPreview").innerHTML = mdToHtml(md);
+}
+document.getElementById("mdEditor").addEventListener("input", function(){
   renderMdPreview();
   calcWordCount();
 });
+
+
 
 // 富文本历史栈
 richBox.addEventListener("input", ()=>{
@@ -1295,7 +1195,7 @@ richBox.addEventListener("input", ()=>{
   calcWordCount();
 });
 
-// 格式按钮高亮检测（修复H2/H3错乱、语法缺失classList）
+// 格式按钮高亮检测
 function checkFormatActive(){
   document.querySelectorAll(".icon-btn").forEach(btn=>btn.classList.remove("active-format"));
   if(currentEditMode !== "rich") return;
@@ -1348,43 +1248,49 @@ const word = text.replace(/\s/g,"").length;
 wordCountTip.innerText = `纯文字数：${word} | 总字符(含空格换行)：${charAll}`;
 }
  
-// 登录校验
-function checkPwd(){
-const inputPwd = document.getElementById("pwdInput").value.trim();
-if(inputPwd !== ADMIN_PASSWORD){
-alert("密码错误，无法进入编辑器");
-return;
-}
-localStorage.setItem(PWD_STORE_KEY, inputPwd);
-const expire = Date.now() + LOGIN_EXPIRE_HOUR * 3600 * 1000;
-localStorage.setItem(LOGIN_EXPIRE_KEY, expire);
-document.getElementById("loginWrap").style.display = "none";
-document.getElementById("mainWrap").style.display = "block";
-loadLocalCache();
-setTimeout(initLoadNote,100);
-}
- 
-// 【核心修复】初始化加载笔记，回填不丢失、不破坏按钮逻辑
-function initLoadNote(){
-imgUploadList = [];
-if(!editId) return;
-const target = list.find(item=>item.id === Number(editId));
-if(!target) return;
-targetNote = target;
-titleInput.value = target.title;
-typeInput.value = target.type;
-// 私密状态回填
-document.getElementById("privateCheck").checked = !!target.private;
-richBox.innerHTML = target.content || "";
 
-richRecordStack = [richBox.innerHTML];
-richRecordIndex = 0;
-mdBox.value = htmlToMd(target.content || "").replace(/\n{3,}/g,"\n\n");
-saveMdRecord();
-renderMdPreview();
-checkFormatActive();
-calcWordCount();
+ 
+// 初始化加载笔记回填（修复新建残留旧内容）
+function initLoadNote(){
+  imgUploadList = [];
+  // 强制重新读取本地缓存，清除内存残留旧数据
+  loadLocalCache();
+  if(!editId) {
+    // 新建笔记：全量清空所有编辑区与缓存
+    richBox.innerHTML = "";
+    mdBox.value = "";
+    renderMdPreview();
+    // 重置两套撤销栈，杜绝删除内容从撤销复原
+    richRecordStack = [""];
+    richRecordIndex = 0;
+    mdRecordStack = [""];
+    mdRecordIndex = 0;
+    // 清空表单
+    titleInput.value = "";
+    typeInput.value = "";
+    document.getElementById("privateCheck").checked = false;
+    targetNote = null;
+    calcWordCount();
+    return;
+  }
+  // 从刷新后的最新缓存list查找笔记，不用页面残留旧list变量
+  const target = list.find(item=>item.id === Number(editId));
+  if(!target) return;
+  targetNote = target;
+  titleInput.value = target.title;
+  typeInput.value = target.type;
+  document.getElementById("privateCheck").checked = !!target.private;
+  richBox.innerHTML = target.content || "";
+
+  richRecordStack = [richBox.innerHTML];
+  richRecordIndex = 0;
+  mdBox.value = htmlToMd(target.content || "").replace(/\n{3,}/g,"\n\n");
+  saveMdRecord();
+  renderMdPreview();
+  checkFormatActive();
+  calcWordCount();
 }
+
  
 function getLineStart(text, pos){
 let i = pos;
@@ -1392,8 +1298,7 @@ while(i > 0 && text[i-1] !== "\n") i--;
 return i;
 }
  
-// ========== 全部格式化函数（修复纯文本光标定位）==========
-//清除文字格式
+// 全部格式化工具函数
 function clearTextFormat(){
 if(currentEditMode === "rich"){
 richBox.focus();
@@ -1404,7 +1309,6 @@ calcWordCount();
 alert("Markdown模式请手动删除格式标记");
 }
 }
-//加粗
 function formatBold(){
 if(currentEditMode === "rich"){
 richBox.focus();
@@ -1422,7 +1326,6 @@ mdBox.selectionStart = pos;
 mdBox.selectionEnd = pos;
 }
 }
-//斜体【修复原错误** → *】
 function formatItalic(){
 if(currentEditMode === "rich"){
 richBox.focus();
@@ -1440,7 +1343,6 @@ mdBox.selectionStart = pos;
 mdBox.selectionEnd = pos;
 }
 }
-//删除线
 function formatStrikeThrough(){
 if(currentEditMode === "rich"){
 richBox.focus();
@@ -1458,7 +1360,6 @@ mdBox.selectionStart = pos;
 mdBox.selectionEnd = pos;
 }
 }
-//下划线
 function insertUnderline(){
 if(currentEditMode === "rich"){
 richBox.focus();
@@ -1476,7 +1377,6 @@ mdBox.selectionStart = pos;
 mdBox.selectionEnd = pos;
 }
 }
-//代码块（修复光标+图片面板按钮共用）
 function insertMdCode(){
 const richTpl = `<pre style="background:#f5f5f5;padding:10px;border-radius:6px;white-space:pre-wrap;"><code style="display:block;min-height:16px;">\n</code></pre><br><br>`;
 const mdTpl = "```\n\n```\n";
@@ -1495,7 +1395,6 @@ mdBox.selectionStart = targetPos;
 mdBox.selectionEnd = targetPos;
 }
 }
-//折叠详情块
 function insertDetails(){
 const mdTpl = "\n<details>\n<summary>点击展开</summary>\n内容\n</details>\n";
 const richTpl = `<details><summary>点击展开</summary>内容</details>`;
@@ -1511,7 +1410,6 @@ mdBox.selectionStart = mdBox.value.length - 8;
 mdBox.selectionEnd = mdBox.value.length - 8;
 }
 }
-//行内公式
 function insertInlineMath(){
 if(currentEditMode === "rich"){
 document.execCommand("insertText",false,"$ $");
@@ -1532,7 +1430,6 @@ mdBox.selectionStart = mdBox.value.length -1;
 mdBox.selectionEnd = mdBox.value.length -1;
 }
 }
-//块级公式
 function insertBlockLatex(){
 if(currentEditMode === "rich"){
 document.execCommand("insertHTML",false,"<p>$$<br><br>$$</p>");
@@ -1810,7 +1707,6 @@ mdBox.selectionStart = pos;
 mdBox.selectionEnd = pos;
 }
 }
-//表格（自带边框样式，手机可见）
 function insertTable(){
 const tableHtml = `<table style="width:100%;border-collapse:collapse;margin:8px 0;"><tr><th>标题1</th><th>标题2</th></tr><tr><td>内容</td><td>内容</td></tr></table>`;
 const mdTpl = "|标题1|标题2|\n|----|----|\n|内容|内容|\n";
@@ -1826,7 +1722,19 @@ renderMdPreview();
 calcWordCount();
 }
 }
-//短分割线
+function clearAllNotesContent(){
+  if(!confirm("确认清空当前编辑器全部内容，无法撤销！")) return;
+  richBox.innerHTML = "";
+  mdBox.value = "";
+  renderMdPreview();
+  richRecordStack = [""];
+  richRecordIndex = 0;
+  mdRecordStack = [""];
+  mdRecordIndex = 0;
+  calcWordCount();
+  alert("编辑器内容已全部清空");
+}
+
 function splitLine1(){
 const tpl = "---\n";
 if(currentEditMode === "rich"){
@@ -1840,7 +1748,6 @@ renderMdPreview();
 calcWordCount();
 }
 }
-//长分割线
 function splitLine2(){
 const tpl = "===\n";
 if(currentEditMode === "rich"){
@@ -1854,11 +1761,9 @@ renderMdPreview();
 calcWordCount();
 }
 }
-//取色器
 function openColorPicker(){
 fontColorInput.click();
 }
-//复制选中内容
 function copySelect(){
 const selText = window.getSelection().toString();
 navigator.clipboard.writeText(selText).catch(()=>{
@@ -1871,17 +1776,14 @@ document.body.removeChild(tempTextarea);
 });
 alert("选中内容已复制");
 }
-//段落上下移
 function moveUp(){alert("段落上移功能待完善");}
 function moveDown(){alert("段落下移功能待完善");}
-//图片面板展开收起
 function toggleImgPanel(){
 const panel = document.getElementById("imgPanelBody");
 const arrow = document.getElementById("imgArrow");
 panel.classList.toggle("show");
 arrow.classList.toggle("rotate");
 }
-//网络图床图片弹窗（Via浏览器文件名修复·全浏览器通用）
 function insertImage(){
 const mask = document.createElement("div");
 mask.className = "modal-mask lock-scroll";
@@ -1923,11 +1825,9 @@ mask.onclick = e => e.target === mask && closeModal();
 cancelBtn.onclick = closeModal;
 localBtn.onclick = ()=> fileInput.click();
  
-// Via兼容：网页干净文件名，终端保留真实原图路径
 fileInput.onchange = function(e){
 const allFiles = Array.from(e.target.files);
 if(allFiles.length === 0) return closeModal();
-//修复：先判断数量再清空列表
 if(imgUploadList.length + allFiles.length > 5){
 alert("图片记录总数不能超过5张，请先清空历史图片记录");
 fileInput.value = "";
@@ -1942,7 +1842,6 @@ globalImgSerial++;
 const uniqueId = Date.now() + "_" + globalImgSerial + Math.random().toString(36).slice(2,4);
 realName = `IMG_${uniqueId}.${ext}`;
 }
-// 全局序号前缀，杜绝重名覆盖
 globalImgSerial++;
 const safeName = `${globalImgSerial}_${realName}`;
 insertLocalImgTagTerminal(safeName);
@@ -1954,32 +1853,26 @@ if (fullPath) {
   fullPath = fullPath.replace(/\/download\//gi, "/Download/");
   termuxSrc = fullPath;
 } else {
-  const fileName = file.name;
-  const fnLower = fileName.toLowerCase();
-  // 扩充多目录匹配，全部使用正确 ~/storage/shared 路径
-  if (/screenshot/.test(fnLower)) {
-    termuxSrc = `/storage/emulated/0/DCIM/Screenshots/${fileName}`;
+const fileName = file.name;
+const fnLower = fileName.toLowerCase();
+if (/screenshot/.test(fnLower)) {
+termuxSrc = `/storage/emulated/0/DCIM/Screenshots/${fileName}`;
 } else if (/wx_|wechat|mmexport/.test(fnLower)) {
-    termuxSrc = `/storage/emulated/0/tencent/MicroMsg/WeiXin/${fileName}`;
+termuxSrc = `/storage/emulated/0/tencent/MicroMsg/WeiXin/${fileName}`;
 } else if (/qq/.test(fnLower)) {
-    termuxSrc = `/storage/emulated/0/tencent/QQ_images/${fileName}`;
+termuxSrc = `/storage/emulated/0/tencent/QQ_images/${fileName}`;
 } else if (/download/.test(fnLower)) {
-    termuxSrc = `/storage/emulated/0/Download/${fileName}`;
+termuxSrc = `/storage/emulated/0/Download/${fileName}`;
 } else {
-    termuxSrc = `/storage/emulated/0/DCIM/Camera/${fileName}`;
+termuxSrc = `/storage/emulated/0/DCIM/Camera/${fileName}`;
 }
-
 }
-// 传入源路径 + 带序号目标文件名
 const cpCmd = buildSafeCpCmd(termuxSrc, safeName);
 imgUploadList.push({ name: safeName, src: termuxSrc, copyCmd: cpCmd });
 });
-
 addImgSerial();
 closeModal();
 };
-
-
 confirmBtn.onclick = function(){
 const url = linkInput.value.trim();
 const altText = descInput.value.trim();
@@ -2002,7 +1895,6 @@ closeModal();
 };
 setTimeout(()=>linkInput.focus(),60);
 }
-//固定宽度图片弹窗（Via+所有浏览器兼容版）
 function insertImgWidth(){
 const mask = document.createElement("div");
 mask.className = "modal-mask lock-scroll";
@@ -2067,7 +1959,6 @@ globalImgSerial++;
 const uniqueId = Date.now() + "_" + globalImgSerial + Math.random().toString(36).slice(2,4);
 realName = `IMG_${uniqueId}.${ext}`;
 }
-// 全局自增序号，防止重名
 globalImgSerial++;
 const safeName = `${globalImgSerial}_${realName}`;
 insertLocalImgTagTerminal(safeName);
@@ -2075,35 +1966,31 @@ insertLocalImgTagTerminal(safeName);
 let fullPath = file.path || "";
 let termuxSrc;
 if (fullPath) {
-  fullPath = fullPath.replace(/^\/storage\/emulated\/0\//i, "/storage/emulated/0/");
+  fullPath = fullPath.replace(/^\/storage/emulated/0\//i, "/storage/emulated/0/");
   fullPath = fullPath.replace(/\/download\//gi, "/Download/");
   termuxSrc = fullPath;
 }
 else {
-  const fileName = file.name;
-  const fnLower = fileName.toLowerCase();
-  if (/screenshot/.test(fnLower)) {
-    termuxSrc = `/storage/emulated/0/DCIM/Screenshots/${fileName}`;
+const fileName = file.name;
+const fnLower = fileName.toLowerCase();
+if (/screenshot/.test(fnLower)) {
+termuxSrc = `/storage/emulated/0/DCIM/Screenshots/${fileName}`;
 } else if (/wx_|wechat|mmexport/.test(fnLower)) {
-    termuxSrc = `/storage/emulated/0/tencent/MicroMsg/WeiXin/${fileName}`;
+termuxSrc = `/storage/emulated/0/tencent/MicroMsg/WeiXin/${fileName}`;
 } else if (/qq/.test(fnLower)) {
-    termuxSrc = `/storage/emulated/0/tencent/QQ_images/${fileName}`;
+termuxSrc = `/storage/emulated/0/tencent/QQ_images/${fileName}`;
 } else if (/download/.test(fnLower)) {
-    termuxSrc = `/storage/emulated/0/Download/${fileName}`;
+termuxSrc = `/storage/emulated/0/Download/${fileName}`;
 } else {
-    termuxSrc = `/storage/emulated/0/DCIM/Camera/${fileName}`;
+termuxSrc = `/storage/emulated/0/DCIM/Camera/${fileName}`;
 }
-
 }
 const cpCmd = buildSafeCpCmd(termuxSrc, safeName);
 imgUploadList.push({ name: safeName, src: termuxSrc, copyCmd: cpCmd });
 });
-
 addImgSerial();
 closeModal();
 };
-
-
 confirmBtn.onclick = function(){
 const url = linkInput.value.trim();
 const altText = descInput.value.trim();
@@ -2131,7 +2018,6 @@ closeModal();
 };
 setTimeout(()=>linkInput.focus(),60);
 }
-//本地图片上传按钮
 localImgBtn.onclick = ()=> imgFileInput.click();
 imgFileInput.onchange = function(e){
 const allFiles = Array.from(e.target.files);
@@ -2150,7 +2036,6 @@ globalImgSerial++;
 const uniqueId = Date.now() + "_" + globalImgSerial + Math.random().toString(36).slice(2,4);
 realName = `IMG_${uniqueId}.${ext}`;
 }
-// 全局序号防重名，最终存入images文件夹
 globalImgSerial++;
 const safeName = `${globalImgSerial}_${realName}`;
 insertLocalImgTagTerminal(safeName);
@@ -2160,39 +2045,33 @@ let termuxSrc;
 const fileName = file.name;
 const fnLower = fileName.toLowerCase();
 if (fullPath) {
-  fullPath = fullPath.replace(/^\/storage\/emulated\/0\//i, "/storage/emulated/0/");
-  fullPath = fullPath.replace(/\/download\//gi, "/Download/");
-  termuxSrc = fullPath;
+fullPath = fullPath.replace(/^\/storage/emulated\/0\//i, "/storage/emulated/0/");
+fullPath = fullPath.replace(/\/download\//gi, "/Download/");
+termuxSrc = fullPath;
 }else {
-  // 无真实路径时按文件名猜测源目录，统一使用 ~/storage/shared
-  if (/screenshot/.test(fnLower)) {
-    termuxSrc = `/storage/emulated/0/DCIM/Screenshots/${fileName}`;
+if (/screenshot/.test(fnLower)) {
+termuxSrc = `/storage/emulated/0/DCIM/Screenshots/${fileName}`;
 } else if (/wx_|wechat|mmexport/.test(fnLower)) {
-    termuxSrc = `/storage/emulated/0/tencent/MicroMsg/WeiXin/${fileName}`;
+termuxSrc = `/storage/emulated/0/tencent/MicroMsg/WeiXin/${fileName}`;
 } else if (/qq/.test(fnLower)) {
-    termuxSrc = `/storage/emulated/0/tencent/QQ_images/${fileName}`;
+termuxSrc = `/storage/emulated/0/tencent/QQ_images/${fileName}`;
 } else if (/download/.test(fnLower)) {
-    termuxSrc = `/storage/emulated/0/Download/${fileName}`;
+termuxSrc = `/storage/emulated/0/Download/${fileName}`;
 } else {
-    termuxSrc = `/storage/emulated/0/DCIM/Camera/${fileName}`;
+termuxSrc = `/storage/emulated/0/DCIM/Camera/${fileName}`;
 }
 }
-// 传入源路径，函数内部拼接目标 ~/storage/shared/notes/images
 const cpCmd = buildSafeCpCmd(termuxSrc, safeName);
 imgUploadList.push({ name: safeName, src: termuxSrc, copyCmd: cpCmd });
 });
-
 addImgSerial();
 imgFileInput.value = "";
 alert(`已记录${allFiles.length}张本地图片，可生成复制命令`);
 };
-
-//清空图片列表
 clearImgListBtn.onclick = function(){
 imgUploadList = [];
 alert("已清空所有图片复制脚本记录");
 };
-//批量图床链接
 batchImgBtn.onclick = function(){
 const multiUrl = prompt("批量粘贴图床链接，一行一张：");
 if(!multiUrl || multiUrl.trim() === "") return;
@@ -2216,8 +2095,6 @@ calcWordCount();
 }
 alert(`成功插入${urlArr.length}张网络图`);
 };
-
-//导出单篇MD
 function exportSingleNoteMd(){
 const title = titleInput.value.trim();
 if(!title) return alert("请先填写标题");
@@ -2230,7 +2107,6 @@ a.download = `${title}.md`;
 a.click();
 URL.revokeObjectURL(a.href);
 }
-//导出单篇HTML
 function exportSingleNoteHtml(){
 syncFormToNoteList();
 const title = titleInput.value.trim();
@@ -2258,83 +2134,72 @@ a.click();
 document.body.removeChild(a);
 URL.revokeObjectURL(a.href);
 }
-//同步表单数据到笔记数组（修复重复空白草稿）
 function syncFormToNoteList(){
 const title = titleInput.value.trim();
 const type = typeInput.value.trim();
-// 读取私密勾选状态
 const isPrivate = document.getElementById("privateCheck").checked;
 let content = "";
 if(currentEditMode === "rich") content = richBox.innerHTML.trim();
 else content = mdToHtml(mdBox.value);
 const nowTime = getNowTimeStr();
 if(targetNote){
-  // 编辑已有笔记，同步私密状态
-  const idx = list.findIndex(item=>item.id === targetNote.id);
-  list[idx].title = title;
-  list[idx].type = type;
-  list[idx].content = content;
-  list[idx].date = nowTime;
-  list[idx].private = isPrivate;
-  delete list[idx]._isTempNew;
+const idx = list.findIndex(item=>item.id === targetNote.id);
+list[idx].title = title;
+list[idx].type = type;
+list[idx].content = content;
+list[idx].date = nowTime;
+list[idx].private = isPrivate;
+delete list[idx]._isTempNew;
 }else{
-  // 新建草稿：找到原有草稿更新，不存在则新增
-  const tempIdx = list.findIndex(item=>item._isTempNew === true);
-  if(tempIdx > -1){
-    list[tempIdx].title = title;
-    list[tempIdx].type = type;
-    list[tempIdx].content = content;
-    list[tempIdx].date = nowTime;
-    list[tempIdx].private = isPrivate;
-  }else{
-    const newNote = {
-      id: Date.now(),
-      title,
-      type,
-      content,
-      date: nowTime,
-      private: isPrivate,
-      _isTempNew: true
-    };
-    list.push(newNote);
-  }
+const tempIdx = list.findIndex(item=>item._isTempNew === true);
+if(tempIdx > -1){
+list[tempIdx].title = title;
+list[tempIdx].type = type;
+list[tempIdx].content = content;
+list[tempIdx].date = nowTime;
+list[tempIdx].private = isPrivate;
+}else{
+const newNote = {
+id: Date.now(),
+title,
+type,
+content,
+date: nowTime,
+private: isPrivate,
+_isTempNew: true
+};
+list.push(newNote);
+}
 }
 saveLocalCache();
-saveNoteToStorage(list);
+saveAllNotes(list);
 }
-
-
-//一键复制完整data.js
 copyAllJsonBtn.onclick = async function(){
-  // 新增：先同步编辑器当前内容到list，不用依赖下载按钮
-  syncFormToNoteList();
-  const allNotes = list;
-  // 草稿、正式笔记统一要求标题非空，无标题全部过滤
-  const validNotes = allNotes.filter(item => {
-    if (!item || !item.id) return false;
-    const titleStr = (item.title || "").trim();
-    return titleStr.length > 0;
-  });
-  const jsonText = "window.NOTE_DATA = " + JSON.stringify(validNotes, null, 2);
-  try{
-    await navigator.clipboard.writeText(jsonText);
-    alert(`复制完成，共${validNotes.length}条（含新建草稿），直接粘贴覆盖data.js即可`);
-  }catch(err){
-    const temp = document.createElement("textarea");
-    temp.value = jsonText;
-    document.body.appendChild(temp);
-    temp.select();
-    document.execCommand("copy");
-    document.body.removeChild(temp);
-    alert(`兼容复制成功，共${validNotes.length}条笔记（含草稿）`);
-  }
+syncFormToNoteList();
+const allNotes = list;
+const validNotes = allNotes.filter(item => {
+if (!item || !item.id) return false;
+const titleStr = (item.title || "").trim();
+return titleStr.length > 0;
+});
+const jsonText = "window.NOTE_DATA = " + JSON.stringify(validNotes, null, 2);
+try{
+await navigator.clipboard.writeText(jsonText);
+alert(`复制完成，共${validNotes.length}条（含新建草稿），直接粘贴覆盖data.js即可`);
+}catch(err){
+const temp = document.createElement("textarea");
+temp.value = jsonText;
+document.body.appendChild(temp);
+temp.select();
+document.execCommand("copy");
+document.body.removeChild(temp);
+alert(`兼容复制成功，共${validNotes.length}条笔记（含草稿）`);
+}
 };
-
-//生成图片复制脚本
 genCpBtn.onclick = async function(){
 let cpText = "# 仅复制页面选中图片，不会读取手机全部图片\n";
 imgUploadList.forEach(item=>{
-    cpText += item.copyCmd + "\n";
+cpText += item.copyCmd + "\n";
 });
 const gitCmd = `cd ~/storage/shared/notes
 mkdir -p images
@@ -2352,8 +2217,10 @@ document.body.removeChild(tempTextarea);
 }
 alert("图片复制脚本已复制");
 };
+function forceReloadRemote(){
+  location.search = "?t=" + Date.now();
+}
 
-//下载data.js文件
 function downloadDataJs(isTimeStamp){
 const title = titleInput.value.trim();
 const type = typeInput.value.trim();
@@ -2382,14 +2249,12 @@ content,
 date: nowTime
 });
 }
-//过滤无效笔记
 list = list.filter(item=>{
 const t = (item.title||"").trim();
 return t.length > 0 && item.id && item.content;
 });
-
 saveLocalCache();
-saveNoteToStorage(list);
+saveAllNotes(list);
 const jsText = getFullJsText();
 const blob = new Blob([jsText], {type:"application/javascript"});
 const a = document.createElement("a");
@@ -2408,7 +2273,6 @@ alert(`${fileName} 下载完成，可同步仓库`);
 }
 saveNormalBtn.onclick = ()=>downloadDataJs(false);
 saveTimeBtn.onclick = ()=>downloadDataJs(true);
-//Ctrl+S 快捷键复制代码
 window.addEventListener("keydown", function(e){
 if(e.ctrlKey && e.key === "s"){
 e.preventDefault();
@@ -2431,7 +2295,6 @@ e.preventDefault();
 formatBold();
 }
 });
-//导出完整备份json
 exportBackupBtn.onclick = function(){
 const jsonRaw = JSON.stringify(list, null, 2);
 const blob = new Blob([jsonRaw], {type:"application/json"});
@@ -2444,7 +2307,6 @@ document.body.removeChild(a);
 URL.revokeObjectURL(a.href);
 alert("大容量备份JSON已下载，无5MB限制");
 };
-//导入备份文件
 importBackupBtn.onclick = ()=> backupFileInput.click();
 backupFileInput.onchange = function(e){
 const file = e.target.files[0];
@@ -2463,8 +2325,8 @@ if(raw.startsWith("window.NOTE_DATA = ")) raw = raw.replace("window.NOTE_DATA = 
 const fullNoteArr = JSON.parse(raw);
 if(!Array.isArray(fullNoteArr)) throw "文件格式错误";
 list = fullNoteArr;
-saveLocalCache(); //修复：导入后同步缓存
-saveNoteToStorage(list);
+saveLocalCache();
+saveAllNotes(list);
 window.NOTE_DATA = list;
 alert(`导入成功，共${list.length}条笔记，切换页面即可生效`);
 loadLocalCache();
@@ -2476,7 +2338,6 @@ console.error(err);
 };
 reader.readAsText(file);
 };
-//字号、文字颜色、文字底色监听
 fontSizeSelect.addEventListener("change", function(){
 document.execCommand("fontSize", false, this.value);
 richBox.focus();
@@ -2492,18 +2353,14 @@ calcWordCount();
 bgColorInput.addEventListener("input", function(){
   richBox.focus();
   const sel = window.getSelection();
-  // 无选中文字直接退出
   if (!sel.rangeCount || sel.getRangeAt(0).collapsed) return;
   const range = sel.getRangeAt(0);
   const span = document.createElement("span");
   span.style.backgroundColor = this.value;
-  // 给选中文字包裹底色span
   range.surroundContents(span);
   checkFormatActive();
   calcWordCount();
 });
-
-// ========== 查找替换功能（纯文本/富文本双模式兼容） ==========
 const findReplaceBtn = document.getElementById('findReplaceBtn');
 const findReplaceMask = document.getElementById('findReplaceMask');
 const findReplaceClose = document.getElementById('findReplaceClose');
@@ -2517,7 +2374,6 @@ let matchList = [];
 matchCaseCheck.addEventListener("change", ()=>{
 matchCase = matchCaseCheck.checked;
 });
-// 打开弹窗
 findReplaceBtn.addEventListener('click', ()=>{
 document.body.classList.add("lock-scroll");
 findReplaceMask.classList.add('show');
@@ -2528,7 +2384,6 @@ searchIndex = 0;
 matchList = [];
 resetBoxPos();
 });
-// 关闭弹窗按钮
 findReplaceClose.addEventListener('click', ()=>{
 document.body.classList.remove("lock-scroll");
 findReplaceMask.classList.remove('show');
@@ -2539,42 +2394,38 @@ document.body.classList.remove("lock-scroll");
 findReplaceMask.classList.remove('show');
 }
 });
-// 修复：完整递归遍历富文本，嵌套标签文字正常选中
 function selectRichText(start, len){
-  const sel = window.getSelection();
-  const range = document.createRange();
-  let offset = 0;
-  let targetTextNode = null;
-  let nodeOffset = 0;
-
-  function walk(el) {
-    for (const node of el.childNodes) {
-      if (targetTextNode) return true;
-      if (node.nodeType === Node.TEXT_NODE) {
-        const textLen = node.textContent.length;
-        if (offset + textLen > start) {
-          targetTextNode = node;
-          nodeOffset = start - offset;
-          return true;
-        }
-        offset += textLen;
-      } else if (node.nodeType === Node.ELEMENT_NODE) {
-        if (walk(node)) return true;
-      }
-    }
-    return false;
-  }
-  walk(richBox);
-
-  if(targetTextNode){
-    range.setStart(targetTextNode, nodeOffset);
-    range.setEnd(targetTextNode, nodeOffset + len);
-    sel.removeAllRanges();
-    sel.addRange(range);
-    richBox.focus();
-  }
+const sel = window.getSelection();
+const range = document.createRange();
+let offset = 0;
+let targetTextNode = null;
+let nodeOffset = 0;
+function walk(el) {
+for (const node of el.childNodes) {
+if (targetTextNode) return true;
+if (node.nodeType === Node.TEXT_NODE) {
+const textLen = node.textContent.length;
+if (offset + textLen > start) {
+targetTextNode = node;
+nodeOffset = start - offset;
+return true;
 }
-// 自动识别当前激活编辑器读取内容
+offset += textLen;
+} else if (node.nodeType === Node.ELEMENT_NODE) {
+if (walk(node)) return true;
+}
+}
+return false;
+}
+walk(richBox);
+if(targetTextNode){
+range.setStart(targetTextNode, nodeOffset);
+range.setEnd(targetTextNode, nodeOffset + len);
+sel.removeAllRanges();
+sel.addRange(range);
+richBox.focus();
+}
+}
 function getEditorText(){
 const txtEditor = document.getElementById('mdEditor');
 const richEditor = document.getElementById('richEditor');
@@ -2584,7 +2435,6 @@ return txtEditor.value;
 return richEditor.innerText;
 }
 }
-// 写入内容到当前编辑器
 function setEditorText(val){
 const txtEditor = document.getElementById('mdEditor');
 const richEditor = document.getElementById('richEditor');
@@ -2597,7 +2447,6 @@ calcWordCount();
 calcWordCount();
 }
 }
-// 查找下一处
 findNextBtn.addEventListener('click', ()=>{
 const findText = findInput.value.trim();
 if(!findText){
@@ -2623,7 +2472,6 @@ selectRichText(matchList[searchIndex], findText.length);
 }
 searchIndex++;
 });
-// 全部替换
 replaceAllBtn.addEventListener('click', ()=>{
 const findText = findInput.value.trim();
 const repText = replaceInput.value;
@@ -2650,7 +2498,6 @@ calcWordCount();
 const count = (oldText.match(new RegExp(findText,regFlag)) || []).length;
 alert(`替换完成，共替换${count}处`);
 });
-// 单次替换当前匹配
 replaceSingleBtn.addEventListener('click', () => {
 const findText = findInput.value.trim();
 const repText = replaceInput.value;
@@ -2688,20 +2535,17 @@ matchList.push(match.index);
 }
 searchIndex = 0;
 });
-// 弹窗拖拽 修复偏移、卡顿、触屏穿透 + 边界限制
 const mask = findReplaceMask;
 const box = document.querySelector('.find-replace-box');
 let drag = false;
 let startX, startY;
 let boxStartX, boxStartY;
-// 重置居中
 function resetBoxPos() {
 box.style.left = '50%';
 box.style.top = '50%';
 box.style.transform = 'translate(-50%, -50%)';
 }
 resetBoxPos();
-// 鼠标按下
 box.addEventListener('mousedown', (e) => {
 const tag = e.target.tagName;
 if (tag === 'INPUT' || tag === 'BUTTON') return;
@@ -2720,14 +2564,12 @@ const dx = e.clientX - startX;
 const dy = e.clientY - startY;
 let left = boxStartX + dx;
 let top = boxStartY + dy;
-// 边界约束，防止拖出屏幕
 left = Math.max(0, Math.min(left, window.innerWidth - box.offsetWidth));
 top = Math.max(0, Math.min(top, window.innerHeight - box.offsetHeight));
 box.style.left = `${left}px`;
 box.style.top = `${top}px`;
 });
 document.addEventListener("mouseup", () => drag = false);
-//触屏拖拽兼容
 box.addEventListener("touchstart", (e) => {
 const target = e.target.tagName;
 if (target === "INPUT" || target === "BUTTON") return;
@@ -2766,7 +2608,7 @@ function openImgPreview(src) {
   previewMask.classList.add("show");
 }
 
-// 工具函数：获取当前时间字符串
+// 获取当前时间工具函数
 function getNowTimeStr() {
   const d = new Date();
   const y = d.getFullYear();
@@ -2777,46 +2619,46 @@ function getNowTimeStr() {
   const s = String(d.getSeconds()).padStart(2, "0");
   return `${y}-${m}-${day} ${h}:${mi}:${s}`;
 }
-// 切换预设编辑底色，清除自定义行内背景
+
+// 切换预设编辑底色
 function changeEditorBg(type){
-  // 清空全部主题class
   document.body.classList.remove(
     "bg-cream","bg-gray","bg-paper","bg-softblue",
     "bg-sepia","bg-dark","bg-midnight","bg-custom"
   );
-  // 清空行内自定义背景，让预设主题CSS正常生效
   richBox.style.backgroundColor = "";
   mdBox.style.backgroundColor = "";
   mdPreviewBox.style.backgroundColor = "";
 
   if(type === "custom"){
     document.body.classList.add("bg-custom");
-    // 显示自定义取色器
     customBgColorInput.style.display = "block";
   }else{
     document.body.classList.add("bg-" + type);
-    // 隐藏取色器
     customBgColorInput.style.display = "none";
   }
   calcWordCount();
 }
 
-// 重置编辑区为默认纯白
+// 重置纯白底色
 function resetDefaultBg(){
   document.body.classList.remove(
     "bg-cream","bg-gray","bg-paper","bg-softblue",
     "bg-sepia","bg-dark","bg-midnight","bg-custom"
   );
-  // 清空所有编辑容器自定义行内底色
   richBox.style.backgroundColor = "";
   mdBox.style.backgroundColor = "";
   mdPreviewBox.style.backgroundColor = "";
-  // 隐藏取色器
   customBgColorInput.style.display = "none";
   calcWordCount();
 }
+// 自定义底色取色器更新
+function setCustomBg(){
+  document.documentElement.style.setProperty("--custom-bg", customBgColorInput.value);
+}
 
-// 存储读写封装
+
+// 统一存储封装（与管理页完全同步）
 function saveNoteToStorage(arr) {
   localStorage.setItem("notes", JSON.stringify(arr));
   window.NOTE_DATA = arr;
@@ -2834,15 +2676,11 @@ function getFullJsText() {
   return "window.NOTE_DATA = " + JSON.stringify(list, null, 2);
 }
 
-// 初始化页面
+// 页面初始化渲染
 window.addEventListener("DOMContentLoaded", () => {
   renderMdPreview();
   calcWordCount();
 });
-
-
-
-
 </script>
 </body>
 </html>
