@@ -1,11 +1,12 @@
 window.NOTE_DATA = [
   {
     "id": 1782311326522,
-    "title": "蹙眉失神",
-    "type": "女明星",
-    "content": "<img loading=\"lazy\" src=\"https://origin.picgo.net/2026/06/24/Lhhfe58-5v4e2DlOdxuwUQ6710a3d744b49db303f674f3820440ec51fc529cafef3724.jpeg\" alt=\"配图\" style=\"margin-top: 8px; margin-bottom: 8px;\"><br>一个蹙眉失神，一个指尖抵唇，一个无意识攥紧衣襟的小动作，画面里的她没有靠嘶吼制造冲击，可那种隐忍、酸涩和万般无奈，反而一点点从眉眼里渗出来。<img loading=\"lazy\" src=\"https://origin.picgo.net/2026/06/24/a1ec08fa513d2697c80790afba8ab7eb4116d8ea32a560ff306b6148.jpeg\" alt=\"配图\" style=\"margin-top: 8px; margin-bottom: 8px;\"><br><img loading=\"lazy\" src=\"https://origin.picgo.net/2026/06/24/IMG_20260623_2317138a4f11c02a6d06d8.png\" alt=\"配图\" style=\"margin-top: 8px; margin-bottom: 8px;\"><br>同样是诠释角色，有人停在“像”，神态到位，动作也对，但观众总能看见表演痕迹。刘涛这组镜头微妙就微妙在，她像是把情绪揉进了身体里，半睁半阖的眼眸、凌乱发丝带出的氛围，都让角色不再只是角色。<img loading=\"lazy\" src=\"https://origin.picgo.net/2026/06/24/b64543a98226cffc59104f7856704f80f703ea40bff942dff031c4f2.jpeg\" alt=\"配图\" style=\"margin-top: 8px; margin-bottom: 8px;\"><br>说白了，真正高级的演技，不一定是把情绪推到最满，而是让人相信这一刻真的发生过。至于这份沉浸式演绎会被怎么讨论，答案或许不在夸得多响，而在观众愿不愿意反复回看那些细节。<img loading=\"lazy\" src=\"https://origin.picgo.net/2026/06/24/81afe8873c92cf4549aac04ca19d6ff21d3668f959de6c37.jpeg\" alt=\"配图\" style=\"margin-top: 8px; margin-bottom: 8px;\"><br><br>",
-    "date": "2026-06-27 22:28:46",
-    "_isTempNew": true
+    "title": "本地",
+    "type": "图片",
+    "content": "<img loading=\"lazy\" src=\"https://cdn.jsdelivr.net/gh/sxgpyjg/notes@main/images/3_JRC_1776997437161_o.jpg\" alt=\"本地图片\"><br><br>",
+    "date": "2026-06-28 10:08:35",
+    "_isTempNew": true,
+    "private": false
   },
   {
     "id": 1782518114416,
