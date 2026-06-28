@@ -771,6 +771,11 @@ body.bg-custom .md-preview{
 </div>
 <input class="title-input" placeholder="填写笔记标题">
 <input class="type-input" placeholder="自定义分类（开发笔记/随笔/教程）">
+<div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
+  <input type="checkbox" id="privateCheck">
+  <label for="privateCheck">设为私密（仅管理员登录可见，博客/相册游客完全不显示）</label>
+</div>
+
 <div class="mode-switch">
   <button id="modeRich" class="active" onclick="switchMode('rich')">富文本可视化编辑</button>
   <button id="modeMd" onclick="switchMode('md')">Markdown纯文本</button>
@@ -1363,7 +1368,10 @@ if(!target) return;
 targetNote = target;
 titleInput.value = target.title;
 typeInput.value = target.type;
+// 私密状态回填
+document.getElementById("privateCheck").checked = !!target.private;
 richBox.innerHTML = target.content || "";
+
 richRecordStack = [richBox.innerHTML];
 richRecordIndex = 0;
 mdBox.value = htmlToMd(target.content || "").replace(/\n{3,}/g,"\n\n");
@@ -2249,17 +2257,20 @@ URL.revokeObjectURL(a.href);
 function syncFormToNoteList(){
 const title = titleInput.value.trim();
 const type = typeInput.value.trim();
+// 读取私密勾选状态
+const isPrivate = document.getElementById("privateCheck").checked;
 let content = "";
 if(currentEditMode === "rich") content = richBox.innerHTML.trim();
 else content = mdToHtml(mdBox.value);
 const nowTime = getNowTimeStr();
 if(targetNote){
-  // 编辑已有笔记，直接更新
+  // 编辑已有笔记，同步私密状态
   const idx = list.findIndex(item=>item.id === targetNote.id);
   list[idx].title = title;
   list[idx].type = type;
   list[idx].content = content;
   list[idx].date = nowTime;
+  list[idx].private = isPrivate;
   delete list[idx]._isTempNew;
 }else{
   // 新建草稿：找到原有草稿更新，不存在则新增
@@ -2269,6 +2280,7 @@ if(targetNote){
     list[tempIdx].type = type;
     list[tempIdx].content = content;
     list[tempIdx].date = nowTime;
+    list[tempIdx].private = isPrivate;
   }else{
     const newNote = {
       id: Date.now(),
@@ -2276,6 +2288,7 @@ if(targetNote){
       type,
       content,
       date: nowTime,
+      private: isPrivate,
       _isTempNew: true
     };
     list.push(newNote);
@@ -2284,6 +2297,7 @@ if(targetNote){
 saveLocalCache();
 saveNoteToStorage(list);
 }
+
 
 //一键复制完整data.js
 copyAllJsonBtn.onclick = async function(){

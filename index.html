@@ -455,7 +455,19 @@ function escapeHtml(str){
 }
 function renderNotes(){
   let list = [...dataList];
+  // 管理员登录判断逻辑 开始
+  const savedPwd = localStorage.getItem("admin_save_pwd");
+  const expireTs = Number(localStorage.getItem("admin_login_expire")) || 0;
+  const now = Date.now();
+  const isAdminLogin = (savedPwd === "admin123" && expireTs > now);
+  // 未登录游客才过滤私密，已登录管理员不过滤
+  if(!isAdminLogin){
+    list = list.filter(item => !item.private);
+  }
+  // 管理员登录判断逻辑 结束
   if(currentFilter) list = list.filter(item=>item.type === currentFilter);
+
+
   const sorted = list.sort((a,b)=>{
     let t1 = new Date(a.date?a.date.replace(" ","T"):0);
     let t2 = new Date(b.date?b.date.replace(" ","T"):0);

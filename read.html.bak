@@ -202,22 +202,8 @@ const wrap = document.getElementById('readWrap');
 const fullBtn = document.getElementById('fullPageBtn');
 const fullSvg = document.getElementById('fullSvg');
 const targetId = localStorage.getItem('readNoteId');
-
-// 判断管理员登录状态
-const savedPwd = localStorage.getItem("admin_save_pwd");
-const expireTs = Number(localStorage.getItem("admin_login_expire")) || 0;
-const now = Date.now();
-const isAdminLogin = (savedPwd === "admin123" && expireTs > now);
-
-let item;
-if(isAdminLogin){
-  // 已登录管理员：所有笔记都能打开，包括私密
-  item = dataList.find(n=>String(n.id)===targetId);
-}else{
-  // 游客：只允许打开公开笔记
-  item = dataList.find(n=>String(n.id)===targetId && !n.private);
-}
-
+// 只查找公开笔记，private:true 直接过滤
+const item = dataList.find(n=>String(n.id)===targetId && !n.private);
 
 fullBtn.onclick = ()=>{
   if(!document.fullscreenElement){
