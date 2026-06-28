@@ -220,6 +220,8 @@ h1{
       <button class="album-btn" onclick="window.open('https://sxgpyjg.github.io/blog','_blank')">图文相册</button>
       <button class="new-btn" onclick="location.href='edit.html'">+新建笔记</button>
       <button class="back-btn" onclick="forceReloadRemote()">刷新数据</button>
+      <!-- 新增复制纯净JSON按钮 -->
+      <button class="back-btn" onclick="copyCleanJson()">复制全部笔记JSON</button>
       <button class="back-btn" onclick="location.href='index.html'">笔记首页</button>
       <button class="back-btn" onclick="logoutAdmin()">退出登录</button>
     </div>
@@ -344,7 +346,7 @@ window.delNote = function(id){
   let list = loadAllNotes();
   list = list.filter(item => item.id !== id);
   saveAllNotes(list);
-  alert("已删除，请进入编辑器下载/复制data.js同步仓库更新");
+  alert("已删除，请点击【复制全部笔记JSON】同步data.js仓库");
   render();
 }
 
@@ -382,6 +384,24 @@ function render(){
     `
   })
   wrap.innerHTML = html;
+}
+
+// 新增：复制本地最新纯净JSON（不含已删除笔记）
+function copyCleanJson(){
+  const freshList = loadAllNotes();
+  const jsonText = JSON.stringify(freshList, null, 2);
+  navigator.clipboard.writeText(jsonText).then(()=>{
+    alert("复制成功！内容已剔除所有删除笔记，直接覆盖data.js即可");
+  }).catch(()=>{
+    // 兼容低版本浏览器
+    const tempTextarea = document.createElement('textarea');
+    tempTextarea.value = jsonText;
+    document.body.appendChild(tempTextarea);
+    tempTextarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(tempTextarea);
+    alert("复制成功！内容已剔除所有删除笔记");
+  });
 }
 </script>
 </body>
