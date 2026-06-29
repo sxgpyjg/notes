@@ -793,6 +793,8 @@ body.bg-custom .md-preview{
   max-height:95vh;
   object-fit:contain;
 }
+.tags-input-wrap{
+}
 .rich-editor {
   background: #fff;
 }
@@ -865,6 +867,10 @@ body.bg-custom .md-preview{
   <input type="checkbox" id="privateCheck">
   <label for="privateCheck">设为私密（仅管理员登录可见，博客/相册游客完全不显示）</label>
 </div>
+<div class="tags-input-wrap" id="tagsInputWrap">
+  <input type="text" class="tag-chip-input" id="tagChipInput" placeholder="添加标签后回车确认">
+</div>
+<div class="tags-hint">输入文字后按回车添加标签，点 × 删除</div>
 
 <div class="mode-switch">
   <button id="modeRich" class="active" onclick="switchMode('rich')">富文本可视化编辑</button>
@@ -1155,6 +1161,11 @@ document.getElementById('loadCleanSnapshot').addEventListener('click', ()=>{
 });
 
 function saveLocalCache(){
+setCurrentTags(tagsArr);
+
+const tags = getCurrentTags();
+list[idx].tags = tags;
+
   const tempObj = {
     list: list,
     targetId: targetNote ? targetNote.id : null,
@@ -1180,6 +1191,14 @@ function getNowTimeStr(){
 // DOM缓存
 const titleInput = document.querySelector(".title-input");
 const typeInput = document.querySelector(".type-input"); // 隐藏保留，兼容引用
+// ========== 多标签 chip 交互逻辑 ==========
+let currentTags = [];
+function renderTagsChips(){}
+function addTag(){}
+function removeTagAt(){}
+function getCurrentTags(){}
+function setCurrentTags(){}
+
 const tagsInputWrap = document.getElementById("tagsInputWrap");
 const tagChipInput = document.getElementById("tagChipInput");
 
@@ -1566,7 +1585,12 @@ function checkFormatActive(){
     document.querySelector('[onclick="insertCenter()"]').classList.add("active-format");
   }
 }
-
+// 富文本图片点击放大预览
+richBox.addEventListener('click', function(e){
+  if(e.target.tagName === 'IMG'){
+    openImgPreview(e.target.src);
+  }
+});
 richBox.addEventListener("selectionchange", checkFormatActive);
  
 // 字数统计
