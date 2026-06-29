@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>笔记管理列表</title>
+<!-- 同目录相对路径 + 版本号防缓存 -->
 <script src="./data.js?v=1"></script>
 <style>
 *{
@@ -118,6 +119,7 @@ h1{
   flex-wrap:wrap;
   gap:6px;
 }
+/* 多标签容器与徽章样式 */
 .tag-group {
   display: flex;
   gap: 4px;
@@ -132,6 +134,7 @@ h1{
 .tag-doc{background:#e6f8ee;color:#148246;}
 .tag-custom{background:#fff0e6;color:#b8460c;}
 .tag-编程{background:#e1f5fe;color:#0277bd;}
+
 .btn-group{
   display:flex;
   gap:6px;
@@ -165,6 +168,7 @@ h1{
   padding:50px 2px;
   color:#999;
 }
+/* 弹窗样式 修复遮罩交互 */
 .login-modal{
   position:fixed;
   inset:0;
@@ -251,6 +255,7 @@ const LOGIN_EXPIRE_KEY = "admin_login_expire";
 const LOGIN_EXPIRE_HOUR = 8;
 let remoteNoteData = [];
 
+// 转义特殊字符，防止HTML注入、渲染报错
 function escapeHtml(str){
   const s = String(str ?? "");
   return s.replace(/&/g,"&amp;")
@@ -260,6 +265,7 @@ function escapeHtml(str){
           .replace(/'/g,"&#039;");
 }
 
+// 根据标签名获取样式类
 function getTagClassByName(name) {
   switch(name) {
     case 'note': return 'tag-note';
@@ -269,36 +275,19 @@ function getTagClassByName(name) {
   }
 }
 
-// ========== 标签颜色同步（新增） ==========
-function getTagStyle(tagName) {
-  const tagColors = JSON.parse(localStorage.getItem('tagColors') || '{}');
-  const color = tagColors[tagName];
-  if (color) {
-    const r = parseInt(color.slice(1,3), 16) / 255;
-    const g = parseInt(color.slice(3,5), 16) / 255;
-    const b = parseInt(color.slice(5,7), 16) / 255;
-    const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
-    const textColor = brightness > 0.5 ? '#222' : '#fff';
-    return `background-color:${color};color:${textColor};`;
-  }
-  return '';
-}
-function refreshAllTagStyles() {
-  document.querySelectorAll('.tag[data-tag]').forEach(el => {
-    el.style.cssText = getTagStyle(el.dataset.tag);
-  });
-}
-
+// 强制刷新远程数据，追加时间戳绕过缓存
 function forceReloadRemote(){
   const url = new URL(location.href);
   url.searchParams.set("_dt", Date.now());
   location.href = url.toString();
 }
 
+// 优先加载线上data.js远程数据，同步本地存储，延时适配弱网
 window.addEventListener("load", ()=>{
   setTimeout(()=>{
     if(window.NOTE_DATA && Array.isArray(window.NOTE_DATA)){
       remoteNoteData = JSON.parse(JSON.stringify(window.NOTE_DATA));
+      // 兼容旧type转tags
       remoteNoteData.forEach(item => {
         if (!Array.isArray(item.tags) && item.type) {
           item.tags = [item.type];
@@ -307,20 +296,16 @@ window.addEventListener("load", ()=>{
       saveAllNotes(remoteNoteData);
     }
     render();
-    // 初始化标签颜色
-    refreshAllTagStyles();
-    // 监听其他页面修改
-    window.addEventListener('storage', (e) => {
-      if (e.key === 'tagColors') refreshAllTagStyles();
-    });
   }, 300);
 });
 
+// 读取笔记：远程优先，兜底本地缓存
 function loadAllNotes(){
   if(remoteNoteData.length > 0) return remoteNoteData;
   const raw = localStorage.getItem("notes");
   try{
     const list = raw ? JSON.parse(raw) : [];
+    // 兼容旧type转tags
     list.forEach(item => {
       if (!Array.isArray(item.tags) && item.type) {
         item.tags = [item.type];
@@ -332,17 +317,20 @@ function loadAllNotes(){
   }
 }
 
+// 统一写入唯一存储 notes，同步全局NOTE_DATA
 function saveAllNotes(list){
   localStorage.setItem("notes", JSON.stringify(list));
   window.NOTE_DATA = list;
 }
 
+// 退出登录
 function logoutAdmin(){
   localStorage.removeItem(PWD_STORE_KEY);
   localStorage.removeItem(LOGIN_EXPIRE_KEY);
   location.reload();
 }
 
+// 登录校验，登录后写入会话快照
 function doLogin(){
   const inputPwd = document.getElementById("pwdInput").value.trim();
   const remember = document.getElementById("rememberCheck").checked;
@@ -361,17 +349,19 @@ function doLogin(){
   document.getElementById("loginWrap").style.display = "none";
   document.getElementById("mainWrap").style.display = "block";
   window.NOTE_DATA = loadAllNotes();
+  // 初始化会话纯净快照
   sessionStorage.setItem('cleanNoteSnapshot', JSON.stringify([...window.NOTE_DATA]));
   render();
-  refreshAllTagStyles(); // 颜色初始化
 }
 
+// 空白遮罩关闭登录弹窗
 document.getElementById("loginWrap").addEventListener("click", function(e){
   if(e.target === this){
     this.style.display = "none";
   }
 });
 
+// 自动登录，登录后写入会话快照
 (function autoLogin(){
   const saved = localStorage.getItem(PWD_STORE_KEY);
   const expireTs = Number(localStorage.getItem(LOGIN_EXPIRE_KEY)) || 0;
@@ -385,12 +375,13 @@ document.getElementById("loginWrap").addEventListener("click", function(e){
     document.getElementById("loginWrap").style.display = "none";
     document.getElementById("mainWrap").style.display = "block";
     window.NOTE_DATA = loadAllNotes();
+    // 初始化会话纯净快照
     sessionStorage.setItem('cleanNoteSnapshot', JSON.stringify([...window.NOTE_DATA]));
     render();
-    refreshAllTagStyles();
   }
 })();
 
+// 删除笔记，删完自动更新会话快照
 window.delNote = function(id){
   if(!confirm("确认永久删除这条笔记？删除后无法恢复")){
     return;
@@ -398,16 +389,19 @@ window.delNote = function(id){
   let list = loadAllNotes();
   list = list.filter(item => item.id !== id);
   saveAllNotes(list);
+  // 写入会话纯净快照，供编辑器一键加载
   sessionStorage.setItem('cleanNoteSnapshot', JSON.stringify(list));
   alert("已删除并更新纯净快照；复制纯净data.js后替换仓库文件并git push才能全局生效");
   render();
 }
 
+// 渲染列表，按时间倒序展示全部笔记
 function render(){
   const wrap = document.getElementById('listWrap');
   let list = window.NOTE_DATA || loadAllNotes();
   if(!Array.isArray(list)) list = [];
   const realList = [...list];
+
   if(realList.length === 0){
     wrap.innerHTML = '<div class="empty">暂无笔记，点击上方【+新建笔记】创建第一条</div>';
     return;
@@ -416,11 +410,12 @@ function render(){
   realList.sort((a,b)=>new Date(b.date) - new Date(a.date)).forEach(item=>{
     const title = escapeHtml(item.title);
     const date = escapeHtml(item.date);
-    // 多标签渲染 + 颜色同步
+    // 生成多标签HTML
     const tagHtml = (item.tags || []).map(tag => {
       const cls = getTagClassByName(tag);
-      return `<span class="tag ${cls}" data-tag="${escapeHtml(tag)}" style="${getTagStyle(tag)}">${escapeHtml(tag)}</span>`;
+      return `<span class="tag ${cls}">${escapeHtml(tag)}</span>`;
     }).join('');
+
     html += `
     <div class="item-box">
       <div class="item-info">
@@ -437,6 +432,7 @@ function render(){
   wrap.innerHTML = html;
 }
 
+// 复制纯净data.js（带window.NOTE_DATA = 前缀 + 存入会话快照）
 function copyCleanJson(){
   const freshList = loadAllNotes();
   sessionStorage.setItem('cleanNoteSnapshot', JSON.stringify(freshList));

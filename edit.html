@@ -5,798 +5,144 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
 <title>笔记编辑器（完整移植纯写作原生交互）</title>
 <script src="./data.js?v=1"></script>
-
-<!-- 公式渲染KaTeX -->
 <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
 <style>
-*{
-  margin:0;
-  padding:0;
-  box-sizing:border-box;
-  font-family:system-ui,-apple-system,sans-serif;
+*{margin:0;padding:0;box-sizing:border-box;font-family:system-ui,-apple-system,sans-serif;}
+html,body{height:100%;overflow-x:hidden;}
+body{background:#f7f8fc;padding:10px 10px 110px;}
+.lock-scroll{overflow:hidden!important;touch-action:none!important}
+.tool-box,.tool-row,.save-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0 10px}
+.tool-bar{display:flex;gap:8px;margin-bottom:10px}
+.link-btn{border:0;border-radius:10px;padding:9px 0;font-size:14px;color:#fff;flex:1;min-width:0}
+.blog-link{background:#10b981}
+.album-link{background:#f97316}
+.tool-btn{background:#fff;border:0;border-radius:8px;padding:10px 6px;font-size:14px;box-shadow:0 1px 4px rgba(99,102,241,.06)}
+.tool-btn:active{background:#edefff}
+.save-btn{background:#6366F1;color:#fff;border:0;border-radius:8px;padding:11px 0;width:100%;font-size:15px;box-shadow:0 2px 6px rgba(99,102,241,.15)}
+.save-btn-time{background:#4f46e5}
+#exportFullBackup{background:#22c55e}
+#importBackup{background:#f59e0b}
+.save-btn:active{opacity:.9}
+.title-input,.type-input{width:100%;border:1px solid #e0e3f0;border-radius:8px;padding:10px;font-size:15px;margin-bottom:10px;outline:none;background:#fff}
+.title-input:focus,.type-input:focus{border-color:#6366F1}
+.tags-input-wrap{width:100%;border:1px solid #e0e3f0;border-radius:8px;padding:6px 8px;margin-bottom:10px;background:#fff;display:flex;flex-wrap:wrap;align-items:center;gap:5px;min-height:42px;cursor:text}
+.tags-input-wrap:focus-within{border-color:#6366F1}
+.tag-chip{display:inline-flex;align-items:center;gap:4px;background:#e8eaff;color:#3950cc;font-size:12px;padding:3px 4px 3px 9px;border-radius:99px;line-height:1.3;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tag-chip-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tag-chip-remove{display:inline-flex;align-items:center;justify-content:center;width:16px;height:16px;border-radius:50%;background:rgba(57,80,204,.15);color:#3950cc;font-size:13px;cursor:pointer;flex-shrink:0;-webkit-tap-highlight-color:transparent;user-select:none}
+.tag-chip-remove:hover{background:rgba(57,80,204,.3)}
+.tag-chip-remove::before{content:"×";font-weight:bold}
+.tag-chip-input{flex:1;min-width:80px;border:none;outline:none;background:transparent;font-size:14px;padding:4px 2px;font-family:inherit;color:#222}
+.tag-chip-input::placeholder{color:#9ca3af}
+.tags-hint{font-size:11px;color:#9ca3af;margin:-6px 0 10px 4px}
+.type-input{display:none}
+.edit-toolbar-wrap{position:fixed;bottom:0;left:0;width:100%;background:#fff;border-top:1px solid #e0e3f0;z-index:999;padding-bottom:env(safe-area-inset-bottom)}
+body.keyboard-opened .edit-toolbar-wrap{position:absolute}
+.toolbar-main{display:flex;flex-wrap:wrap;gap:1px;padding:4px 6px;align-items:center}
+.toolbar-more{display:none;padding:4px 6px;border-top:1px solid #eee;grid-template-columns:repeat(8,1fr);gap:0}
+.toolbar-more.show{display:grid}
+.icon-btn{border:1px solid #ddd;background:#fff;border-radius:2px;width:24px;height:24px;font-size:13px;display:flex;align-items:center;justify-content:center;cursor:pointer;position:relative;touch-action:none}
+.icon-btn:active{background:#eef2ff}
+.icon-btn.active-format{background:#6366F1!important;color:#fff!important;border-color:#4f46e5!important}
+@media (min-width:769px){.icon-btn:hover::after{content:attr(data-tip);position:absolute;bottom:110%;left:50%;transform:translateX(-50%);background:#222;color:#fff;font-size:10px;padding:2px 4px;border-radius:3px;white-space:nowrap;z-index:9999}}
+.edit-toolbar select{border:1px solid #ddd;border-radius:3px;padding:2px;font-size:11px;height:24px;width:38px}
+.color-input{width:24px;height:24px;border:none;cursor:pointer;border-radius:3px}
+.editor-wrap{margin-bottom:10px}
+.rich-editor{width:100%;min-height:560px;border:1px solid #e0e3f0;border-radius:8px;padding:10px;font-size:15px;outline:none;background:#fff;line-height:1.7;position:relative}
+.rich-editor img{max-width:100%;height:auto;border-radius:6px;margin:8px 0;display:block;content-visibility:auto}
+.md-editor{width:100%;min-height:280px;border:1px solid #e0e3f0;border-radius:8px;padding:10px;font-size:15px;outline:none;background:#fff;line-height:1.7;font-family:monospace;resize:vertical}
+.md-preview{width:100%;min-height:280px;border:1px solid #e0e3f0;border-radius:8px;padding:10px;background:#fff;margin-top:6px;line-height:1.7}
+.rich-editor pre code,.md-editor pre code{white-space:pre-wrap!important;word-break:break-all!important}
+.mode-switch{margin-bottom:8px;display:flex;gap:8px}
+.mode-switch button{flex:1;padding:8px 0;border-radius:8px;border:1px solid #6366F1;background:#fff;color:#6366F1;font-size:14px}
+.mode-switch button.active{background:#6366F1;color:#fff}
+#imgFileInput,#backupFileInput,#hiddenImgFile1,#hiddenImgFile2{opacity:0;position:absolute;width:0;height:0;pointer-events:auto}
+.warn{color:#e53e3e;font-size:12px;margin-bottom:8px;background:#fff2f4;padding:5px 8px;border-radius:6px}
+.tip-green{color:#16a34a;font-size:12px;margin-bottom:8px;background:#f0fdf4;padding:5px 8px;border-radius:6px}
+.tip-red{color:#dc2626;font-weight:bold;font-size:13px;margin-bottom:8px;background:#fee2e2;padding:6px 8px;border-radius:6px}
+body.bg-dark .tip-green,body.bg-midnight .tip-green{background:#163428;color:#86efac}
+body.bg-dark .warn,body.bg-midnight .warn{background:#421a22;color:#fca5a5}
+.login-modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:9999}
+.login-box{background:#fff;padding:18px;border-radius:10px;width:90%;max-width:300px}
+.login-box input[type="password"]{width:100%;padding:9px;margin:8px 0;border:1px solid #ddd;border-radius:6px}
+.login-box button{width:100%;padding:9px;background:#6366F1;color:#fff;border:none;border-radius:6px}
+.img-collapse{border:1px solid #dbeafe;border-radius:8px;margin:8px 0;overflow:hidden}
+.img-collapse-head{padding:10px 12px;background:#eff6ff;cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-weight:500;font-size:14px}
+.img-collapse-body{padding:10px;display:none}
+.img-collapse-body.show{display:block}
+.arrow{transition:transform .2s}
+.arrow.rotate{transform:rotate(180deg)}
+.img-quick-btn{background:#eef2ff;color:#4338ca;border:0;border-radius:4px;padding:3px 6px;font-size:12px;margin-bottom:6px}
+body.keyboard-opened{padding-bottom:30px}
+.modal-mask{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99999;display:flex;align-items:center;justify-content:center;padding:10px}
+.modal-box{width:100%;max-width:400px;background:#fff;border-radius:12px;padding:18px}
+.modal-input{width:100%;border:none;border-bottom:1px solid #999;padding:7px 0;font-size:15px;outline:none;background:transparent}
+.modal-btn{background:transparent;border:none;color:#009688;font-size:16px}
+.rich-editor table{width:100%;border-collapse:collapse;margin:6px 0}
+.rich-editor th,.rich-editor td{border:1px solid #999;padding:5px 6px;min-width:50px}
+.md-preview table{width:100%;border-collapse:collapse;margin:6px 0}
+.md-preview th,.md-preview td{border:1px solid #999;padding:5px 6px;min-width:50px}
+.find-replace-mask{position:fixed;inset:0;background:rgba(0,0,0,.25);display:none;align-items:center;justify-content:center;z-index:9999;overflow:hidden;touch-action:none}
+.find-replace-mask.show{display:flex}
+.find-replace-box{background:rgba(255,255,255,.85);width:min(80%,320px);border-radius:12px;padding:12px;backdrop-filter:blur(6px);position:absolute;cursor:move;will-change:left,top}
+body.bg-dark .find-replace-box,body.bg-midnight .find-replace-box{background:rgba(30,30,40,.9);color:#eee}
+body.bg-dark .find-replace-item input,body.bg-midnight .find-replace-item input{background:#222;color:#fff;border-color:#555}
+.find-replace-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.find-replace-title{font-size:15px;font-weight:600}
+.find-replace-close{border:none;background:transparent;font-size:18px;color:#666;cursor:pointer}
+body.bg-dark .find-replace-close,body.bg-midnight .find-replace-close{color:#ddd}
+.find-replace-item{margin-bottom:10px}
+.find-replace-item label{display:block;font-size:12px;color:#444;margin-bottom:3px}
+body.bg-dark .find-replace-item label,body.bg-midnight .find-replace-item label{color:#ddd}
+.find-replace-item input{width:100%;padding:7px 10px;border:1px solid #ddd;border-radius:6px;font-size:13px}
+.find-replace-btns{display:flex;gap:5px;margin-top:12px}
+.find-replace-btns button{flex:1;padding:7px 2px;border:none;border-radius:6px;font-size:12px;cursor:pointer}
+.btn-find{background:#e0e7ff;color:#2d3748}
+.btn-replace-all{background:#6366F1;color:#fff}
+.editor-bg-select{border:1px solid #ddd;border-radius:3px;padding:2px;font-size:11px;height:24px;width:38px}
+.rich-editor,.md-editor,.md-preview{transition:background .25s,color .25s,border-color .25s}
+body.bg-cream .rich-editor{background:#fffbeb;color:#222;border-color:#e0e3f0}
+body.bg-cream .md-editor{background:#fffbeb;color:#222;border-color:#e0e3f0}
+body.bg-cream .md-preview{background:#fffbeb;color:#222;border-color:#e0e3f0}
+body.bg-gray .rich-editor{background:#f3f4f6;color:#222;border-color:#d1d5db}
+body.bg-gray .md-editor{background:#f3f4f6;color:#222;border-color:#d1d5db}
+body.bg-gray .md-preview{background:#f3f4f6;color:#222;border-color:#d1d5db}
+body.bg-dark .rich-editor{background:#121212;color:#eee;border-color:#444}
+body.bg-dark .md-editor{background:#121212;color:#eee;border-color:#444}
+body.bg-dark .md-preview{background:#121212;color:#eee;border-color:#444}
+body.bg-paper .rich-editor{background:#f8f3e6;color:#222;border-color:#e0d9c8}
+body.bg-paper .md-editor{background:#f8f3e6;color:#222;border-color:#e0d9c8}
+body.bg-paper .md-preview{background:#f8f3e6;color:#222;border-color:#e0d9c8}
+body.bg-softblue .rich-editor{background:#eef6ff;color:#222;border-color:#c7e0ff}
+body.bg-softblue .md-editor{background:#eef6ff;color:#222;border-color:#c7e0ff}
+body.bg-softblue .md-preview{background:#eef6ff;color:#222;border-color:#c7e0ff}
+body.bg-sepia .rich-editor{background:#f4e9d8;color:#2d2010;border-color:#ddccb0}
+body.bg-sepia .md-editor{background:#f4e9d8;color:#2d2010;border-color:#ddccb0}
+body.bg-sepia .md-preview{background:#f4e9d8;color:#2d2010;border-color:#ddccb0}
+body.bg-midnight .rich-editor{background:#1a2436;color:#e6edf7;border-color:#344460}
+body.bg-midnight .md-editor{background:#1a2436;color:#e6edf7;border-color:#344460}
+body.bg-midnight .md-preview{background:#1a2436;color:#e6edf7;border-color:#344460}
+body{--custom-bg:#fff;--custom-text:#222;--custom-border:#ddd}
+body.bg-custom .rich-editor{background:var(--custom-bg);color:var(--custom-text);border-color:var(--custom-border)}
+body.bg-custom .md-editor{background:var(--custom-bg);color:var(--custom-text);border-color:var(--custom-border)}
+body.bg-custom .md-preview{background:var(--custom-bg);color:var(--custom-text);border-color:var(--custom-border)}
+.img-preview-mask{position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:999999;display:none;align-items:center;justify-content:center}
+.img-preview-mask.show{display:flex}
+.img-preview-img{max-width:95vw;max-height:95vh;object-fit:contain}
+.rich-editor{background:#fff}
+/* ====== 新增标签颜色指示器样式 ====== */
+.tag-color-indicator {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  margin-right: 2px;
+  cursor: pointer;
+  vertical-align: middle;
+  border: 1px solid rgba(0,0,0,0.1);
+  flex-shrink: 0;
 }
-html,body{
-  height:100%;
-  overflow-x:hidden;
-}
-body{
-  background:#f7f8fc;
-  padding:10px 10px 110px;
-}
-/* 滚动穿透锁定 */
-.lock-scroll{
-  overflow:hidden !important;
-  touch-action:none !important;
-}
-
-/* 双列按钮 绝对均分对称 */
-.tool-box,.tool-row,.save-row{
-  display:grid;
-  grid-template-columns:1fr 1fr;
-  gap:8px;
-  margin:8px 0 10px;
-}
-
-.tool-bar{
-  display:flex;
-  gap:8px;
-  margin-bottom:10px;
-}
-.link-btn{
-  border:0;
-  border-radius:10px;
-  padding:9px 0;
-  font-size:14px;
-  color:#fff;
-  flex:1;
-  min-width:0;
-}
-.blog-link{
-  background:#10b981;
-}
-.album-link{
-  background:#f97316;
-}
-
-.tool-btn{
-  background:#ffffff;
-  border:0;
-  border-radius:8px;
-  padding:10px 6px;
-  font-size:14px;
-  box-shadow:0 1px 4px rgba(99,102,241,0.06);
-  transition:0.2s;
-}
-.tool-btn:active{
-  background:#edefff;
-}
-
-.save-btn{
-  background:#6366F1;
-  color:white;
-  border:0;
-  border-radius:8px;
-  padding:11px 0;
-  width:100%;
-  font-size:15px;
-  box-shadow:0 2px 6px rgba(99,102,241,0.15);
-}
-.save-btn-time{
-  background:#4f46e5;
-}
-#exportFullBackup{
-  background:#22c55e;
-}
-#importBackup{
-  background:#f59e0b;
-}
-.save-btn:active{
-  opacity:0.9;
-}
-
-.title-input,.type-input{
-  width:100%;
-  border:1px solid #e0e3f0;
-  border-radius:8px;
-  padding:10px;
-  font-size:15px;
-  margin-bottom:10px;
-  outline:none;
-  background:#fff;
-}
-.title-input:focus,.type-input:focus{
-  border-color:#6366F1;
-}
-
-/* ========== 多标签 chip 输入框样式 ========== */
-.tags-input-wrap{
-  width:100%;
-  border:1px solid #e0e3f0;
-  border-radius:8px;
-  padding:6px 8px;
-  margin-bottom:10px;
-  background:#fff;
-  display:flex;
-  flex-wrap:wrap;
-  align-items:center;
-  gap:5px;
-  min-height:42px;
-  cursor:text;
-}
-.tags-input-wrap:focus-within{
-  border-color:#6366F1;
-}
-.tag-chip{
-  display:inline-flex;
-  align-items:center;
-  gap:4px;
-  background:#e8eaff;
-  color:#3950cc;
-  font-size:12px;
-  padding:3px 4px 3px 9px;
-  border-radius:99px;
-  line-height:1.3;
-  max-width:160px;
-  overflow:hidden;
-  text-overflow:ellipsis;
-  white-space:nowrap;
-}
-.tag-chip-text{
-  overflow:hidden;
-  text-overflow:ellipsis;
-  white-space:nowrap;
-}
-.tag-chip-remove{
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  width:16px;
-  height:16px;
-  border-radius:50%;
-  background:rgba(57,80,204,0.15);
-  color:#3950cc;
-  font-size:13px;
-  line-height:1;
-  cursor:pointer;
-  flex-shrink:0;
-  -webkit-tap-highlight-color:transparent;
-  user-select:none;
-}
-.tag-chip-remove:hover{
-  background:rgba(57,80,204,0.3);
-}
-.tag-chip-remove::before{
-  content:"×";
-  font-weight:bold;
-}
-.tag-chip-input{
-  flex:1;
-  min-width:80px;
-  border:none;
-  outline:none;
-  background:transparent;
-  font-size:14px;
-  padding:4px 2px;
-  font-family:inherit;
-  color:#222;
-}
-.tag-chip-input::placeholder{
-  color:#9ca3af;
-}
-.tags-hint{
-  font-size:11px;
-  color:#9ca3af;
-  margin:-6px 0 10px 4px;
-}
-/* 隐藏原来的 .type-input 元素(兼容保留,不再展示) */
-.type-input{ display:none; }
-
-.edit-toolbar-wrap{
-  position:fixed;
-  bottom:0;
-  left:0;
-  width:100%;
-  background:#fff;
-  border-top:1px solid #e0e3f0;
-  z-index:999;
-  padding-bottom: env(safe-area-inset-bottom);
-}
-body.keyboard-opened .edit-toolbar-wrap{
-  position:absolute;
-}
-.toolbar-main{
-  display:flex;
-  flex-wrap:wrap;
-  gap:1px;
-  padding:4px 6px;
-  align-items:center;
-}
-.toolbar-more{
-  display:none;
-  padding:4px 6px;
-  border-top:1px solid #eee;
-  grid-template-columns:repeat(8, 1fr);
-  gap:0px;
-}
-.toolbar-more.show{
-  display:grid;
-}
-
-/* 底部小图标按钮 统一大小 */
-.icon-btn{
-  border:1px solid #ddd;
-  background:#fff;
-  border-radius:2px;
-  width:24px;
-  height:24px;
-  font-size:13px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  cursor:pointer;
-  position:relative;
-  touch-action:none;
-}
-.icon-btn:active{
-  background:#eef2ff;
-}
-.icon-btn.active-format{
-  background:#6366F1 !important;
-  color:#fff !important;
-  border-color:#4f46e5 !important;
-}
-@media (min-width:769px){
-  .icon-btn:hover::after{
-    content:attr(data-tip);
-    position:absolute;
-    bottom:110%;
-    left:50%;
-    transform:translateX(-50%);
-    background:#222;
-    color:#fff;
-    font-size:10px;
-    padding:2px 4px;
-    border-radius:3px;
-    white-space:nowrap;
-    z-index:9999;
-  }
-}
-
-.edit-toolbar select{
-  border:1px solid #ddd;
-  border-radius:3px;
-  padding:2px;
-  font-size:11px;
-  height:24px;
-  width:38px;
-}
-.color-input{
-  width:24px;
-  height:24px;
-  border:none;
-  cursor:pointer;
-  border-radius:3px;
-}
-
-.editor-wrap{
-  margin-bottom:10px;
-}
-.rich-editor{
-  width:100%;
-  min-height:560px;
-  border:1px solid #e0e3f0;
-  border-radius:8px;
-  padding:10px;
-  font-size:15px;
-  outline:none;
-  background:#fff;
-  line-height:1.7;
-  position:relative;
-}
-.rich-editor img{
-  max-width:100%;
-  height:auto;
-  border-radius:6px;
-  margin:8px 0;
-  display:block;
-  content-visibility:auto;
-  loading:lazy;
-}
-.md-editor{
-  width:100%;
-  min-height:280px;
-  border:1px solid #e0e3f0;
-  border-radius:8px;
-  padding:10px;
-  font-size:15px;
-  outline:none;
-  background:#fff;
-  line-height:1.7;
-  font-family:monospace;
-  resize:vertical;
-}
-.md-preview{
-  width:100%;
-  min-height:280px;
-  border:1px solid #e0e3f0;
-  border-radius:8px;
-  padding:10px;
-  background:#fff;
-  margin-top:6px;
-  line-height:1.7;
-}
-
-/* 代码块强制换行兼容vivo浏览器 */
-.rich-editor pre code,
-.md-editor pre code {
-  white-space:pre-wrap !important;
-  word-break:break-all !important;
-}
-
-/* 模式切换按钮 左右完全一样大 */
-.mode-switch{
-  margin-bottom:8px;
-  display:flex;
-  gap:8px;
-}
-.mode-switch button{
-  flex:1;
-  padding:8px 0;
-  border-radius:8px;
-  border:1px solid #6366F1;
-  background:#fff;
-  color:#6366F1;
-  font-size:14px;
-}
-.mode-switch button.active{
-  background:#6366F1;
-  color:#fff;
-}
-
-#imgFileInput,#backupFileInput,#hiddenImgFile1,#hiddenImgFile2{
-  opacity:0;
-  position:absolute;
-  width:0;
-  height:0;
-  pointer-events:auto;
-}
-.warn{
-  color:#e53e3e;
-  font-size:12px;
-  margin-bottom:8px;
-  background:#fff2f4;
-  padding:5px 8px;
-  border-radius:6px;
-}
-.tip-green{
-  color:#16a34a;
-  font-size:12px;
-  margin-bottom:8px;
-  background:#f0fdf4;
-  padding:5px 8px;
-  border-radius:6px;
-}
-.tip-red{
-  color:#dc2626;
-  font-weight:bold;
-  font-size:13px;
-  margin-bottom:8px;
-  background:#fee2e2;
-  padding:6px 8px;
-  border-radius:6px;
-}
-body.bg-dark .tip-green, body.bg-midnight .tip-green{
-  background:#163428;
-  color:#86efac;
-}
-body.bg-dark .warn, body.bg-midnight .warn{
-  background:#421a22;
-  color:#fca5a5;
-}
-
-.login-modal{
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,0.5);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  z-index:9999;
-}
-.login-box{
-  background:#fff;
-  padding:18px;
-  border-radius:10px;
-  width:90%;
-  max-width:300px;
-}
-.login-box input[type="password"]{
-  width:100%;
-  padding:9px;
-  margin:8px 0;
-  border:1px solid #ddd;
-  border-radius:6px;
-}
-.login-box button{
-  width:100%;
-  padding:9px;
-  background:#6366F1;
-  color:#fff;
-  border:none;
-  border-radius:6px;
-}
-
-.img-collapse{
-  border:1px solid #dbeafe;
-  border-radius:8px;
-  margin:8px 0;
-  overflow:hidden;
-}
-.img-collapse-head{
-  padding:10px 12px;
-  background:#eff6ff;
-  cursor:pointer;
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  font-weight:500;
-  font-size:14px;
-}
-.img-collapse-body{
-  padding:10px;
-  display:none;
-}
-.img-collapse-body.show{
-  display:block;
-}
-.arrow{
-  transition:transform 0.2s;
-}
-.arrow.rotate{
-  transform:rotate(180deg);
-}
-
-.img-quick-btn{
-  background:#eef2ff;
-  color:#4338ca;
-  border:0;
-  border-radius:4px;
-  padding:3px 6px;
-  font-size:12px;
-  margin-bottom:6px;
-}
-
-body.keyboard-opened{
-  padding-bottom:30px;
-}
-
-.modal-mask{
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,0.55);
-  z-index:99999;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  padding:10px;
-}
-.modal-box{
-  width:100%;
-  max-width:400px;
-  background:#fff;
-  border-radius:12px;
-  padding:18px;
-}
-.modal-input{
-  width:100%;
-  border:none;
-  border-bottom:1px solid #999;
-  padding:7px 0;
-  font-size:15px;
-  outline:none;
-  background:transparent;
-}
-.modal-btn{
-  background:transparent;
-  border:none;
-  color:#009688;
-  font-size:16px;
-}
-
-.rich-editor table {
-  width:100%;
-  border-collapse: collapse;
-  margin:6px 0;
-}
-.rich-editor th,
-.rich-editor td {
-  border:1px solid #999;
-  padding:5px 6px;
-  min-width:50px;
-}
-.md-preview table {
-  width:100%;
-  border-collapse: collapse;
-  margin:6px 0;
-}
-.md-preview th,
-.md-preview td {
-  border:1px solid #999;
-  padding:5px 6px;
-  min-width:50px;
-}
-/* 查找替换弹窗样式 */
-.find-replace-mask{
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,0.25);
-  display:none;
-  align-items:center;
-  justify-content:center;
-  z-index:9999;
-  overflow: hidden;
-  touch-action: none;
-}
-.find-replace-mask.show{
-  display:flex;
-}
-.find-replace-box{
-  background:rgba(255,255,255,0.85);
-  width:min(80%, 320px);
-  border-radius:12px;
-  padding:12px;
-  backdrop-filter: blur(6px);
-  position: absolute;
-  cursor: move;
-  will-change: left, top;
-}
-/* 深色主题查找替换弹窗适配 */
-body.bg-dark .find-replace-box,
-body.bg-midnight .find-replace-box{
-  background:rgba(30,30,40,0.9);
-  color:#eee;
-}
-body.bg-dark .find-replace-item input,
-body.bg-midnight .find-replace-item input{
-  background:#222;
-  color:#fff;
-  border-color:#555;
-}
-
-.find-replace-top{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  margin-bottom:10px;
-}
-.find-replace-title{
-  font-size:15px;
-  font-weight:600;
-}
-.find-replace-close{
-  border:none;
-  background:transparent;
-  font-size:18px;
-  color:#666;
-  cursor:pointer;
-}
-body.bg-dark .find-replace-close,
-body.bg-midnight .find-replace-close{
-  color:#ddd;
-}
-.find-replace-item{
-  margin-bottom:10px;
-}
-.find-replace-item label{
-  display:block;
-  font-size:12px;
-  color:#444;
-  margin-bottom:3px;
-}
-body.bg-dark .find-replace-item label,
-body.bg-midnight .find-replace-item label{
-  color:#ddd;
-}
-.find-replace-item input{
-  width:100%;
-  padding:7px 10px;
-  border:1px solid #ddd;
-  border-radius:6px;
-  font-size:13px;
-}
-.find-replace-btns{
-  display:flex;
-  gap:5px;
-  margin-top:12px;
-}
-.find-replace-btns button{
-  flex:1;
-  padding:7px 2px;
-  border:none;
-  border-radius:6px;
-  font-size:12px;
-  cursor:pointer;
-}
-.btn-find{
-  background:#e0e7ff;
-  color:#2d3748;
-}
-.btn-replace-all{
-  background:#6366F1;
-  color:#fff;
-}
-
-/* 下拉框样式，和字号选择器统一 */
-.editor-bg-select{
-  border:1px solid #ddd;
-  border-radius:3px;
-  padding:2px;
-  font-size:11px;
-  height:24px;
-  width:38px;
-}
-
-/* 过渡动画 */
-.rich-editor, .md-editor, .md-preview {
-  transition: background 0.25s, color 0.25s, border-color 0.25s;
-}
-/* 默认白色 */
-/* 米黄 */
-body.bg-cream .rich-editor{
-  background:#fffbeb;
-  color:#222;
-  border-color:#e0e3f0;
-}
-body.bg-cream .md-editor{
-  background:#fffbeb;
-  color:#222;
-  border-color:#e0e3f0;
-}
-body.bg-cream .md-preview{
-  background:#fffbeb;
-  color:#222;
-  border-color:#e0e3f0;
-}
-/* 浅灰 */
-body.bg-gray .rich-editor{
-  background:#f3f4f6;
-  color:#222;
-  border-color:#d1d5db;
-}
-body.bg-gray .md-editor{
-  background:#f3f4f6;
-  color:#222;
-  border-color:#d1d5db;
-}
-body.bg-gray .md-preview{
-  background:#f3f4f6;
-  color:#222;
-  border-color:#d1d5db;
-}
-/* 深色黑底 */
-body.bg-dark .rich-editor{
-  background:#121212;
-  color:#eeeeee;
-  border-color:#444;
-}
-body.bg-dark .md-editor{
-  background:#121212;
-  color:#eeeeee;
-  border-color:#444;
-}
-body.bg-dark .md-preview{
-  background:#121212;
-  color:#eeeeee;
-  border-color:#444;
-}
-/* 羊皮纸 */
-body.bg-paper .rich-editor{
-  background:#f8f3e6;
-  color:#222;
-  border-color:#e0d9c8;
-}
-body.bg-paper .md-editor{
-  background:#f8f3e6;
-  color:#222;
-  border-color:#e0d9c8;
-}
-body.bg-paper .md-preview{
-  background:#f8f3e6;
-  color:#222;
-  border-color:#e0d9c8;
-}
-/* 浅蓝柔和 */
-body.bg-softblue .rich-editor{
-  background:#eef6ff;
-  color:#222;
-  border-color:#c7e0ff;
-}
-body.bg-softblue .md-editor{
-  background:#eef6ff;
-  color:#222;
-  border-color:#c7e0ff;
-}
-body.bg-softblue .md-preview{
-  background:#eef6ff;
-  color:#222;
-  border-color:#c7e0ff;
-}
-/* 棕褐护眼 */
-body.bg-sepia .rich-editor{
-  background:#f4e9d8;
-  color:#2d2010;
-  border-color:#ddccb0;
-}
-body.bg-sepia .md-editor{
-  background:#f4e9d8;
-  color:#2d2010;
-  border-color:#ddccb0;
-}
-body.bg-sepia .md-preview{
-  background:#f4e9d8;
-  color:#2d2010;
-  border-color:#ddccb0;
-}
-/* 午夜深蓝深色 */
-body.bg-midnight .rich-editor{
-  background:#1a2436;
-  color:#e6edf7;
-  border-color:#344460;
-}
-body.bg-midnight .md-editor{
-  background:#1a2436;
-  color:#e6edf7;
-  border-color:#344460;
-}
-body.bg-midnight .md-preview{
-  background:#1a2436;
-  color:#e6edf7;
-  border-color:#344460;
-}
-
-/* 自定义底色全局变量 */
-body{
-  --custom-bg:#fff;
-  --custom-text:#222;
-  --custom-border:#ddd;
-}
-body.bg-custom .rich-editor{
-  background:var(--custom-bg);
-  color:var(--custom-text);
-  border-color:var(--custom-border);
-}
-body.bg-custom .md-editor{
-  background:var(--custom-bg);
-  color:var(--custom-text);
-  border-color:var(--custom-border);
-}
-body.bg-custom .md-preview{
-  background:var(--custom-bg);
-  color:var(--custom-text);
-  border-color:var(--custom-border);
-}
-
-/* 大图预览 */
-.img-preview-mask{
-  position:fixed;
-  inset:0;
-  background:rgba(0,0,0,0.9);
-  z-index:999999;
-  display:none;
-  align-items:center;
-  justify-content:center;
-}
-.img-preview-mask.show{display:flex;}
-.img-preview-img{
-  max-width:95vw;
-  max-height:95vh;
-  object-fit:contain;
-}
-.rich-editor {
-  background: #fff;
-}
-
 </style>
 </head>
 <body>
@@ -855,17 +201,14 @@ body.bg-custom .md-preview{
 </div>
 <input class="title-input" placeholder="填写笔记标题">
 <div class="tags-input-wrap" id="tagsInputWrap">
-  <!-- chip 动态插入位置 -->
   <input type="text" class="tag-chip-input" id="tagChipInput" placeholder="添加标签后回车确认（如：开发笔记）">
 </div>
 <div class="tags-hint">输入文字后按回车添加标签，点 × 删除</div>
-<!-- 隐藏原 .type-input 兼容保留位置 -->
 <input class="type-input" placeholder="">
 <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
   <input type="checkbox" id="privateCheck">
   <label for="privateCheck">设为私密（仅管理员登录可见，博客/相册游客完全不显示）</label>
 </div>
-
 <div class="mode-switch">
   <button id="modeRich" class="active" onclick="switchMode('rich')">富文本可视化编辑</button>
   <button id="modeMd" onclick="switchMode('md')">Markdown纯文本</button>
@@ -882,7 +225,6 @@ body.bg-custom .md-preview{
 <input type="color" class="color-input" id="bgColor" data-tip="文字高亮底色" value="#fff2cc" style="width:100%;height:100%;border-radius:3px;border:1px solid #ddd;margin:0;padding:0;">
 <span style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:10px;color:#333;font-weight:bold;pointer-events:none;">底</span>
 </div>
-
     <button class="icon-btn" data-tip="加粗" onclick="formatBold()">B</button>
     <button class="icon-btn" data-tip="斜体" onclick="formatItalic()">I</button>
     <button class="icon-btn" data-tip="下划线" onclick="insertUnderline()">U</button>
@@ -904,7 +246,6 @@ body.bg-custom .md-preview{
     <button class="icon-btn" data-tip="行内代码" onclick="insertInlineCode()">`</button>
     <button class="icon-btn" data-tip="引用块" onclick="insertQuote()">></button>
     <button class="icon-btn" data-tip="无序列表" onclick="insertUl()">•</button>
-    <!-- 修复清空全部内容按钮绑定 -->
     <button class="icon-btn" data-tip="清空全部内容" id="clearAllContentBtn" onclick="clearAllNotesContent()">🗑️</button>
     <button class="icon-btn" data-tip="表格" onclick="insertTable()">▦</button>
     <button class="icon-btn" data-tip="本地图片上传" id="localImgBtn">🖼</button>
@@ -943,7 +284,6 @@ body.bg-custom .md-preview{
     <option value="midnight">午夜深蓝</option>
     <option value="custom">自定义底色</option>
   </select>
-  <!-- 自定义底色取色器 -->
   <input type="color" id="customBgColor" style="width:24px;height:24px;display:none;flex-shrink:0;" value="#ffffff">
 </div>
     <button class="icon-btn" data-tip="重置默认纯白" onclick="resetDefaultBg()">◇</button>
@@ -988,8 +328,9 @@ body.bg-custom .md-preview{
 <div class="img-preview-mask" id="imgPreviewMask">
   <img class="img-preview-img" id="previewImg">
 </div>
-
 <script>
+let tagColors = JSON.parse(localStorage.getItem('tagColors') || '{}');
+
 // 统一写入主存储 notes，给管理页/复制按钮读取
 function buildSafeCpCmd(srcPath, destFileName) {
   const destDir = "/storage/emulated/0/notes/images/";
@@ -1188,27 +529,51 @@ let currentTags = []; // 内存中的标签数组，实时同步
 
 // 渲染 chip 列表
 function renderTagsChips(){
-  // 先清空 wrap 内除输入框外的所有节点
   Array.from(tagsInputWrap.querySelectorAll('.tag-chip')).forEach(n => n.remove());
   currentTags.forEach((tag, idx) => {
+    const color = (tagColors[tag] || '#e8eaff');
     const chip = document.createElement('span');
     chip.className = 'tag-chip';
     chip.dataset.idx = idx;
+
+    // 颜色指示器方块
+    const colorIndicator = document.createElement('span');
+    colorIndicator.className = 'tag-color-indicator';
+    colorIndicator.style.backgroundColor = color;
+    colorIndicator.dataset.tag = tag;
+    colorIndicator.addEventListener('click', (e) => {
+      e.stopPropagation();
+      window._editingTagColor = tag;
+      document.getElementById('hiddenTagColorPicker').click();
+    });
+
     const text = document.createElement('span');
     text.className = 'tag-chip-text';
     text.textContent = tag;
+
     const rm = document.createElement('span');
     rm.className = 'tag-chip-remove';
     rm.addEventListener('click', (e) => {
       e.stopPropagation();
       removeTagAt(idx);
     });
+
+    chip.appendChild(colorIndicator);
     chip.appendChild(text);
     chip.appendChild(rm);
-    // 插在输入框前面
     tagsInputWrap.insertBefore(chip, tagChipInput);
   });
 }
+
+// 标签颜色选择器监听
+const hiddenColorPicker = document.getElementById('hiddenTagColorPicker');
+hiddenColorPicker.addEventListener('input', function(e) {
+  const tag = window._editingTagColor;
+  if (!tag) return;
+  tagColors[tag] = e.target.value;
+  localStorage.setItem('tagColors', JSON.stringify(tagColors));
+  renderTagsChips();
+});
 
 // 添加标签
 function addTag(rawText){
@@ -3088,5 +2453,7 @@ window.addEventListener("DOMContentLoaded", () => {
   calcWordCount();
 });
 </script>
+<!-- 隐藏标签颜色选择器 -->
+<input type="color" id="hiddenTagColorPicker" style="position:fixed;opacity:0;width:0;height:0;pointer-events:none;" value="#e8eaff">
 </body>
 </html>
