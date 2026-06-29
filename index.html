@@ -38,10 +38,10 @@ h1#secretTrigger{
   cursor: pointer;
   user-select: none;
   -webkit-user-select: none;
-  touch-action: none; /* 阻止浏览器默认触摸行为干扰长按 */
+  touch-action: none;
 }
 #fullPageBtn{
-width:56px;height:56px;
+width:62px;height:62px;
 border:none;background:transparent;
 display:flex;align-items:center;justify-content:center;
 -webkit-tap-highlight-color:transparent;
@@ -51,7 +51,7 @@ cursor: pointer;
 }
 #fullPageBtn:active{transform:scale(0.92);}
 #fullPageBtn svg{
-  width:34px;height:34px;
+  width:40px;height:40px;
 }
 #fullPageBtn path{
   fill:none;
@@ -186,6 +186,7 @@ cursor: pointer;
   align-items:center;
   font-weight:500;
   font-size:15px;
+  touch-action: manipulation;
 }
 .filter-body{
   padding:12px;
@@ -298,7 +299,7 @@ function isAdminLoggedIn(){
   return savedPwd === ADMIN_PWD && expireTs > now;
 }
 
-// 密码校验+跳转编辑页，加日志
+// 标题长按进入编辑校验
 function goEditAfterVerify(){
   console.log("标题长按触发，进入校验");
   if(isAdminLoggedIn()){
@@ -322,15 +323,12 @@ function goEditAfterVerify(){
   }
 }
 
-// 单独绑定标题长按，逻辑精简、定时器变量作用域独立
+// 顶部标题长按绑定
 (function bindTitleLongPress(){
   let pressTimer = null;
   let startX=0, startY=0;
 
-  // 触屏
   trigger.addEventListener('touchstart', (e)=>{
-    console.log("touchstart 按下标题");
-    // 先清残留定时器
     if(pressTimer) clearTimeout(pressTimer);
     const t = e.touches[0];
     startX = t.clientX; startY = t.clientY;
@@ -345,7 +343,6 @@ function goEditAfterVerify(){
     const dx = Math.abs(t.clientX - startX);
     const dy = Math.abs(t.clientY - startY);
     if(dx>MOVE_THRESHOLD || dy>MOVE_THRESHOLD){
-      console.log("移动超出阈值，取消长按");
       clearTimeout(pressTimer);
       pressTimer = null;
     }
@@ -353,16 +350,13 @@ function goEditAfterVerify(){
 
   trigger.addEventListener('touchend touchcancel', ()=>{
     if(pressTimer){
-      console.log("touchend 提前松开，清定时器");
       clearTimeout(pressTimer);
       pressTimer = null;
     }
   });
 
-  // 鼠标
   let mouseTimer=null;
   trigger.addEventListener('mousedown',(e)=>{
-    console.log("mousedown 按下标题");
     if(mouseTimer) clearTimeout(mouseTimer);
     mouseTimer=setTimeout(()=>{
       goEditAfterVerify();
@@ -370,37 +364,36 @@ function goEditAfterVerify(){
   });
   trigger.addEventListener('mouseup mouseleave',()=>{
     if(mouseTimer){
-      console.log("mouseup 松开，清鼠标定时器");
       clearTimeout(mouseTimer);
       mouseTimer=null;
     }
   });
 
-  // 右键直接触发
   trigger.addEventListener('contextmenu',(e)=>{
     e.preventDefault();
     goEditAfterVerify();
   });
 })();
 
-// 筛选常规展开收起
+// 筛选面板切换
 function toggleFilterPanel(){
   document.getElementById('filterBody').classList.toggle('show');
   document.getElementById('filterArrow').classList.toggle('rotate');
 }
-// 筛选头部：短按展开收起，长按才触发管理员校验
+
+// 筛选头部完整绑定：短按开合、长按管理员，防触屏合成click叠加
 (function bindFilterHeaderAction() {
   let pressTimer = null;
   let startX = 0, startY = 0;
   let isLongPressTriggered = false;
 
-  // 触屏流程
+  // 触屏
   filterHeader.addEventListener('touchstart', (e) => {
     isLongPressTriggered = false;
+    clearTimeout(pressTimer);
     const t = e.touches[0];
     startX = t.clientX;
     startY = t.clientY;
-
     pressTimer = setTimeout(() => {
       isLongPressTriggered = true;
       openAdminPage();
@@ -418,19 +411,22 @@ function toggleFilterPanel(){
     }
   });
 
-  filterHeader.addEventListener('touchend touchcancel', () => {
+  filterHeader.addEventListener('touchend touchcancel', (e) => {
     clearTimeout(pressTimer);
     pressTimer = null;
     if (!isLongPressTriggered) {
       toggleFilterPanel();
+    } else {
+      e.preventDefault(); // 阻止后续合成click，避免重复触发
     }
   });
 
-  // 鼠标流程
+  // 鼠标
   let mouseTimer = null;
   let mouseLongTriggered = false;
   filterHeader.addEventListener('mousedown', () => {
     mouseLongTriggered = false;
+    clearTimeout(mouseTimer);
     mouseTimer = setTimeout(() => {
       mouseLongTriggered = true;
       openAdminPage();
@@ -445,15 +441,17 @@ function toggleFilterPanel(){
     }
   });
 
-  // 右键也走管理员逻辑
+  // 右键管理员
   filterHeader.addEventListener('contextmenu', (e) => {
     e.preventDefault();
     openAdminPage();
   });
 
-  // 兜底click，兼容触屏事件异常机型，仅切换面板
+  // click兜底，仅非长按状态执行
   filterHeader.addEventListener('click', () => {
-    toggleFilterPanel();
+    if (!isLongPressTriggered && !mouseLongTriggered) {
+      toggleFilterPanel();
+    }
   });
 })();
 
@@ -497,6 +495,7 @@ window.addEventListener('load', async ()=>{
   setTimeout(loadNoteData, 100);
 });
 
+// 全屏切换
 fullBtn.addEventListener('click',()=>{
   if(!document.fullscreenElement){
     document.documentElement.requestFullscreen();
@@ -587,7 +586,7 @@ function renderNotes(){
   })
   wrap.innerHTML = html;
 
-  // 单条笔记卡片长按进管理页
+  // 笔记卡片绑定：短按读笔记、长按进管理
   document.querySelectorAll('.note-card').forEach(card=>{
     let pressTimer=null,startX=0,startY=0,isScroll=false;
     const noteId = card.dataset.id;
