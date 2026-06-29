@@ -38,7 +38,7 @@ h1#secretTrigger{
   cursor: pointer;
   user-select: none;
   -webkit-user-select: none;
-  touch-action: none; /* 阻止浏览器默认触摸行为干扰长按 */
+  touch-action: none;
 }
 #fullPageBtn{
 width:68px;height:68px;
@@ -186,6 +186,7 @@ cursor: pointer;
   align-items:center;
   font-weight:500;
   font-size:15px;
+  touch-action: manipulation;
 }
 .filter-body{
   padding:12px;
@@ -298,7 +299,7 @@ function isAdminLoggedIn(){
   return savedPwd === ADMIN_PWD && expireTs > now;
 }
 
-// 密码校验+跳转编辑页，加日志
+// 标题长按进入编辑校验
 function goEditAfterVerify(){
   console.log("标题长按触发，进入校验");
   if(isAdminLoggedIn()){
@@ -322,15 +323,12 @@ function goEditAfterVerify(){
   }
 }
 
-// 单独绑定标题长按，逻辑精简、定时器变量作用域独立
+// 顶部标题长按绑定
 (function bindTitleLongPress(){
   let pressTimer = null;
   let startX=0, startY=0;
 
-  // 触屏
   trigger.addEventListener('touchstart', (e)=>{
-    console.log("touchstart 按下标题");
-    // 先清残留定时器
     if(pressTimer) clearTimeout(pressTimer);
     const t = e.touches[0];
     startX = t.clientX; startY = t.clientY;
@@ -345,7 +343,6 @@ function goEditAfterVerify(){
     const dx = Math.abs(t.clientX - startX);
     const dy = Math.abs(t.clientY - startY);
     if(dx>MOVE_THRESHOLD || dy>MOVE_THRESHOLD){
-      console.log("移动超出阈值，取消长按");
       clearTimeout(pressTimer);
       pressTimer = null;
     }
@@ -353,16 +350,13 @@ function goEditAfterVerify(){
 
   trigger.addEventListener('touchend touchcancel', ()=>{
     if(pressTimer){
-      console.log("touchend 提前松开，清定时器");
       clearTimeout(pressTimer);
       pressTimer = null;
     }
   });
 
-  // 鼠标
   let mouseTimer=null;
   trigger.addEventListener('mousedown',(e)=>{
-    console.log("mousedown 按下标题");
     if(mouseTimer) clearTimeout(mouseTimer);
     mouseTimer=setTimeout(()=>{
       goEditAfterVerify();
@@ -370,58 +364,95 @@ function goEditAfterVerify(){
   });
   trigger.addEventListener('mouseup mouseleave',()=>{
     if(mouseTimer){
-      console.log("mouseup 松开，清鼠标定时器");
       clearTimeout(mouseTimer);
       mouseTimer=null;
     }
   });
 
-  // 右键直接触发
   trigger.addEventListener('contextmenu',(e)=>{
     e.preventDefault();
     goEditAfterVerify();
   });
 })();
 
-// 筛选常规展开收起
+// 筛选面板切换
 function toggleFilterPanel(){
   document.getElementById('filterBody').classList.toggle('show');
   document.getElementById('filterArrow').classList.toggle('rotate');
 }
-// 筛选头部长按仅登录校验
-(function bindFilterLongPress(){
-  let pressTimer = null, startX=0, startY=0;
-  filterHeader.addEventListener('touchstart', (e)=>{
+
+// 筛选头部：严格区分短按开合、长按进管理员
+(function bindFilterHeaderAction() {
+  let pressTimer = null;
+  let startX = 0, startY = 0;
+  let touchLongTriggered = false;
+
+  // 触屏流程
+  filterHeader.addEventListener('touchstart', (e) => {
+    touchLongTriggered = false;
+    clearTimeout(pressTimer);
     const t = e.touches[0];
-    startX = t.clientX; startY = t.clientY;
-    pressTimer = setTimeout(()=>{
-      if(!isAdminLoggedIn()) prompt("请输入管理员密码：");
+    startX = t.clientX;
+    startY = t.clientY;
+
+    pressTimer = setTimeout(() => {
+      touchLongTriggered = true;
+      openAdminPage();
     }, LONG_PRESS_TIME);
-  }, {passive:false});
-  filterHeader.addEventListener('touchmove', (e)=>{
-    if(!pressTimer) return;
+  }, { passive: false });
+
+  filterHeader.addEventListener('touchmove', (e) => {
+    if (!pressTimer) return;
     const t = e.touches[0];
     const dx = Math.abs(t.clientX - startX);
     const dy = Math.abs(t.clientY - startY);
-    if(dx>MOVE_THRESHOLD || dy>MOVE_THRESHOLD) clearTimeout(pressTimer);
+    if (dx > MOVE_THRESHOLD || dy > MOVE_THRESHOLD) {
+      clearTimeout(pressTimer);
+      pressTimer = null;
+    }
   });
-  filterHeader.addEventListener('touchend touchcancel', ()=>{
+
+  filterHeader.addEventListener('touchend touchcancel', (e) => {
     clearTimeout(pressTimer);
-    if(!isAdminLoggedIn()) toggleFilterPanel();
+    pressTimer = null;
+    if (!touchLongTriggered) {
+      toggleFilterPanel();
+    } else {
+      e.preventDefault();
+    }
   });
-  let mouseTimer=null;
-  filterHeader.addEventListener('mousedown',()=>{
-    mouseTimer=setTimeout(()=>{
-      if(!isAdminLoggedIn()) prompt("请输入管理员密码：");
-    },LONG_PRESS_TIME);
-  });
-  filterHeader.addEventListener('mouseup mouseleave',()=>{
+
+  // 鼠标流程
+  let mouseTimer = null;
+  let mouseLongTriggered = false;
+  filterHeader.addEventListener('mousedown', () => {
+    mouseLongTriggered = false;
     clearTimeout(mouseTimer);
-    toggleFilterPanel();
+    mouseTimer = setTimeout(() => {
+      mouseLongTriggered = true;
+      openAdminPage();
+    }, LONG_PRESS_TIME);
   });
-  filterHeader.addEventListener('contextmenu',(e)=>{
+
+  filterHeader.addEventListener('mouseup mouseleave', () => {
+    clearTimeout(mouseTimer);
+    mouseTimer = null;
+    if (!mouseLongTriggered) {
+      toggleFilterPanel();
+    }
+  });
+
+  // 右键管理员
+  filterHeader.addEventListener('contextmenu', (e) => {
     e.preventDefault();
-    if(!isAdminLoggedIn()) prompt("请输入管理员密码：");
+    openAdminPage();
+  });
+
+  // click兜底
+  filterHeader.addEventListener('click', () => {
+    if (!touchLongTriggered && !mouseLongTriggered) {
+      toggleFilterPanel();
+    }
   });
 })();
 
@@ -465,6 +496,7 @@ window.addEventListener('load', async ()=>{
   setTimeout(loadNoteData, 100);
 });
 
+// 全屏切换
 fullBtn.addEventListener('click',()=>{
   if(!document.fullscreenElement){
     document.documentElement.requestFullscreen();
@@ -555,7 +587,7 @@ function renderNotes(){
   })
   wrap.innerHTML = html;
 
-  // 单条笔记卡片长按进管理页
+  // 笔记卡片绑定：短按读笔记、长按进管理
   document.querySelectorAll('.note-card').forEach(card=>{
     let pressTimer=null,startX=0,startY=0,isScroll=false;
     const noteId = card.dataset.id;
