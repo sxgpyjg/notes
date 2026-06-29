@@ -114,7 +114,27 @@ h1{
 .item-info p{
   font-size:13px;
   color:#888;
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:6px;
 }
+/* 多标签容器与徽章样式 */
+.tag-group {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.tag{
+  font-size:11px;
+  padding:2px 6px;
+  border-radius:12px;
+}
+.tag-note{background: #e8eaff;color:#3950cc;}
+.tag-doc{background:#e6f8ee;color:#148246;}
+.tag-custom{background:#fff0e6;color:#b8460c;}
+.tag-编程{background:#e1f5fe;color:#0277bd;}
+
 .btn-group{
   display:flex;
   gap:6px;
@@ -245,6 +265,16 @@ function escapeHtml(str){
           .replace(/'/g,"&#039;");
 }
 
+// 根据标签名获取样式类
+function getTagClassByName(name) {
+  switch(name) {
+    case 'note': return 'tag-note';
+    case 'doc': return 'tag-doc';
+    case '编程': return 'tag-编程';
+    default: return 'tag-custom';
+  }
+}
+
 // 强制刷新远程数据，追加时间戳绕过缓存
 function forceReloadRemote(){
   const url = new URL(location.href);
@@ -257,6 +287,12 @@ window.addEventListener("load", ()=>{
   setTimeout(()=>{
     if(window.NOTE_DATA && Array.isArray(window.NOTE_DATA)){
       remoteNoteData = JSON.parse(JSON.stringify(window.NOTE_DATA));
+      // 兼容旧type转tags
+      remoteNoteData.forEach(item => {
+        if (!Array.isArray(item.tags) && item.type) {
+          item.tags = [item.type];
+        }
+      });
       saveAllNotes(remoteNoteData);
     }
     render();
@@ -268,7 +304,14 @@ function loadAllNotes(){
   if(remoteNoteData.length > 0) return remoteNoteData;
   const raw = localStorage.getItem("notes");
   try{
-    return raw ? JSON.parse(raw) : [];
+    const list = raw ? JSON.parse(raw) : [];
+    // 兼容旧type转tags
+    list.forEach(item => {
+      if (!Array.isArray(item.tags) && item.type) {
+        item.tags = [item.type];
+      }
+    });
+    return list;
   }catch(e){
     return [];
   }
@@ -366,17 +409,22 @@ function render(){
   let html = '';
   realList.sort((a,b)=>new Date(b.date) - new Date(a.date)).forEach(item=>{
     const title = escapeHtml(item.title);
-    const type = escapeHtml(item.type);
     const date = escapeHtml(item.date);
+    // 生成多标签HTML
+    const tagHtml = (item.tags || []).map(tag => {
+      const cls = getTagClassByName(tag);
+      return `<span class="tag ${cls}">${escapeHtml(tag)}</span>`;
+    }).join('');
+
     html += `
     <div class="item-box">
       <div class="item-info">
         <h3>${title}</h3>
-        <p>${date} | ${type}</p>
+        <p>${date} | <div class="tag-group">${tagHtml}</div></p>
       </div>
       <div class="btn-group">
         <button class="edit-btn" onclick="location.href='edit.html?id=${item.id}'">编辑</button>
-        <button class="del-btn" onclick="delNote(${item.id})">删除</button>
+        <button class="del-btn" onclick="delNote('${item.id}')">删除</button>
       </div>
     </div>
     `

@@ -132,6 +132,20 @@ h1#secretTrigger{
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.tag-group {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  max-width: 50%;
+}
+.tag-multi {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 99px;
+  background: #e8eaff;
+  color: #3950cc;
+  flex-shrink: 0;
+}
 .tag{
   font-size: 10px;
   padding: 2px 7px;
@@ -240,7 +254,7 @@ h1#secretTrigger{
     <span class="arrow" id="filterArrow">▼</span>
   </div>
   <div class="filter-body" id="filterBody">
-    <button class="filter-btn active" onclick="filterByType('')">全部</button>
+    <button class="filter-btn active" onclick="filterByTag(null)">全部</button>
   </div>
 </div>
 
@@ -260,6 +274,7 @@ const LOCAL_NOTE_KEY = "notes";
 let dataList = [];
 let currentFilter = "";
 let allTypes = new Set();
+let currentFilterTag = null;
 
 /* ========== DOM ========== */
 const wrap = document.getElementById('noteWrap');
@@ -269,15 +284,6 @@ const fullSvg = document.getElementById('fullSvg');
 const filterHeader = document.getElementById('filterHeader');
 const filterBody = document.getElementById('filterBody');
 const filterArrow = document.getElementById('filterArrow');
-
-/* ========== 振动工具 ========== */
-function vibrateOnce(ms = 50){
-  try{
-    if(typeof navigator.vibrate === 'function'){
-      navigator.vibrate(ms);
-    }
-  }catch(e){}
-}
 
 /* ========== 工具 ========== */
 function isAdminLoggedIn(){
@@ -311,7 +317,7 @@ function openRead(noteId){
   location.href = 'read.html';
 }
 
-/* ========== 长按通用封装（含振动） ========== */
+/* ========== 长按通用封装（移除振动） ========== */
 function bindLongPress(el, onLongPress, onClick){
   let timer = null;
   let longTriggered = false;
@@ -326,7 +332,6 @@ function bindLongPress(el, onLongPress, onClick){
     startY = t.clientY;
     timer = setTimeout(() => {
       longTriggered = true;
-      vibrateOnce(20);   // ✅ 长按震动
       onLongPress();
     }, LONG_PRESS_TIME);
   }, {passive:false});
@@ -336,32 +341,32 @@ function bindLongPress(el, onLongPress, onClick){
     if(Math.abs(t.clientX-startX)>MOVE_THRESHOLD || Math.abs(t.clientY-startY)>MOVE_THRESHOLD){
       isScroll = true;
       clearTimeout(timer);
+      timer = null;
     }
   }, {passive:false});
 
-  el.addEventListener('touchend', e => {
+  el.addEventListener('touchend touchcancel', e => {
     clearTimeout(timer);
-    if(longTriggered){
-      e.preventDefault();
-      e.stopPropagation();
-    }
+    timer = null;
+    if (!longTriggered && !isScroll) onClick();
   }, {passive:false});
 
   el.addEventListener('mousedown', () => {
     longTriggered = false;
     timer = setTimeout(() => {
       longTriggered = true;
-      vibrateOnce(20);
       onLongPress();
     }, LONG_PRESS_TIME);
   });
 
-  el.addEventListener('mouseup', () => clearTimeout(timer));
-  el.addEventListener('mouseleave', () => clearTimeout(timer));
+  el.addEventListener('mouseup mouseleave', () => {
+    clearTimeout(timer);
+    timer = null;
+    if (!longTriggered) onClick();
+  });
 
   el.addEventListener('contextmenu', e => {
     e.preventDefault();
-    vibrateOnce(20);
     onLongPress();
   });
 
@@ -426,6 +431,12 @@ async function waitNoteData(){
 function loadNoteData(){
   if(window.NOTE_DATA && Array.isArray(window.NOTE_DATA)){
     dataList = JSON.parse(JSON.stringify(window.NOTE_DATA));
+    // 兼容旧type转tags
+    dataList.forEach(item => {
+      if (!Array.isArray(item.tags) && item.type) {
+        item.tags = [item.type];
+      }
+    });
     localStorage.setItem(LOCAL_NOTE_KEY, JSON.stringify(dataList));
   }else{
     dataList = JSON.parse(localStorage.getItem(LOCAL_NOTE_KEY) || '[]');
@@ -449,16 +460,16 @@ window.addEventListener('load', async () => {
 /* ========== 渲染 ========== */
 function renderFilter(){
   allTypes.clear();
-  dataList.forEach(i=>i.type && allTypes.add(i.type));
-  let html = `<button class="filter-btn ${currentFilter===''?'active':''}" onclick="filterByType('')">全部</button>`;
+  dataList.forEach(i=> (i.tags || []).forEach(t => allTypes.add(t)));
+  let html = `<button class="filter-btn ${currentFilterTag===null?'active':''}" onclick="filterByTag(null)">全部</button>`;
   allTypes.forEach(t=>{
-    html += `<button class="filter-btn ${currentFilter===t?'active':''}" onclick="filterByType('${t}')">${t}</button>`;
+    html += `<button class="filter-btn ${currentFilterTag===t?'active':''}" onclick="filterByTag('${escapeHtml(t)}')">${escapeHtml(t)}</button>`;
   });
   filterBody.innerHTML = html;
 }
 
-function filterByType(type){
-  currentFilter = type;
+function filterByTag(tagVal){
+  currentFilterTag = tagVal;
   renderFilter();
   renderNotes();
 }
@@ -468,21 +479,25 @@ function getFirstImgFromHtml(html){
   return m ? m[1] : '';
 }
 
-// 修改：仅移除img标签，保留代码块、表格等结构标签
 function getPureTextPreview(html){
-  return String(html)
-    .replace(/<img[^>]*>/g,'');
+  return String(html).replace(/<img[^>]*>/g,'');
 }
 
 function escapeHtml(s){
-  // 注意：要保留结构标签就不做全局escapeHtml，改用文本节点处理/局部转义；
-  // 下面调整：只转义非结构部分，这里示例改为不整体escape，让table/pre/code正常渲染
-  return String(s);
+  return String(s)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#039;');
 }
 
 function renderNotes(){
   let list = dataList.filter(i=>isAdminLoggedIn() || !i.private);
-  if(currentFilter) list = list.filter(i=>i.type===currentFilter);
+  // 标签筛选
+  if(currentFilterTag){
+    list = list.filter(item => (item.tags || []).includes(currentFilterTag));
+  }
 
   list.sort((a,b)=>new Date(b.date)-new Date(a.date));
 
@@ -492,24 +507,21 @@ function renderNotes(){
   }
 
   wrap.innerHTML = list.map(item=>{
-    const tagMap = {
-      note: ['tag-note','开发笔记'],
-      doc: ['tag-doc','实操教程']
-    };
-    const [cls,txt] = tagMap[item.type] || ['tag-custom',item.type];
-
     const img = item.cover || getFirstImgFromHtml(item.content);
     const imgHtml = img ? `<div class="card-img-box"><img src="${img}"></div>` : '';
-
     const previewContent = getPureTextPreview(item.content);
+    // 多标签渲染
+    const tagHtml = (item.tags || []).map(tag => 
+      `<span class="tag-multi">${escapeHtml(tag)}</span>`
+    ).join('');
 
     return `
-    <div class="note-card" data-id="${item.id}">
+    <div class="note-card" data-id="${escapeHtml(item.id)}">
       ${imgHtml}
       <div class="card-right-wrap">
         <div class="card-head">
           <div class="card-title">${escapeHtml(item.title)}</div>
-          <span class="tag ${cls}">${escapeHtml(txt)}</span>
+          <div class="tag-group">${tagHtml}</div>
         </div>
         <div class="card-date">${escapeHtml(item.date)}</div>
         <div class="card-preview">${previewContent}</div>

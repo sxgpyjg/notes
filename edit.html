@@ -95,7 +95,7 @@ body{
   opacity:0.9;
 }
 
-.title-input,.type-input{
+.title-input,.type-input,.tag-text-input{
   width:100%;
   border:1px solid #e0e3f0;
   border-radius:8px;
@@ -105,8 +105,35 @@ body{
   outline:none;
   background:#fff;
 }
-.title-input:focus,.type-input:focus{
+.title-input:focus,.type-input:focus,.tag-text-input:focus{
   border-color:#6366F1;
+}
+/* 新增标签徽章容器+样式 */
+.tag-badge-wrap {
+  display:flex;
+  gap:6px;
+  flex-wrap:wrap;
+  margin-bottom:10px;
+}
+.tag-badge {
+  background:#e8eaff;
+  color:#3950cc;
+  font-size:12px;
+  padding:3px 8px;
+  border-radius:12px;
+  display:flex;
+  align-items:center;
+  gap:4px;
+}
+.tag-badge button {
+  border:none;
+  background:transparent;
+  cursor:pointer;
+  font-weight:bold;
+  padding:0 4px;
+}
+.tag-badge button:active {
+  color:#f43f5e;
 }
 
 .edit-toolbar-wrap{
@@ -771,6 +798,9 @@ body.bg-custom .md-preview{
   <input type="file" id="backupFileInput" accept=".json,.js">
 </div>
 <input class="title-input" placeholder="填写笔记标题">
+<!-- 新增标签输入区域 -->
+<input class="tag-text-input" id="tagTextInput" placeholder="输入标签，逗号/空格/回车添加，点×删除">
+<div class="tag-badge-wrap" id="tagBadgeWrap"></div>
 <input class="type-input" placeholder="自定义分类（开发笔记/随笔/教程）">
 <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
   <input type="checkbox" id="privateCheck">
@@ -903,7 +933,7 @@ body.bg-custom .md-preview{
 <script>
 // 统一写入主存储 notes，给管理页/复制按钮读取
 function buildSafeCpCmd(srcPath, destFileName) {
-  const destDir = "/storage/emulated/0/notes/images/";
+  const destDir = "/storage/emulated/0/notes/";
   return `cp ${srcPath} "${destDir}${destFileName}"`;
 }
 
@@ -974,6 +1004,54 @@ let initViewHeight = window.visualViewport ? window.visualViewport.height : wind
 const ADMIN_PASSWORD = "admin123";
 let matchCase = false;
 
+// ========== 新增标签相关DOM与变量、函数 ==========
+const tagTextInput = document.getElementById('tagTextInput');
+const tagBadgeWrap = document.getElementById('tagBadgeWrap');
+let currentTags = [];
+
+// 转义
+function escapeHtml(s) {
+  return String(s ?? "")
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;')
+    .replace(/'/g,'&#039;');
+}
+
+// 渲染徽章
+function renderTagBadges() {
+  tagBadgeWrap.innerHTML = currentTags.map((tag, idx) => `
+    <span class="tag-badge">
+      ${escapeHtml(tag)}
+      <button onclick="removeTag(${idx})">×</button>
+    </span>
+  `).join('');
+}
+// 删除单个标签
+window.removeTag = function(idx) {
+  currentTags.splice(idx,1);
+  renderTagBadges();
+};
+// 解析输入添加标签
+function parseTagsFromInput() {
+  const raw = tagTextInput.value.trim();
+  if(!raw) return;
+  const parts = raw.split(/[,，\s]+/).map(s=>s.trim()).filter(s=>s);
+  parts.forEach(t=>{
+    if(!currentTags.includes(t)) currentTags.push(t);
+  });
+  tagTextInput.value = '';
+  renderTagBadges();
+}
+// 绑定输入事件
+tagTextInput.addEventListener('keydown', e=>{
+  if(e.key === 'Enter') {
+    parseTagsFromInput();
+    e.preventDefault();
+  }
+});
+tagTextInput.addEventListener('blur', parseTagsFromInput);
 
 // 退出登录
 function logoutAdmin(){
@@ -1296,7 +1374,7 @@ function htmlToMd(htmlStr){
     .replace(/<em>(.*?)<\/em>/g, '*$1*')
     .replace(/<s>(.*?)<\/s>/g, '~~$1~~')
     .replace(/<li>(.*?)<\/li>/g, '- $1')
-    .replace(/<img.*?width="(\d+)px".*?src="(.*?)".*?alt="(.*?)".*?>/g, '![![$3]($2){width=$1}')
+    .replace(/<img.*?width="(\d+)px".*?src="(.*?)".*?alt="(.*?)".*?>/g, '![$3]($2){width=$1}')
     .replace(/<img.*?src="(.*?)".*?alt="(.*?)".*?>/g, '![$2]($1)')
     .replace(/<br>/g, '\n');
   text = text.replace(/<(?!p style="text-align:center"|u|table|tr|th|td)[^>]+>/g, '');
@@ -1393,7 +1471,12 @@ setTimeout(initLoadNote,100);
 // 【核心修复】初始化加载笔记，回填不丢失、不破坏按钮逻辑
 function initLoadNote(){
 imgUploadList = [];
-if(!editId) return;
+if(!editId) {
+  // 新建笔记，清空标签
+  currentTags = [];
+  renderTagBadges();
+  return;
+}
 const target = list.find(item=>item.id === Number(editId));
 if(!target) return;
 targetNote = target;
@@ -1401,6 +1484,16 @@ titleInput.value = target.title;
 typeInput.value = target.type;
 // 私密状态回填
 document.getElementById("privateCheck").checked = !!target.private;
+
+// 标签回填+兼容旧type
+if (!Array.isArray(target.tags) && target.type) {
+  currentTags = [target.type];
+} else {
+  currentTags = Array.isArray(target.tags) ? [...target.tags] : [];
+}
+renderTagBadges();
+tagTextInput.value = '';
+
 richBox.innerHTML = target.content || "";
 
 richRecordStack = [richBox.innerHTML];
@@ -2186,7 +2279,7 @@ let termuxSrc;
 const fileName = file.name;
 const fnLower = fileName.toLowerCase();
 if (fullPath) {
-  fullPath = fullPath.replace(/^\/storage\/emulated\/0\//i, "/storage/emulated/0/");
+  fullPath = fullPath.replace(/^\/storage/emulated/0\//i, "/storage/emulated/0/");
   fullPath = fullPath.replace(/\/download\//gi, "/Download/");
   termuxSrc = fullPath;
 }else {
@@ -2295,13 +2388,14 @@ if(currentEditMode === "rich") content = richBox.innerHTML.trim();
 else content = mdToHtml(mdBox.value);
 const nowTime = getNowTimeStr();
 if(targetNote){
-  // 编辑已有笔记，同步私密状态
+  // 编辑已有笔记，同步私密、标签
   const idx = list.findIndex(item=>item.id === targetNote.id);
   list[idx].title = title;
   list[idx].type = type;
   list[idx].content = content;
   list[idx].date = nowTime;
   list[idx].private = isPrivate;
+  list[idx].tags = [...currentTags]; // 写入标签数组
   delete list[idx]._isTempNew;
 }else{
   // 新建草稿：找到原有草稿更新，不存在则新增
@@ -2312,6 +2406,7 @@ if(targetNote){
     list[tempIdx].content = content;
     list[tempIdx].date = nowTime;
     list[tempIdx].private = isPrivate;
+    list[tempIdx].tags = [...currentTags]; // 写入标签数组
   }else{
     const newNote = {
       id: Date.now(),
@@ -2320,6 +2415,7 @@ if(targetNote){
       content,
       date: nowTime,
       private: isPrivate,
+      tags: [...currentTags], // 写入标签数组
       _isTempNew: true
     };
     list.push(newNote);
@@ -2390,22 +2486,29 @@ if(!title){
 alert("笔记标题不能为空");
 return;
 }
-if(!type){
-alert("分类不能为空");
-return;
-}
+// 不再强制校验type，兼容仅用tags场景
 const nowTime = getNowTimeStr();
 const newId = Date.now();
 if(targetNote){
 const idx = list.findIndex(item=>item.id === targetNote.id);
-if(idx > -1) delete list[idx]._isTempNew;
+if(idx > -1) {
+  delete list[idx]._isTempNew;
+  list[idx].title = title;
+  list[idx].type = type;
+  list[idx].content = content;
+  list[idx].date = nowTime;
+  list[idx].private = document.getElementById("privateCheck").checked;
+  list[idx].tags = [...currentTags];
+}
 }else{
 list.push({
 id: newId,
 title,
 type,
 content,
-date: nowTime
+date: nowTime,
+private: document.getElementById("privateCheck").checked,
+tags: [...currentTags]
 });
 }
 //过滤无效笔记
@@ -2517,17 +2620,16 @@ calcWordCount();
 });
 bgColorInput.addEventListener("input", function(){
   richBox.focus();
-  const sel = window.getSelection();
-  // 无选中文字直接退出
+  const sel = window.getSelection(); // 修正
   if (!sel.rangeCount || sel.getRangeAt(0).collapsed) return;
   const range = sel.getRangeAt(0);
   const span = document.createElement("span");
   span.style.backgroundColor = this.value;
-  // 给选中文字包裹底色span
   range.surroundContents(span);
   checkFormatActive();
   calcWordCount();
 });
+
 
 // ========== 查找替换功能（纯文本/富文本双模式兼容） ==========
 const findReplaceBtn = document.getElementById('findReplaceBtn');
@@ -2866,6 +2968,7 @@ function getFullJsText() {
 window.addEventListener("DOMContentLoaded", () => {
   renderMdPreview();
   calcWordCount();
+  renderTagBadges(); // 初始化标签徽章容器
 });
 </script>
 </body>

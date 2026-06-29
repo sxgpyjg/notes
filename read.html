@@ -46,7 +46,7 @@ h1{
   color: #1d2133;
   font-weight: 600;
 }
-/* 改成和主页一致：容器68px，图标46px */
+/* 全屏按钮尺寸和主页统一 */
 #fullPageBtn{
 width:68px;height:68px;
 border:none;background:transparent;
@@ -80,7 +80,7 @@ cursor: pointer;
 }
 .card-head.collapsed .card-title,
 .card-head.collapsed .card-date,
-.card-head.collapsed .tag {
+.card-head.collapsed .tag-group {
   opacity:0; width:0; font-size:0; overflow:hidden; padding:0; margin:0;
 }
 .card-title{
@@ -97,9 +97,15 @@ cursor: pointer;
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-wrap: nowrap;
+  flex-wrap: wrap; /* 多标签换行 */
 }
 .card-date{font-size: 13px; color: #9498b3; white-space: nowrap;}
+/* 多标签容器+徽章样式 */
+.tag-group {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
 .tag{
   font-size: 12px;
   padding: 3px 9px;
@@ -166,8 +172,7 @@ cursor: pointer;
   padding:3px 8px;font-size:12px;
   cursor:pointer;z-index:9999;
 }
-.copy-code-btn:active{background:#6366F1;}
-
+.copy-code-btn:active{background:#6366F1;color:#fff;}
 
 /*轮播*/
 .slide-wrap {
@@ -221,6 +226,10 @@ if(isAdminLogin){
   item = dataList.find(n=>String(n.id)===targetId && !n.private);
 }
 
+// 兼容旧单type转为tags数组
+if (item && !Array.isArray(item.tags) && item.type) {
+  item.tags = [item.type];
+}
 
 fullBtn.onclick = ()=>{
   if(!document.fullscreenElement){
@@ -309,22 +318,34 @@ function initSlide(){
   })
 }
 
+// 辅助获取标签样式类（兼容原有命名）
+function getTagClassByName(name) {
+  switch(name) {
+    case 'note': return 'tag-note';
+    case 'doc': return 'tag-doc';
+    case '编程': return 'tag-编程';
+    default: return 'tag-custom';
+  }
+}
+
 function render(){
   if(!item){
     wrap.innerHTML = `<div style="text-align:center;padding:60px;color:#888;">笔记不存在</div>`;
     return;
   }
-  let tagClass = 'tag-custom';
-  if(item.type === 'note') tagClass='tag-note';
-  if(item.type === 'doc') tagClass='tag-doc';
-  if(item.type === '编程') tagClass='tag-编程';
+  // 遍历tags生成标签HTML
+  const tagHtml = (item.tags || []).map(tag => {
+    const cls = getTagClassByName(tag);
+    return `<span class="tag ${cls}">${tag}</span>`;
+  }).join('');
+
   const htmlStr = parseSlide(item.content);
   wrap.innerHTML = `
     <div class="card-head">
       <div class="card-title">${item.title}</div>
       <div class="card-meta-row">
         <span class="card-date">${item.date}</span>
-        <span class="tag ${tagClass}">${item.type}</span>
+        <div class="tag-group">${tagHtml}</div>
         <button class="collapse-head-btn" onclick="toggleCardHead(this)">−</button>
       </div>
     </div>
