@@ -40,6 +40,7 @@ h1#secretTrigger{
   -webkit-user-select: none;
   touch-action: none;
 }
+/* 全屏按钮容器修改为68px */
 #fullPageBtn{
 width:68px;height:68px;
 border:none;background:transparent;
@@ -50,6 +51,7 @@ padding:0;
 cursor: pointer;
 }
 #fullPageBtn:active{transform:scale(0.92);}
+/* 图标修改为46px */
 #fullPageBtn svg{
   width:46px;height:46px;
 }
@@ -381,7 +383,7 @@ function toggleFilterPanel(){
   document.getElementById('filterArrow').classList.toggle('rotate');
 }
 
-// 筛选头部：严格区分短按开合、长按进管理员
+// 筛选头部：短按开合，超600ms长按弹密码
 (function bindFilterHeaderAction() {
   let pressTimer = null;
   let startX = 0, startY = 0;
@@ -418,7 +420,7 @@ function toggleFilterPanel(){
     if (!touchLongTriggered) {
       toggleFilterPanel();
     } else {
-      e.preventDefault();
+      e.preventDefault(); // 阻断合成click，避免重复弹窗/开合
     }
   });
 
@@ -448,7 +450,7 @@ function toggleFilterPanel(){
     openAdminPage();
   });
 
-  // click兜底
+  // click兜底兼容，仅非长按才开合
   filterHeader.addEventListener('click', () => {
     if (!touchLongTriggered && !mouseLongTriggered) {
       toggleFilterPanel();
