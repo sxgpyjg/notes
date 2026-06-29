@@ -779,7 +779,7 @@ body.bg-custom .md-preview{
     <button onclick="checkPwd()">确认进入</button>
   </div>
 </div>
-<div id="mainWrap" style="display:none">
+<div id="mainWrap">
 <div class="tool-bar">
   <button class="link-btn blog-link" onclick="window.open('https://sxgpyjg.github.io','_blank')">博客主页</button>
   <button class="link-btn album-link" onclick="window.open('https://sxgpyjg.github.io/blog','_blank')">图文相册</button>
@@ -1190,8 +1190,8 @@ function autoLoginCheck(){
     return;
   }
   if(savedPwd && savedPwd === ADMIN_PASSWORD){
-    document.getElementById("loginWrap").style.display = "none";
-    document.getElementById("mainWrap").style.display = "block";
+    document.getElementById("loginWrap").style.cssText = "display:none!important";
+    document.getElementById("mainWrap").style.cssText = "display:block!important";
     loadLocalCache();
     // 初始化标签：路由有editId则打开对应笔记标签，否则新建空白标签
     window.addEventListener("DOMContentLoaded", ()=>{
@@ -1577,8 +1577,8 @@ return;
 localStorage.setItem(PWD_STORE_KEY, inputPwd);
 const expire = Date.now() + LOGIN_EXPIRE_HOUR * 3600 * 1000;
 localStorage.setItem(LOGIN_EXPIRE_KEY, expire);
-document.getElementById("loginWrap").style.display = "none";
-document.getElementById("mainWrap").style.display = "block";
+document.getElementById("loginWrap").style.cssText = "display:none!important";
+document.getElementById("mainWrap").style.cssText = "display:block!important";
 loadLocalCache();
 
 }
