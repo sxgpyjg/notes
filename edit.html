@@ -532,28 +532,35 @@ function handleFileSelect(files){
     let realPath=file.path||'';
     if(!realPath){
       const fn=file.name.toLowerCase();
-      const dirs = {
-        'screenshot': 'DCIM/Screenshots',
-        'wx_|wechat|mmexport': 'tencent/MicroMsg/WeiXin',
-        'qq': 'tencent/QQ_images',
-        'download': 'Download',
-        'pictures|images': 'Pictures',
-        'whatsapp|wa_|IMG-': 'WhatsApp/Media/WhatsApp Images',
-        'photo': 'DCIM/Camera'
-      };
-      let matched = false;
-      for (const [regex, dir] of Object.entries(dirs)) {
-        if (new RegExp(regex, 'i').test(fn)) { realPath = `/storage/emulated/0/${dir}/${file.name}`; matched = true; break; }
+      // ===== 改进的路径猜测 =====
+      if (/screenshot|screen_shot/i.test(fn)) {
+        realPath = `/storage/emulated/0/Pictures/Screenshots/${file.name}`;  // 优先您的目录
+      } else if (/wx_|wechat|mmexport/i.test(fn)) {
+        realPath = `/storage/emulated/0/tencent/MicroMsg/WeiXin/${file.name}`;
+      } else if (/qq/i.test(fn)) {
+        realPath = `/storage/emulated/0/tencent/QQ_images/${file.name}`;
+      } else if (/download/i.test(fn)) {
+        realPath = `/storage/emulated/0/Download/${file.name}`;
+      } else if (/pictures|images/i.test(fn) && !/screenshot/i.test(fn)) {
+        realPath = `/storage/emulated/0/Pictures/${file.name}`;
+      } else if (/whatsapp|wa_/i.test(fn)) {
+        realPath = `/storage/emulated/0/WhatsApp/Media/WhatsApp Images/${file.name}`;
+      } else {
+        realPath = `/storage/emulated/0/DCIM/Camera/${file.name}`;
       }
-      if (!matched) realPath = `/storage/emulated/0/DCIM/Camera/${file.name}`;
-    } else realPath = realPath.replace(/^\/storage\/emulated\/0\//i,'/storage/emulated/0/');
+    } else {
+      realPath = realPath.replace(/^\/storage\/emulated\/0\//i,'/storage/emulated/0/');
+    }
+    // 弹出确认框（显示猜测的路径，用户可修改）
     const userPath=prompt(`请确认图片源路径（可修改）：\n${safeName}`, realPath);
     const finalPath=(userPath&&userPath.trim())?userPath.trim():realPath;
-    const cpCmd=`cp ${finalPath} "/storage/emulated/0/notes/images/${safeName}"`;
+    // ===== 目标路径改为 ~/storage/shared/notes/images/ =====
+    const cpCmd=`cp "${finalPath}" ~/storage/shared/notes/images/"${safeName}"`;
     imgUploadList.push({name:safeName,src:finalPath,copyCmd:cpCmd});
-    insertLocalImgTagTerminal(safeName); // 不传路径，强制CDN
+    insertLocalImgTagTerminal(safeName);
   });
 }
+
 document.getElementById('localImgBtn').onclick=()=>imgFileInput.click();
 imgFileInput.onchange=function(e){ handleFileSelect(e.target.files); this.value=''; };
 
@@ -594,20 +601,20 @@ document.getElementById('showTemplateBtn').onclick = async function(){
   const now = getNowTimeStr();
 
   let cmd = `# === 图片自动定位 + 复制 + 推送命令 ===\n`;
-  cmd += `cd ~/storage/shared/notes || exit 1\n`;  // 改为 ~/storage/shared/notes
+  cmd += `cd ~/storage/shared/notes || exit 1\n`;
   cmd += `mkdir -p images\n\n`;
 
   imgUploadList.forEach((item, idx) => {
     const fileName = item.name.replace(/"/g, '\\"');
-    const destDir = `images/${fileName}`;
     cmd += `# 图片 ${idx+1}: ${fileName}\n`;
+    // find 在 ~/storage/shared 下搜索
     cmd += `SRC=$(find ~/storage/shared/DCIM ~/storage/shared/Download ~/storage/shared/Pictures ~/storage/shared/tencent -name "${fileName}" 2>/dev/null | head -1)\n`;
     cmd += `if [ -n "$SRC" ]; then\n`;
-    cmd += `  cp "$SRC" "${destDir}" && echo "✅ 已复制: ${fileName}"\n`;
+    cmd += `  cp "$SRC" images/"${fileName}" && echo "✅ 已复制: ${fileName}"\n`;
     cmd += `else\n`;
     cmd += `  SRC=$(find ~/storage/shared -name "${fileName}" 2>/dev/null | head -1)\n`;
     cmd += `  if [ -n "$SRC" ]; then\n`;
-    cmd += `    cp "$SRC" "${destDir}" && echo "✅ 已复制(全盘): ${fileName}"\n`;
+    cmd += `    cp "$SRC" images/"${fileName}" && echo "✅ 已复制(全盘): ${fileName}"\n`;
     cmd += `  else\n`;
     cmd += `    echo "❌ 未找到文件: ${fileName}，请手动复制"\n`;
     cmd += `    echo "   cp /真实路径/${fileName} images/"\n`;
@@ -634,8 +641,9 @@ document.getElementById('showTemplateBtn').onclick = async function(){
     document.body.removeChild(t);
   });
 
-  alert(`命令已复制。路径已改为 ~/storage/shared/notes/images，请粘贴执行。`);
+  alert(`命令已复制。路径已改为 ~/storage/shared/notes/images。`);
 };
+
 
 // 批量图床链接
 document.getElementById('batchImgBtn').onclick = function(){
