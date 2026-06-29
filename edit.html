@@ -3025,6 +3025,33 @@ window.addEventListener("DOMContentLoaded", () => {
   renderMdPreview();
   calcWordCount();
 });
+// 补充绑定查找替换弹窗元素（前面脚本漏写获取，补上避免报错）
+const findReplaceMask = document.getElementById('findReplaceMask');
+const findInput = document.getElementById('findInput');
+const replaceInput = document.getElementById('replaceInput');
+const findNextBtn = document.getElementById('findNextBtn');
+const replaceSingleBtn = document.getElementById('replaceSingleBtn');
+const replaceAllBtn = document.getElementById('replaceAllBtn');
+const findReplaceClose = document.getElementById('findReplaceClose');
+const previewMask = document.getElementById('imgPreviewMask');
+const previewImg = document.getElementById('previewImg');
+const findReplaceBtn = document.getElementById('findReplaceBtn');
+let searchIndex = 0;
+let matchList = [];
+
+// 字号选择绑定
+fontSizeSelect.addEventListener("change", function(){
+  richBox.focus();
+  document.execCommand("fontSize", false, this.value);
+  checkFormatActive();
+  calcWordCount();
+});
+
+// 收尾，确保加载完成渲染正常
+window.addEventListener("load", () => {
+  renderMdPreview();
+  calcWordCount();
+});
 
 </script>
 </body>
