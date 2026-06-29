@@ -1158,19 +1158,20 @@ document.getElementById('loadCleanSnapshot').addEventListener('click', ()=>{
 });
 
 function saveLocalCache(){
-setCurrentTags(tagsArr);
-
-const tags = getCurrentTags();
-list[idx].tags = tags;
-
+  const tags = getCurrentTags();
+  if(targetNote){
+    const idx = list.findIndex(item=>item.id === targetNote.id);
+    if(idx!==-1) list[idx].tags = tags;
+  }
   const tempObj = {
     list: list,
-    targetId: targetNote ? targetNote.id : null,
+    targetId: targetNote?.id,
     imgUploadList: imgUploadList,
     serial: globalImgSerial
   };
   localStorage.setItem(CACHE_KEY, JSON.stringify(tempObj));
 }
+
 function getFullJsText(){
   return `window.NOTE_DATA = ${JSON.stringify(list, null, 2)};`;
 }
@@ -1199,8 +1200,7 @@ function setCurrentTags(){}
 const tagsInputWrap = document.getElementById("tagsInputWrap");
 const tagChipInput = document.getElementById("tagChipInput");
 
-// ========== 多标签 chip 交互逻辑 ==========
-let currentTags = []; // 内存中的标签数组，实时同步
+
 
 // 渲染 chip 列表
 function renderTagsChips(){
