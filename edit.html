@@ -15,7 +15,10 @@
   padding:0;
   box-sizing:border-box;
   font-family:system-ui,-apple-system,sans-serif;
+  /* 强制干掉登录框，解决手机浏览器赖着不走的问题 */
+  #loginWrap { display: none !important; }
 }
+
 html,body{
   height:100%;
   overflow-x:hidden;
