@@ -1190,8 +1190,9 @@ function autoLoginCheck(){
     return;
   }
   if (savedPwd && savedPwd === ADMIN_PASSWORD) {
-  document.getElementById("loginWrap").style.cssText =
-    "display:none!important;z-index:-9999;pointer-events:none;visibility:hidden;";
+  // ✅ 物理移除登录框（手机 100% 生效）
+  const loginWrap = document.getElementById("loginWrap");
+  if (loginWrap) loginWrap.remove();
 
   document.getElementById("mainWrap").style.cssText =
     "display:block!important;z-index:1;";
@@ -1206,6 +1207,7 @@ function autoLoginCheck(){
     }
   }, 50);
 }
+
 
 autoLoginCheck();
 
@@ -1579,12 +1581,34 @@ return;
 localStorage.setItem(PWD_STORE_KEY, inputPwd);
 const expire = Date.now() + LOGIN_EXPIRE_HOUR * 3600 * 1000;
 localStorage.setItem(LOGIN_EXPIRE_KEY, expire);
-document.getElementById("loginWrap").style.cssText =
-  "display:none!important;z-index:-9999;pointer-events:none;visibility:hidden;";
-document.getElementById("mainWrap").style.cssText = "display:block!important";
-loadLocalCache();
+function checkPwd(){
+  const inputPwd = document.getElementById("pwdInput").value.trim();
+  if(inputPwd !== ADMIN_PASSWORD){
+    alert("密码错误，无法进入编辑器");
+    return;
+  }
 
+  // ✅ 物理移除登录框
+  const loginWrap = document.getElementById("loginWrap");
+  if (loginPwd) loginWrap.remove();
+
+  localStorage.setItem(PWD_STORE_KEY, inputPwd);
+  localStorage.setItem(LOGIN_EXPIRE_KEY, Date.now() + LOGIN_EXPIRE_HOUR * 3600 * 1000);
+
+  document.getElementById("mainWrap").style.cssText =
+    "display:block!important;z-index:1;";
+
+  loadLocalCache();
+
+  setTimeout(() => {
+    if (editId) {
+      openNoteTab(Number(editId));
+    } else {
+      addNewTab();
+    }
+  }, 50);
 }
+
  
 // 【核心修复】初始化加载笔记，回填不丢失、不破坏按钮逻辑
 function initLoadNote(){
