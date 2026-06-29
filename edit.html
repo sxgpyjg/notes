@@ -526,16 +526,11 @@ function insertLocalImgTagTerminal(safeName) {
 function handleFileSelect(files){
   if(!files||!files.length)return;
   Array.from(files).forEach(file=>{
-    const originalName = file.name;  // 记录原始文件名（手机中的真实名称）
-    let safeName = originalName;
-    if(!safeName||safeName.startsWith('blob')||safeName.length<3){
-      const ext = file.type.split('/')[1]||'jpg';
-      addImgSerial();
-      safeName = `${Date.now()}_${globalImgSerial}.${ext}`;
-    } else {
-      addImgSerial();
-      safeName = `${globalImgSerial}_${safeName}`;  // 带序号的目标文件名
-    }
+    // 直接使用原始文件名，不加序号
+    const originalName = file.name;
+    // 过滤特殊字符（仅保留字母数字下划线横线中文点和括号，避免路径问题）
+    const safeName = originalName.replace(/[^\w\-\.\u4e00-\u9fa5\(\)]/g, '_');
+    
     let realPath = file.path||'';
     if(!realPath){
       const fn = originalName.toLowerCase();
@@ -558,12 +553,12 @@ function handleFileSelect(files){
     } else {
       realPath = realPath.replace(/^\/storage\/emulated\/0\//i,'/storage/emulated/0/');
     }
-    const userPath = prompt(`请确认图片源路径（可修改）：\n${originalName}`, realPath);
+    const userPath = prompt(`请确认图片源路径（可修改）：\n${safeName}`, realPath);
     const finalPath = (userPath&&userPath.trim()) ? userPath.trim() : realPath;
-    // cp 源路径使用 finalPath（包含原始文件名），目标路径使用 safeName（带序号）
+    // cp 源路径使用 finalPath，目标文件名使用 safeName（与原始文件名一致）
     const cpCmd = `cp "${finalPath}" ~/storage/shared/notes/images/"${safeName}"`;
     imgUploadList.push({
-      name: safeName,         // 带序号的目标文件名
+      name: safeName,         // 目标文件名（等于原始文件名）
       originalName: originalName, // 原始文件名（供find搜索）
       src: finalPath,
       copyCmd: cpCmd
@@ -571,7 +566,6 @@ function handleFileSelect(files){
     insertLocalImgTagTerminal(safeName);
   });
 }
-
 
 document.getElementById('localImgBtn').onclick=()=>imgFileInput.click();
 imgFileInput.onchange=function(e){ handleFileSelect(e.target.files); this.value=''; };
