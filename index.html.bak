@@ -519,11 +519,7 @@ function loadNoteData(){
 window.addEventListener('load', async () => {
   await waitNoteData();
   loadNoteData();
-  // 标签颜色同步：初始化时刷新一次，并监听变化
-  refreshAllTagStyles();
-  window.addEventListener('storage', (e) => {
-    if (e.key === 'tagColors') refreshAllTagStyles();
-  });
+  
 });
 
 /* ========== 标签颜色同步（新增） ========== */
