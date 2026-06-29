@@ -109,6 +109,89 @@ body{
   border-color:#6366F1;
 }
 
+/* ========== 多标签 chip 输入框样式 ========== */
+.tags-input-wrap{
+  width:100%;
+  border:1px solid #e0e3f0;
+  border-radius:8px;
+  padding:6px 8px;
+  margin-bottom:10px;
+  background:#fff;
+  display:flex;
+  flex-wrap:wrap;
+  align-items:center;
+  gap:5px;
+  min-height:42px;
+  cursor:text;
+}
+.tags-input-wrap:focus-within{
+  border-color:#6366F1;
+}
+.tag-chip{
+  display:inline-flex;
+  align-items:center;
+  gap:4px;
+  background:#e8eaff;
+  color:#3950cc;
+  font-size:12px;
+  padding:3px 4px 3px 9px;
+  border-radius:99px;
+  line-height:1.3;
+  max-width:160px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.tag-chip-text{
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.tag-chip-remove{
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:16px;
+  height:16px;
+  border-radius:50%;
+  background:rgba(57,80,204,0.15);
+  color:#3950cc;
+  font-size:13px;
+  line-height:1;
+  cursor:pointer;
+  flex-shrink:0;
+  -webkit-tap-highlight-color:transparent;
+  user-select:none;
+}
+.tag-chip-remove:hover{
+  background:rgba(57,80,204,0.3);
+}
+.tag-chip-remove::before{
+  content:"×";
+  font-weight:bold;
+}
+.tag-chip-input{
+  flex:1;
+  min-width:80px;
+  border:none;
+  outline:none;
+  background:transparent;
+  font-size:14px;
+  padding:4px 2px;
+  font-family:inherit;
+  color:#222;
+}
+.tag-chip-input::placeholder{
+  color:#9ca3af;
+}
+.tags-hint{
+  font-size:11px;
+  color:#9ca3af;
+  margin:-6px 0 10px 4px;
+}
+/* 隐藏原来的 .type-input 元素(兼容保留,不再展示) */
+.type-input{ display:none; }
+
 .edit-toolbar-wrap{
   position:fixed;
   bottom:0;
@@ -771,7 +854,13 @@ body.bg-custom .md-preview{
   <input type="file" id="backupFileInput" accept=".json,.js">
 </div>
 <input class="title-input" placeholder="填写笔记标题">
-<input class="type-input" placeholder="自定义分类（开发笔记/随笔/教程）">
+<div class="tags-input-wrap" id="tagsInputWrap">
+  <!-- chip 动态插入位置 -->
+  <input type="text" class="tag-chip-input" id="tagChipInput" placeholder="添加标签后回车确认（如：开发笔记）">
+</div>
+<div class="tags-hint">输入文字后按回车添加标签，点 × 删除</div>
+<!-- 隐藏原 .type-input 兼容保留位置 -->
+<input class="type-input" placeholder="">
 <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
   <input type="checkbox" id="privateCheck">
   <label for="privateCheck">设为私密（仅管理员登录可见，博客/相册游客完全不显示）</label>
@@ -1090,7 +1179,121 @@ function getNowTimeStr(){
 
 // DOM缓存
 const titleInput = document.querySelector(".title-input");
-const typeInput = document.querySelector(".type-input");
+const typeInput = document.querySelector(".type-input"); // 隐藏保留，兼容引用
+const tagsInputWrap = document.getElementById("tagsInputWrap");
+const tagChipInput = document.getElementById("tagChipInput");
+
+// ========== 多标签 chip 交互逻辑 ==========
+let currentTags = []; // 内存中的标签数组，实时同步
+
+// 渲染 chip 列表
+function renderTagsChips(){
+  // 先清空 wrap 内除输入框外的所有节点
+  Array.from(tagsInputWrap.querySelectorAll('.tag-chip')).forEach(n => n.remove());
+  currentTags.forEach((tag, idx) => {
+    const chip = document.createElement('span');
+    chip.className = 'tag-chip';
+    chip.dataset.idx = idx;
+    const text = document.createElement('span');
+    text.className = 'tag-chip-text';
+    text.textContent = tag;
+    const rm = document.createElement('span');
+    rm.className = 'tag-chip-remove';
+    rm.addEventListener('click', (e) => {
+      e.stopPropagation();
+      removeTagAt(idx);
+    });
+    chip.appendChild(text);
+    chip.appendChild(rm);
+    // 插在输入框前面
+    tagsInputWrap.insertBefore(chip, tagChipInput);
+  });
+}
+
+// 添加标签
+function addTag(rawText){
+  let text = String(rawText || '').trim();
+  if(!text) return;
+  // 长度限制
+  if(text.length > 20) text = text.slice(0, 20);
+  // 去重（不区分大小写）
+  const exists = currentTags.some(t => t.toLowerCase() === text.toLowerCase());
+  if(exists) {
+    tagChipInput.value = '';
+    return;
+  }
+  // 单次最多 10 个标签
+  if(currentTags.length >= 10){
+    alert('最多添加 10 个标签');
+    tagChipInput.value = '';
+    return;
+  }
+  currentTags.push(text);
+  renderTagsChips();
+  tagChipInput.value = '';
+}
+
+// 删除指定位置标签
+function removeTagAt(idx){
+  if(idx < 0 || idx >= currentTags.length) return;
+  currentTags.splice(idx, 1);
+  renderTagsChips();
+}
+
+// 获取当前标签数组（拷贝）
+function getCurrentTags(){
+  return currentTags.slice();
+}
+
+// 覆盖式设置标签数组
+function setCurrentTags(arr){
+  if(!Array.isArray(arr)) arr = [];
+  // 去重+清洗
+  const seen = new Set();
+  currentTags = [];
+  arr.forEach(t => {
+    const s = String(t || '').trim();
+    if(!s) return;
+    const k = s.toLowerCase();
+    if(seen.has(k)) return;
+    seen.add(k);
+    currentTags.push(s);
+  });
+  renderTagsChips();
+}
+
+// 输入框事件
+if(tagChipInput){
+  // 点击 wrap 任意空白都聚焦输入框
+  tagsInputWrap.addEventListener('click', (e) => {
+    if(e.target === tagsInputWrap) tagChipInput.focus();
+  });
+  // 回车 / 逗号 添加
+  tagChipInput.addEventListener('keydown', (e) => {
+    if(e.key === 'Enter' || e.key === ','){
+      e.preventDefault();
+      addTag(tagChipInput.value);
+    }else if(e.key === 'Backspace' && tagChipInput.value === '' && currentTags.length > 0){
+      // 输入框为空时按退格，删最后一个标签
+      e.preventDefault();
+      removeTagAt(currentTags.length - 1);
+    }
+  });
+  // 中文输入法结束后 blur 时自动把残留文字加为标签
+  tagChipInput.addEventListener('blur', () => {
+    if(tagChipInput.value.trim()){
+      addTag(tagChipInput.value);
+    }
+  });
+  // 粘贴时按逗号/换行拆分
+  tagChipInput.addEventListener('paste', (e) => {
+    const txt = (e.clipboardData || window.clipboardData).getData('text');
+    if(/[,\n，]/.test(txt)){
+      e.preventDefault();
+      txt.split(/[,\n，]/).forEach(part => addTag(part));
+    }
+  });
+}
 const saveNormalBtn = document.getElementById("saveNormalBtn");
 const saveTimeBtn = document.getElementById("saveTimeBtn");
 const imgFileInput = document.getElementById("imgFileInput");
@@ -1398,7 +1601,13 @@ const target = list.find(item=>item.id === Number(editId));
 if(!target) return;
 targetNote = target;
 titleInput.value = target.title;
-typeInput.value = target.type;
+typeInput.value = target.type || ''; // 隐藏字段兼容保留
+// 多标签回填：优先读 tags，无 tags 时从老 type 字段兼容
+let tagsArr = Array.isArray(target.tags) ? target.tags.slice() : [];
+if(tagsArr.length === 0 && target.type){
+  tagsArr = [target.type];
+}
+setCurrentTags(tagsArr);
 // 私密状态回填
 document.getElementById("privateCheck").checked = !!target.private;
 richBox.innerHTML = target.content || "";
@@ -2284,10 +2493,15 @@ a.click();
 document.body.removeChild(a);
 URL.revokeObjectURL(a.href);
 }
-//同步表单数据到笔记数组（修复重复空白草稿）
+//同步表单数据到笔记数组（修复重复空白草稿·多标签版）
 function syncFormToNoteList(){
 const title = titleInput.value.trim();
-const type = typeInput.value.trim();
+const type = typeInput.value.trim(); // 隐藏字段，保留兼容
+// 多标签：优先取 chip 列表
+const tags = getCurrentTags();
+// 保留旧逻辑：如果 chip 为空但隐藏 type 字段有值，写入 type 字段
+// 如果 chip 有内容，写入 tags 数组，同时 type 保持为 tags[0] 用于老代码兼容
+const finalType = tags.length > 0 ? tags[0] : type;
 // 读取私密勾选状态
 const isPrivate = document.getElementById("privateCheck").checked;
 let content = "";
@@ -2298,7 +2512,8 @@ if(targetNote){
   // 编辑已有笔记，同步私密状态
   const idx = list.findIndex(item=>item.id === targetNote.id);
   list[idx].title = title;
-  list[idx].type = type;
+  list[idx].type = finalType;
+  list[idx].tags = tags;
   list[idx].content = content;
   list[idx].date = nowTime;
   list[idx].private = isPrivate;
@@ -2308,7 +2523,8 @@ if(targetNote){
   const tempIdx = list.findIndex(item=>item._isTempNew === true);
   if(tempIdx > -1){
     list[tempIdx].title = title;
-    list[tempIdx].type = type;
+    list[tempIdx].type = finalType;
+    list[tempIdx].tags = tags;
     list[tempIdx].content = content;
     list[tempIdx].date = nowTime;
     list[tempIdx].private = isPrivate;
@@ -2316,7 +2532,8 @@ if(targetNote){
     const newNote = {
       id: Date.now(),
       title,
-      type,
+      type: finalType,
+      tags,
       content,
       date: nowTime,
       private: isPrivate,
@@ -2382,7 +2599,9 @@ alert("图片复制脚本已复制");
 //下载data.js文件
 function downloadDataJs(isTimeStamp){
 const title = titleInput.value.trim();
-const type = typeInput.value.trim();
+const type = typeInput.value.trim(); // 隐藏字段兼容
+const tags = getCurrentTags();
+const finalType = tags.length > 0 ? tags[0] : type;
 let content = "";
 if(currentEditMode === "rich") content = richBox.innerHTML.trim();
 else content = mdToHtml(mdBox.value);
@@ -2390,8 +2609,8 @@ if(!title){
 alert("笔记标题不能为空");
 return;
 }
-if(!type){
-alert("分类不能为空");
+if(!finalType){
+alert("分类不能为空，请至少添加一个标签");
 return;
 }
 const nowTime = getNowTimeStr();
@@ -2403,7 +2622,8 @@ if(idx > -1) delete list[idx]._isTempNew;
 list.push({
 id: newId,
 title,
-type,
+type: finalType,
+tags,
 content,
 date: nowTime
 });
