@@ -796,6 +796,159 @@ body.bg-custom .md-preview{
 .rich-editor {
   background: #fff;
 }
+/* ===== 以下为美化追加样式（仅覆盖视觉效果，不破坏功能） ===== */
+
+/* 页面背景渐变 */
+body {
+  background: linear-gradient(135deg, #f5f7fe 0%, #eef2ff 100%);
+}
+
+/* 链接按钮渐变 + 阴影 */
+.link-btn {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  transition: transform 0.15s;
+}
+.link-btn:active {
+  transform: scale(0.97);
+}
+.blog-link {
+  background: linear-gradient(135deg, #10b981, #059669);
+}
+.album-link {
+  background: linear-gradient(135deg, #f97316, #ea580c);
+}
+
+/* 工具按钮优化 */
+.tool-btn {
+  border: 1px solid #e8ecf4;
+  color: #374151;
+  box-shadow: 0 1px 3px rgba(99,102,241,0.04);
+  transition: all 0.2s;
+}
+.tool-btn:hover {
+  background: #f0f3ff;
+  border-color: #6366F1;
+  color: #4338ca;
+}
+.tool-btn:active {
+  background: #e0e7ff;
+}
+
+/* 保存按钮渐变 */
+.save-btn {
+  background: linear-gradient(135deg, #6366F1, #4f46e5);
+  font-weight: 600;
+  box-shadow: 0 3px 12px rgba(99,102,241,0.2);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.save-btn:active {
+  transform: scale(0.97);
+  box-shadow: 0 1px 4px rgba(99,102,241,0.3);
+}
+.save-btn-time {
+  background: linear-gradient(135deg, #7c3aed, #6d28d9);
+}
+#exportFullBackup {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+}
+#importBackup {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+}
+
+/* 输入框美化 */
+.title-input, .type-input {
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px 16px;
+  font-size: 16px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.title-input:focus, .type-input:focus {
+  border-color: #6366F1;
+  box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
+}
+
+/* 标签输入框 */
+.tags-input-wrap {
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 8px 10px;
+  min-height: 48px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.tags-input-wrap:focus-within {
+  border-color: #6366F1;
+  box-shadow: 0 0 0 3px rgba(99,102,241,0.15);
+}
+
+/* 模式切换按钮 */
+.mode-switch button {
+  border: 2px solid #6366F1;
+  font-weight: 600;
+  transition: all 0.2s;
+}
+.mode-switch button.active {
+  background: linear-gradient(135deg, #6366F1, #4f46e5);
+  border-color: transparent;
+}
+
+/* 编辑器边框与阴影 */
+.rich-editor, .md-editor, .md-preview {
+  border: 2px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.rich-editor:focus, .md-editor:focus {
+  border-color: #6366F1;
+  box-shadow: 0 0 0 3px rgba(99,102,241,0.12);
+}
+.md-editor {
+  background: #f8fafc;
+}
+.rich-editor {
+  background: #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+/* 底部工具栏圆角与阴影 */
+.edit-toolbar-wrap {
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.06);
+}
+
+/* 小图标按钮 */
+.icon-btn {
+  border-radius: 6px;
+  width: 28px;
+  height: 28px;
+  transition: all 0.15s;
+}
+.icon-btn:hover {
+  background: #eef2ff;
+  border-color: #6366F1;
+}
+
+/* 图片面板头部渐变 */
+.img-collapse-head {
+  background: linear-gradient(135deg, #eff6ff, #eef2ff);
+  font-weight: 600;
+}
+
+/* 查找替换弹窗 */
+.find-replace-box {
+  background: rgba(255,255,255,0.95);
+  border-radius: 16px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.12);
+  backdrop-filter: blur(12px);
+}
+
+/* 复选框与标签美观 */
+input[type="checkbox"] + label {
+  cursor: pointer;
+  font-size: 14px;
+  color: #374151;
+}
 
 </style>
 </head>
