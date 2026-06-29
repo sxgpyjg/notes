@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
-<title>笔记编辑器（增强版）</title>
+<title>笔记编辑器（最终改进版）</title>
 <script src="./data.js?v=1"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:system-ui,-apple-system,sans-serif;}
@@ -20,7 +20,7 @@ body{background:linear-gradient(135deg,#f5f7fe,#eef2ff);padding:10px 10px 110px;
 .title-input:focus{border-color:#6366F1;}
 .tags-input-wrap{width:100%;border:2px solid #e2e8f0;border-radius:10px;padding:6px 8px;margin-bottom:10px;background:#fff;display:flex;flex-wrap:wrap;align-items:center;gap:4px;min-height:42px;cursor:text;transition:border-color .2s;}
 .tags-input-wrap:focus-within{border-color:#6366F1;}
-.tag-chip{display:inline-flex;align-items:center;gap:3px;border-radius:99px;padding:2px 4px 2px 8px;font-size:12px;line-height:1.4;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.tag-chip{display:inline-flex;align-items:center;gap:3px;border-radius:99px;padding:2px 4px 2px 8px;font-size:12px;line-height:1.4;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:default;}
 .tag-chip-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .tag-chip-remove{display:inline-flex;width:14px;height:14px;border-radius:50%;align-items:center;justify-content:center;font-size:11px;cursor:pointer;flex-shrink:0;}
 .tag-chip-remove::before{content:"×";font-weight:bold;}
@@ -28,6 +28,7 @@ body{background:linear-gradient(135deg,#f5f7fe,#eef2ff);padding:10px 10px 110px;
 .tags-hint{font-size:10px;color:#9ca3af;margin:-6px 0 8px 4px;}
 .edit-toolbar-wrap{position:fixed;bottom:0;left:0;width:100%;background:#fff;border-top:1px solid #e0e3f0;z-index:999;padding-bottom:env(safe-area-inset-bottom);border-radius:12px 12px 0 0;box-shadow:0 -4px 15px rgba(0,0,0,.05);}
 body.keyboard-opened .edit-toolbar-wrap{position:absolute;}
+body.keyboard-opened{padding-bottom:30px;}
 .toolbar-main{display:flex;flex-wrap:wrap;gap:2px;padding:4px 6px;align-items:center;}
 .icon-btn{border:1px solid #ddd;background:#fff;border-radius:4px;width:26px;height:26px;font-size:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;}
 .icon-btn:hover{background:#eef2ff;border-color:#6366F1;}
@@ -91,14 +92,35 @@ body.keyboard-opened .edit-toolbar-wrap{position:absolute;}
   <button class="tool-btn" onclick="logoutAdmin()">退出登录</button>
 </div>
 <div class="tip-green" id="wordCountTip">纯文字数：0 | 总字符：0</div>
+
+<!-- 图片素材面板（含生成命令和图床链接） -->
+<div class="img-collapse" style="border:1px solid #dbeafe;border-radius:8px;margin:8px 0;overflow:hidden;">
+  <div style="padding:10px 12px;background:linear-gradient(135deg,#eff6ff,#eef2ff);cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-weight:600;font-size:14px;" onclick="toggleImgPanel()">
+    <span>图片素材面板</span>
+    <span id="imgArrow" style="transition:transform .2s;">▼</span>
+  </div>
+  <div id="imgPanelBody" style="padding:10px;display:none;">
+    <div class="warn">不生成base64图片，仅保存images文件夹相对路径，图片需手动上传仓库</div>
+    <div class="tool-row" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0;">
+      <button class="tool-btn" id="copyJsonBtn">一键复制完整data.js代码</button>
+      <button class="tool-btn" id="showTemplateBtn">生成选中图片复制命令</button>
+    </div>
+    <div class="tool-row" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+      <button class="tool-btn" id="clearImgListBtn">清空已选图片记录</button>
+      <button class="tool-btn" id="batchImgBtn">批量图床链接</button>
+    </div>
+    <input type="file" id="imgFileInput" multiple>
+  </div>
+</div>
+
 <div class="save-row">
-  <button class="save-btn" id="saveNormalBtn">下载 data.js</button>
-  <button class="save-btn" id="saveTimeBtn">下载 data_时间.js</button>
+  <button class="save-btn" id="saveNormalBtn">下载 data.js（无时间戳）</button>
+  <button class="save-btn save-btn-time" id="saveTimeBtn">下载 data_时间戳.js</button>
 </div>
 <div class="save-row">
-  <button class="tool-btn" id="copyJsonBtn">一键复制 data.js</button>
-  <button class="tool-btn" onclick="exportSingleNoteMd()">导出 MD</button>
-  <button class="tool-btn" onclick="exportSingleNoteHtml()">导出 HTML</button>
+  <button class="save-btn" id="exportFullBackup">导出完整备份notes.json</button>
+  <button class="save-btn" id="importBackup">导入本地备份文件</button>
+  <input type="file" id="backupFileInput" accept=".json,.js">
 </div>
 <input class="title-input" placeholder="填写笔记标题">
 <div class="tags-input-wrap" id="tagsInputWrap">
@@ -151,7 +173,7 @@ body.keyboard-opened .edit-toolbar-wrap{position:absolute;}
     <button class="icon-btn" data-tip="清空" onclick="clearAllNotesContent()">🗑️</button>
     <button class="icon-btn" data-tip="查找" id="findReplaceBtn">🔍</button>
     <button class="icon-btn" data-tip="分割线" onclick="splitLine1()">—</button>
-    <input type="file" id="imgFileInput" multiple>
+    <input type="file" id="hiddenImgFile" multiple style="display:none;">
   </div>
 </div>
 <div class="editor-wrap">
@@ -208,6 +230,7 @@ let richRecordStack = [], richRecordIndex = -1;
 let currentTags = [], tagColorMap = {};
 let globalImgSerial = Number(localStorage.getItem("img_serial")||0);
 let searchIndex = 0, matchList = [], matchCase = false;
+let moreToolsOpen = false;
 
 // DOM
 const titleInput = document.querySelector(".title-input");
@@ -223,6 +246,7 @@ const fontSizeSelect = document.getElementById("fontSizeSel");
 const fontColorInput = document.getElementById("fontColor");
 const bgColorInput = document.getElementById("bgColor");
 const imgFileInput = document.getElementById("imgFileInput");
+const hiddenImgFile = document.getElementById("hiddenImgFile");
 const findReplaceMask = document.getElementById("findReplaceMask");
 const findInput = document.getElementById("findInput");
 const replaceInput = document.getElementById("replaceInput");
@@ -490,7 +514,7 @@ function insertTable(){
 function splitLine1(){ const t='---\n'; if(currentEditMode==='rich'){ document.execCommand('insertText',false,t); calcWordCount(); } else { mdBox.value+=t; saveMdRecord(); renderMdPreview(); calcWordCount(); } }
 function clearAllNotesContent(){ if(!confirm('清空全部内容？'))return; richBox.innerHTML=''; mdBox.value=''; renderMdPreview(); richRecordStack=['']; richRecordIndex=0; mdRecordStack=['']; mdRecordIndex=0; calcWordCount(); }
 
-// ========== 图片上传（增强识别） ==========
+// ========== 图片相关 ==========
 function insertLocalImgTagTerminal(safeName, localPath) {
   const url=localPath||`https://cdn.jsdelivr.net/gh/sxgpyjg/notes@main/images/${safeName}`;
   if(currentEditMode==='rich'){ document.execCommand('insertHTML',false,`<img loading="lazy" src="${url}" alt="本地图片" style="max-width:100%;margin:6px 0;"><br>`); richBox.focus(); }
@@ -505,7 +529,6 @@ function handleFileSelect(files){
     let realPath=file.path||'';
     if(!realPath){
       const fn=file.name.toLowerCase();
-      // 扩充猜测目录列表
       const dirs = {
         'screenshot': 'DCIM/Screenshots',
         'wx_|wechat|mmexport': 'tencent/MicroMsg/WeiXin',
@@ -517,11 +540,7 @@ function handleFileSelect(files){
       };
       let matched = false;
       for (const [regex, dir] of Object.entries(dirs)) {
-        if (new RegExp(regex, 'i').test(fn)) {
-          realPath = `/storage/emulated/0/${dir}/${file.name}`;
-          matched = true;
-          break;
-        }
+        if (new RegExp(regex, 'i').test(fn)) { realPath = `/storage/emulated/0/${dir}/${file.name}`; matched = true; break; }
       }
       if (!matched) realPath = `/storage/emulated/0/DCIM/Camera/${file.name}`;
     } else realPath = realPath.replace(/^\/storage\/emulated\/0\//i,'/storage/emulated/0/');
@@ -535,6 +554,40 @@ function handleFileSelect(files){
 document.getElementById('localImgBtn').onclick=()=>imgFileInput.click();
 imgFileInput.onchange=function(e){ handleFileSelect(e.target.files); this.value=''; };
 
+// 生成图片复制命令
+document.getElementById('showTemplateBtn').onclick = async function(){
+  let cpText = '# 图片复制命令\n';
+  imgUploadList.forEach(item => cpText += item.copyCmd + '\n');
+  await navigator.clipboard.writeText(cpText).catch(()=>{
+    const t=document.createElement('textarea'); t.value=cpText; document.body.appendChild(t); t.select(); document.execCommand('copy'); document.body.removeChild(t);
+  });
+  alert('cp命令已复制');
+};
+
+// 批量图床链接
+document.getElementById('batchImgBtn').onclick = function(){
+  const urls = prompt("批量粘贴图床链接，一行一张：");
+  if(!urls) return;
+  const arr = urls.split(/\r?\n/).map(u=>u.trim()).filter(u=>u.startsWith('http'));
+  arr.forEach(url => {
+    if(currentEditMode==='rich'){ document.execCommand('insertHTML',false,`<img loading="lazy" src="${url}" alt="配图" style="max-width:100%;margin:6px 0;"><br>`); }
+    else { mdBox.value += `![配图](${url})\n\n`; }
+  });
+  if(currentEditMode==='md') { saveMdRecord(); renderMdPreview(); calcWordCount(); }
+  alert(`插入 ${arr.length} 张图片`);
+};
+
+// 清空图片列表
+document.getElementById('clearImgListBtn').onclick = () => { imgUploadList = []; alert("已清空"); };
+
+// 图片面板展开收起
+function toggleImgPanel() {
+  const panel = document.getElementById('imgPanelBody');
+  const arrow = document.getElementById('imgArrow');
+  panel.classList.toggle('show');
+  arrow.classList.toggle('rotate');
+}
+
 // ========== 复制 data.js ==========
 document.getElementById('copyJsonBtn').onclick=async function(){
   syncFormToNoteList();
@@ -543,10 +596,6 @@ document.getElementById('copyJsonBtn').onclick=async function(){
   await navigator.clipboard.writeText(json).catch(()=>{ const t=document.createElement('textarea'); t.value=json; document.body.appendChild(t); t.select(); document.execCommand('copy'); document.body.removeChild(t); });
   alert(`复制完成，共 ${valid.length} 条`);
 };
-
-// ========== 导出 ==========
-function exportSingleNoteMd(){ syncFormToNoteList(); const t=titleInput.value.trim(); if(!t)return alert('请填写标题'); const blob=new Blob([mdBox.value],{type:'text/markdown'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=t+'.md'; a.click(); URL.revokeObjectURL(a.href); }
-function exportSingleNoteHtml(){ syncFormToNoteList(); const t=titleInput.value.trim(); const safe=t.replace(/[/\:*?"<>|]/g,'_'); const html='<!DOCTYPE html><html><head><meta charset="UTF-8"><title>'+t+'</title><style>body{max-width:900px;margin:20px auto;font-size:16px;line-height:1.7;}img{max-width:100%;}</style></head><body>'+richBox.innerHTML+'</body></html>'; const blob=new Blob([html],{type:'text/html'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=safe+'.html'; a.click(); URL.revokeObjectURL(a.href); }
 
 // ========== 同步表单 ==========
 function syncFormToNoteList(){
@@ -578,6 +627,33 @@ function downloadDataJs(ts){
 }
 document.getElementById('saveNormalBtn').onclick=()=>downloadDataJs(false);
 document.getElementById('saveTimeBtn').onclick=()=>downloadDataJs(true);
+
+// 导出备份
+document.getElementById('exportFullBackup').onclick = function(){
+  const json = JSON.stringify(list, null, 2);
+  const blob = new Blob([json], {type:'application/json'});
+  const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='notes完整备份.json'; a.click(); URL.revokeObjectURL(a.href);
+};
+document.getElementById('importBackup').onclick = () => document.getElementById('backupFileInput').click();
+document.getElementById('backupFileInput').onchange = function(e){
+  const file = e.target.files[0];
+  if(!file || file.size>20*1024*1024) return alert('文件过大或无效');
+  if(!confirm('导入将覆盖当前所有笔记')) return;
+  const reader = new FileReader();
+  reader.onload = function(res){
+    try{
+      let raw = res.target.result;
+      if(raw.startsWith('window.NOTE_DATA = ')) raw = raw.replace('window.NOTE_DATA = ','');
+      const arr = JSON.parse(raw);
+      if(!Array.isArray(arr)) throw '格式错误';
+      list = arr;
+      saveLocalCache(); localStorage.setItem("notes",JSON.stringify(list)); window.NOTE_DATA=list;
+      alert(`导入 ${arr.length} 条`);
+      if(editId) initLoadNote();
+    } catch(e){ alert('解析失败'); }
+  };
+  reader.readAsText(file);
+};
 
 // ========== 查找替换 ==========
 const findReplaceBtn=document.getElementById('findReplaceBtn');
@@ -628,20 +704,15 @@ document.getElementById('replaceAllBtn').onclick=()=>{
 richBox.addEventListener('click',function(e){ const img=e.target.closest('img'); if(img&&img.src){ document.getElementById('previewImg').src=img.src; document.getElementById('imgPreviewMask').classList.add('show'); } });
 document.getElementById('imgPreviewMask').onclick=function(e){ if(e.target===this)this.classList.remove('show'); };
 
-// ========== 字号颜色（修复底色） ==========
+// ========== 字号颜色 ==========
 fontSizeSelect.onchange=function(){ document.execCommand('fontSize',false,this.value); richBox.focus(); calcWordCount(); };
 fontColorInput.oninput=function(){ document.execCommand('foreColor',false,this.value); richBox.focus(); calcWordCount(); };
 bgColorInput.oninput=function(){
   richBox.focus();
   const sel=window.getSelection();
   if(!sel.rangeCount||sel.getRangeAt(0).collapsed) return;
-  // 使用 hiliteColor（兼容大多数浏览器）
   try { document.execCommand('hiliteColor', false, this.value); } catch(e) {
-    // 降级使用 span 包裹
-    const range=sel.getRangeAt(0);
-    const span=document.createElement('span');
-    span.style.backgroundColor=this.value;
-    range.surroundContents(span);
+    const range=sel.getRangeAt(0); const span=document.createElement('span'); span.style.backgroundColor=this.value; range.surroundContents(span);
   }
   calcWordCount();
 };
@@ -650,7 +721,6 @@ bgColorInput.oninput=function(){
 mdBox.addEventListener('keydown',function(e){
   if(e.key==='Enter'){
     const val=this.value, pos=this.selectionStart;
-    // 定义成对符号（开始、结束），注意顺序（长的优先）
     const pairs=[
       {s:'**',e:'**'}, {s:'*',e:'*'}, {s:'~~',e:'~~'},
       {s:'`',e:'`'}, {s:'$$',e:'$$'}, {s:'[',e:']'},
@@ -658,16 +728,12 @@ mdBox.addEventListener('keydown',function(e){
     ];
     for(const p of pairs){
       const sl=p.s.length, el=p.e.length;
-      // 检查光标是否位于一对完整的符号之间
-      // 从行首到光标位置，统计起始符号出现次数
       const lineStart = val.lastIndexOf('\n', pos-1)+1;
       const before = val.slice(lineStart, pos);
       const after = val.slice(pos, val.indexOf('\n', pos)>0 ? val.indexOf('\n', pos) : val.length);
-      // 简单检测：光标前最近有起始符号，光标后最近有结束符号，且它们匹配
       const lastStart = before.lastIndexOf(p.s);
       const firstEnd = after.indexOf(p.e);
       if(lastStart !== -1 && firstEnd !== -1 && before.slice(lastStart+sl).indexOf(p.e) === -1 && after.slice(0, firstEnd).indexOf(p.s) === -1){
-        // 光标在匹配的符号对内
         e.preventDefault();
         this.value = val.slice(0, pos) + '\n' + val.slice(pos + firstEnd + el);
         this.selectionStart = this.selectionEnd = pos + 1;
@@ -681,20 +747,14 @@ mdBox.addEventListener('keydown',function(e){
 // ========== 光标拖拽（类似纯纯写作） ==========
 let isDragging = false;
 let dragStartX = 0;
-let dragOffset = 0;
-const dragger = document.getElementById('cursorDragger');
-
-// 长按检测
 let longPressTimer = null;
-const LONG_PRESS_DELAY = 600; // 毫秒
+const LONG_PRESS_DELAY = 600;
 
 function showDragger() {
-  if (currentEditMode !== 'md') return; // 只在MD模式下可用，富文本也可以用同样的逻辑但复杂，先简化
+  if (currentEditMode !== 'md') return;
   const ta = mdBox;
   if (ta.style.display === 'none') return;
   dragger.classList.add('show');
-  // 将拖拽条位置与光标关联
-  // 获取光标相对位置（粗略）
   const rect = ta.getBoundingClientRect();
   const lineHeight = parseInt(getComputedStyle(ta).lineHeight) || 20;
   const lines = ta.value.substr(0, ta.selectionStart).split('\n').length;
@@ -702,19 +762,14 @@ function showDragger() {
   dragger.style.top = Math.min(Math.max(top, rect.top + 10), rect.bottom - 30) + 'px';
 }
 
-function hideDragger() {
-  dragger.classList.remove('show');
-  isDragging = false;
-}
+function hideDragger() { dragger.classList.remove('show'); isDragging = false; }
 
-// 长按触发
 mdBox.addEventListener('touchstart', function(e) {
   if (e.touches.length !== 1) return;
   longPressTimer = setTimeout(() => {
     showDragger();
     const touch = e.touches[0];
     dragStartX = touch.clientX;
-    dragOffset = 0;
     isDragging = true;
   }, LONG_PRESS_DELAY);
 });
@@ -725,37 +780,26 @@ mdBox.addEventListener('touchmove', function(e) {
   e.preventDefault();
   const touch = e.touches[0];
   const dx = touch.clientX - dragStartX;
-  dragOffset += dx;
   dragStartX = touch.clientX;
-  const ta = mdBox;
-  const len = ta.value.length;
-  // 根据位移移动光标（每1px移动0.5个字符）
+  const len = mdBox.value.length;
   const step = Math.round(dx * 0.5);
-  let newPos = ta.selectionStart + step;
+  let newPos = mdBox.selectionStart + step;
   newPos = Math.max(0, Math.min(len, newPos));
-  ta.selectionStart = ta.selectionEnd = newPos;
-  ta.focus();
-  // 更新拖拽条位置
-  const rect = ta.getBoundingClientRect();
-  const lineHeight = parseInt(getComputedStyle(ta).lineHeight) || 20;
-  const lines = ta.value.substr(0, newPos).split('\n').length;
+  mdBox.selectionStart = mdBox.selectionEnd = newPos;
+  mdBox.focus();
+  const rect = mdBox.getBoundingClientRect();
+  const lineHeight = parseInt(getComputedStyle(mdBox).lineHeight) || 20;
+  const lines = mdBox.value.substr(0, newPos).split('\n').length;
   const top = rect.top + (lines * lineHeight) - 10;
   dragger.style.top = Math.min(Math.max(top, rect.top + 10), rect.bottom - 30) + 'px';
 });
 
 mdBox.addEventListener('touchend', function() {
   if (longPressTimer) clearTimeout(longPressTimer);
-  if (isDragging) {
-    // 延迟隐藏，避免触碰到其他元素
-    setTimeout(hideDragger, 200);
-    isDragging = false;
-  }
+  if (isDragging) { setTimeout(hideDragger, 200); isDragging = false; }
 });
-// 点击其他地方隐藏拖拽条
 document.addEventListener('touchstart', function(e) {
-  if (!dragger.contains(e.target) && e.target !== mdBox) {
-    hideDragger();
-  }
+  if (!dragger.contains(e.target) && e.target !== mdBox) hideDragger();
 });
 
 // ========== 快捷键 ==========
@@ -769,11 +813,22 @@ window.addEventListener('keydown',function(e){
   if(e.ctrlKey&&e.key==='u'){ e.preventDefault(); insertUnderline(); }
 });
 
-// 移动端适配
+// 移动端键盘适配（修复软键盘遮挡）
 (function(){
-  const ivh=window.visualViewport?window.visualViewport.height:window.innerHeight;
-  function h(){ const h=window.visualViewport?window.visualViewport.height:window.innerHeight; document.body.classList.toggle('keyboard-opened',h<ivh-100); }
-  if(window.visualViewport) window.visualViewport.addEventListener('resize',h); else window.addEventListener('resize',h);
+  const ivh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+  function handleResize() {
+    const h = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+    const opened = h < ivh - 100;
+    document.body.classList.toggle('keyboard-opened', opened);
+    // 当键盘弹出时，滚动编辑器到底部可视区域
+    if (opened && currentEditMode === 'rich') {
+      richBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    } else if (opened && currentEditMode === 'md') {
+      mdBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+  }
+  if(window.visualViewport) window.visualViewport.addEventListener('resize', handleResize);
+  else window.addEventListener('resize', handleResize);
 })();
 
 // 初始化
