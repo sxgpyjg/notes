@@ -13,11 +13,18 @@ window.NOTE_DATA = [
   },
   {
     "id": 1782367660671,
-    "title": "备份恢复Termux",
-    "type": "编程",
-    "content": "最终完整版 · 一键全备份（全部存在手机根目录）<br><pre style=\"background: rgb(245, 245, 245); padding: 10px; border-radius: 6px;\"><code style=\"\"><span style=\"text-wrap-mode: wrap;\"><br># 备份脚本，全部存到Download，手机直接可见\nzip -r ~/storage/downloads/图文笔记_$(date +%Y%m%d).zip ~/storage/shared/notes/ -x \"*/.git/*\" \"*/.git\"\nzip -r ~/storage/downloads/图文相册_$(date +%Y%m%d).zip ~/gitdemo/blog/ -x \"*/.git/*\" \"*/.git\"\nzip -r ~/storage/downloads/主博客主页_$(date +%Y%m%d).zip ~/gitdemo/ -x \"*/.git/*\" \"*/.git\"\necho \"备份完成！请到手机【下载】文件夹查看压缩包\"\n</span></code></pre><div><code><br></code></div><br>重装Termux后 · 一键全套恢复<br><br><pre style=\"background:#f5f5f5;padding:10px;border-radius:6px;white-space:pre-wrap;\"><code><br>termux-setup-storage<br>unzip -o /storage/downloads图文笔记_*.zip -d ~/storage/shared/notes<br>unzip -o /storage/downloads图文相册_*.zip -d ~/gitdemo/blog<br>unzip -o /storage/downloads主博客主页_*.zip -d ~/gitdemo<br></code></pre><br>一眼区分<br> <br><li>&nbsp;~/storage/shared/notes&nbsp; = Termux里面的笔记文件夹</li><br><li>&nbsp;/sdcard/xxx.zip&nbsp; = 手机自带存储，卸载Termux不消失</li><br> <br>你去手机文件管理器 → 内部存储，直接就能看到这三个压缩包",
-    "date": "2026-06-26 18:31:06",
-    "_isTempNew": true
+    "title": "实验",
+    "type": "本地图片",
+    "content": "<img loading=\"lazy\" src=\"https://cdn.jsdelivr.net/gh/sxgpyjg/notes@main/images/1_Screenshot_2026_0629_145537.png\" alt=\"本地图片\"><br>",
+    "date": "2026-06-30 06:45:49",
+    "_isTempNew": true,
+    "tags": [
+      "本地图片"
+    ],
+    "tagColors": {
+      "本地图片": "#6366F1"
+    },
+    "private": false
   },
   {
     "id": 1782137355711,
