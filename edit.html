@@ -3,11 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
-<title>笔记编辑器（修复版）</title>
+<title>笔记编辑器（最终修复版）</title>
 <script src="./data.js?v=1"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:system-ui,-apple-system,sans-serif;}
-body{background:linear-gradient(135deg,#f5f7fe,#eef2ff);padding:10px 10px 110px;overflow-x:hidden;}
+body{background:linear-gradient(135deg,#f5f7fe,#eef2ff);padding:10px 10px 60px;overflow-x:hidden;}
+body.keyboard-opened{padding-bottom:60px!important;}
 .lock-scroll{overflow:hidden!important;touch-action:none!important;}
 .tool-box,.save-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0 10px;}
 .tool-bar{display:flex;gap:8px;margin-bottom:10px;}
@@ -16,20 +17,19 @@ body{background:linear-gradient(135deg,#f5f7fe,#eef2ff);padding:10px 10px 110px;
 .tool-btn:active{background:#e0e7ff;}
 .save-btn{border:0;border-radius:8px;padding:10px 0;width:100%;font-size:14px;font-weight:600;color:#fff;background:linear-gradient(135deg,#6366F1,#4f46e5);box-shadow:0 3px 12px rgba(99,102,241,.2);cursor:pointer;transition:transform .15s;}
 .save-btn:active{transform:scale(.97);}
-.title-input{width:100%;border:2px solid #e2e8f0;border-radius:10px;padding:10px 14px;font-size:15px;background:#fff;outline:none;margin-bottom:10px;transition:border-color .2s;}
+.title-input{width:100%;border:2px solid #e2e8f0;border-radius:10px;padding:10px 14px;font-size:15px;background:#fff;outline:none;margin-bottom:8px;transition:border-color .2s;}
 .title-input:focus{border-color:#6366F1;}
-.tags-input-wrap{width:100%;border:2px solid #e2e8f0;border-radius:10px;padding:6px 8px;margin-bottom:10px;background:#fff;display:flex;flex-wrap:wrap;align-items:center;gap:4px;min-height:42px;cursor:text;transition:border-color .2s;}
+.tags-input-wrap{width:100%;border:2px solid #e2e8f0;border-radius:10px;padding:6px 8px;margin-bottom:8px;background:#fff;display:flex;flex-wrap:wrap;align-items:center;gap:4px;min-height:38px;cursor:text;transition:border-color .2s;}
 .tags-input-wrap:focus-within{border-color:#6366F1;}
-.tag-chip{display:inline-flex;align-items:center;gap:3px;border-radius:99px;padding:2px 4px 2px 8px;font-size:12px;line-height:1.4;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:default;}
+.tag-chip{display:inline-flex;align-items:center;gap:3px;border-radius:99px;padding:2px 4px 2px 8px;font-size:12px;line-height:1.4;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .tag-chip-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .tag-chip-remove{display:inline-flex;width:14px;height:14px;border-radius:50%;align-items:center;justify-content:center;font-size:11px;cursor:pointer;flex-shrink:0;}
 .tag-chip-remove::before{content:"×";font-weight:bold;}
-.tag-chip-input{flex:1;min-width:70px;border:none;outline:none;background:transparent;font-size:13px;padding:3px 2px;}
-.tags-hint{font-size:10px;color:#9ca3af;margin:-6px 0 8px 4px;}
+.tag-chip-input{flex:1;min-width:65px;border:none;outline:none;background:transparent;font-size:13px;padding:3px 2px;}
+.tags-hint{font-size:10px;color:#9ca3af;margin:-6px 0 6px 4px;}
 .edit-toolbar-wrap{position:fixed;bottom:0;left:0;width:100%;background:#fff;border-top:1px solid #e0e3f0;z-index:999;padding-bottom:env(safe-area-inset-bottom);border-radius:12px 12px 0 0;box-shadow:0 -4px 15px rgba(0,0,0,.05);}
-body.keyboard-opened .edit-toolbar-wrap{position:absolute;}
-body.keyboard-opened{padding-bottom:30px;}
-.toolbar-main{display:flex;flex-wrap:wrap;gap:2px;padding:4px 6px;align-items:center;}
+body.keyboard-opened .edit-toolbar-wrap{position:absolute;bottom:0;}
+.toolbar-main{display:flex;flex-wrap:wrap;gap:2px;padding:4px 4px;align-items:center;}
 .icon-btn{border:1px solid #ddd;background:#fff;border-radius:4px;width:26px;height:26px;font-size:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;}
 .icon-btn:hover{background:#eef2ff;border-color:#6366F1;}
 .icon-btn:active{background:#e0e7ff;}
@@ -65,7 +65,7 @@ body.keyboard-opened{padding-bottom:30px;}
 .slider:before{content:"";position:absolute;height:14px;width:14px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s;}
 .switch input:checked+.slider{background:#6366F1;}
 .switch input:checked+.slider:before{transform:translateX(16px);}
-.private-switch-group{display:flex;align-items:center;gap:8px;margin-bottom:10px;padding:4px 8px;background:#f1f5f9;border-radius:8px;}
+.private-switch-group{display:flex;align-items:center;gap:8px;margin-bottom:8px;padding:4px 8px;background:#f1f5f9;border-radius:8px;}
 .private-switch-group .switch-label{font-size:13px;color:#475569;font-weight:500;}
 .private-switch-group .switch-label.private{color:#dc2626;font-weight:600;}
 .img-preview-mask{position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:999999;display:none;align-items:center;justify-content:center;}
@@ -74,7 +74,6 @@ body.keyboard-opened{padding-bottom:30px;}
 .cursor-dragger{position:fixed;bottom:80px;left:10px;right:10px;height:20px;background:rgba(99,102,241,0.15);border-radius:10px;display:none;z-index:10000;touch-action:none;}
 .cursor-dragger.show{display:flex;align-items:center;justify-content:center;}
 .cursor-dragger .thumb{width:24px;height:24px;background:#6366F1;border-radius:50%;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.2);}
-/* 图片面板默认展开 */
 #imgPanelBody{display:block!important;}
 #imgArrow{transform:rotate(180deg);}
 </style>
@@ -104,7 +103,7 @@ body.keyboard-opened{padding-bottom:30px;}
     <div class="warn">不生成base64图片，仅保存images文件夹相对路径，图片需手动上传仓库</div>
     <div class="tool-row" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0;">
       <button class="tool-btn" id="copyJsonBtn">一键复制完整data.js代码</button>
-      <button class="tool-btn" id="showTemplateBtn">生成选中图片复制命令</button>
+      <button class="tool-btn" id="showTemplateBtn">生成完整推送命令（含图片复制）</button>
     </div>
     <div class="tool-row" style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
       <button class="tool-btn" id="clearImgListBtn">清空已选图片记录</button>
@@ -171,7 +170,7 @@ body.keyboard-opened{padding-bottom:30px;}
     <button class="icon-btn" data-tip="表格" onclick="insertTable()">▦</button>
     <button class="icon-btn" data-tip="链接" onclick="insertLink()">[]()</button>
     <button class="icon-btn" data-tip="本地图片" id="localImgBtn">🖼</button>
-    <button class="icon-btn" data-tip="网络图床" id="netImgBtn">🖼</button>
+    <button class="icon-btn" data-tip="网络图床" id="netImgBtn">🌐</button>
     <button class="icon-btn" data-tip="清空" onclick="clearAllNotesContent()">🗑️</button>
     <button class="icon-btn" data-tip="查找" id="findReplaceBtn">🔍</button>
     <button class="icon-btn" data-tip="分割线" onclick="splitLine1()">—</button>
@@ -518,8 +517,9 @@ function splitLine1(){ const t='---\n'; if(currentEditMode==='rich'){ document.e
 function clearAllNotesContent(){ if(!confirm('清空全部内容？'))return; richBox.innerHTML=''; mdBox.value=''; renderMdPreview(); richRecordStack=['']; richRecordIndex=0; mdRecordStack=['']; mdRecordIndex=0; calcWordCount(); }
 
 // ========== 图片上传（本地） ==========
-function insertLocalImgTagTerminal(safeName, localPath) {
-  const url=localPath||`https://cdn.jsdelivr.net/gh/sxgpyjg/notes@main/images/${safeName}`;
+function insertLocalImgTagTerminal(safeName) {
+  // 强制使用CDN路径，忽略本地路径
+  const url = `https://cdn.jsdelivr.net/gh/sxgpyjg/notes@main/images/${safeName}`;
   if(currentEditMode==='rich'){ document.execCommand('insertHTML',false,`<img loading="lazy" src="${url}" alt="本地图片" style="max-width:100%;margin:6px 0;"><br>`); richBox.focus(); }
   else{ mdBox.value+=`![本地图](${url})\n\n`; saveMdRecord(); renderMdPreview(); calcWordCount(); }
 }
@@ -551,7 +551,7 @@ function handleFileSelect(files){
     const finalPath=(userPath&&userPath.trim())?userPath.trim():realPath;
     const cpCmd=`cp ${finalPath} "/storage/emulated/0/notes/images/${safeName}"`;
     imgUploadList.push({name:safeName,src:finalPath,copyCmd:cpCmd});
-    insertLocalImgTagTerminal(safeName, finalPath);
+    insertLocalImgTagTerminal(safeName); // 不传路径，强制CDN
   });
 }
 document.getElementById('localImgBtn').onclick=()=>imgFileInput.click();
@@ -560,7 +560,6 @@ imgFileInput.onchange=function(e){ handleFileSelect(e.target.files); this.value=
 // 网络图床（独立按钮）
 netImgBtn.onclick = function(){
   const mask = document.createElement("div");
-  mask.className = "modal-mask lock-scroll";
   mask.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99999;display:flex;align-items:center;justify-content:center;padding:10px;';
   const box = document.createElement("div");
   box.style.cssText = 'width:100%;max-width:350px;background:#fff;border-radius:12px;padding:18px;';
@@ -586,14 +585,37 @@ netImgBtn.onclick = function(){
   setTimeout(()=>document.getElementById('imgLinkInput').focus(),100);
 };
 
-// 生成图片复制命令
+// 【修复】生成完整推送命令（含旧笔记内容）
 document.getElementById('showTemplateBtn').onclick = async function(){
-  let cpText = '# 图片复制命令\n';
-  imgUploadList.forEach(item => cpText += item.copyCmd + '\n');
-  await navigator.clipboard.writeText(cpText).catch(()=>{
-    const t=document.createElement('textarea'); t.value=cpText; document.body.appendChild(t); t.select(); document.execCommand('copy'); document.body.removeChild(t);
+  // 1. 先同步当前编辑器数据到 list
+  syncFormToNoteList();
+  
+  // 2. 生成 data.js 内容（包含所有笔记，不过滤标题）
+  const allNotes = list.filter(i => i && i.id && i.content); // 只要求 id 和 content 存在
+  const jsContent = "window.NOTE_DATA = " + JSON.stringify(allNotes, null, 2);
+  
+  // 3. 构建完整终端命令
+  const now = getNowTimeStr();
+  let cmd = `# === 图片复制 & 笔记推送命令 ===\n`;
+  cmd += `cd /storage/emulated/0/notes\n`;
+  cmd += `mkdir -p images\n`;
+  // 添加图片 cp 命令
+  imgUploadList.forEach(item => cmd += item.copyCmd + '\n');
+  // 删除旧 data.js 并用新内容重建
+  cmd += `rm -f data.js\n`;
+  cmd += `cat > data.js << 'EOF'\n${jsContent}\nEOF\n`;
+  // git 操作
+  cmd += `git add images/ data.js\n`;
+  cmd += `git commit -m "update notes ${now}"\n`;
+  cmd += `git push origin main\n`;
+  cmd += `echo "✅ 笔记已更新并推送"\n`;
+  
+  // 4. 复制到剪贴板
+  await navigator.clipboard.writeText(cmd).catch(()=>{
+    const t=document.createElement('textarea'); t.value=cmd; document.body.appendChild(t); t.select(); document.execCommand('copy'); document.body.removeChild(t);
   });
-  alert('cp命令已复制');
+  
+  alert('完整的终端命令已复制，包含图片复制、data.js 重建、git 推送。');
 };
 
 // 批量图床链接
@@ -609,24 +631,24 @@ document.getElementById('batchImgBtn').onclick = function(){
   alert(`插入 ${arr.length} 张图片`);
 };
 
-// 清空图片列表
 document.getElementById('clearImgListBtn').onclick = () => { imgUploadList = []; alert("已清空"); };
 
-// 图片面板折叠切换
 function toggleImgPanel() {
   const panel = document.getElementById('imgPanelBody');
   const arrow = document.getElementById('imgArrow');
   panel.classList.toggle('show');
   arrow.classList.toggle('rotate');
 }
-// 默认展开（通过CSS覆盖）
 
-// ========== 复制 data.js ==========
+// 【修复】一键复制 data.js，确保包含所有笔记
 document.getElementById('copyJsonBtn').onclick=async function(){
   syncFormToNoteList();
-  const valid=list.filter(i=>i&&i.id&&(i.title||'').trim());
-  const json="window.NOTE_DATA = "+JSON.stringify(valid,null,2);
-  await navigator.clipboard.writeText(json).catch(()=>{ const t=document.createElement('textarea'); t.value=json; document.body.appendChild(t); t.select(); document.execCommand('copy'); document.body.removeChild(t); });
+  // 放宽过滤：只要 id 和 content 存在即可（不对标题做要求）
+  const valid = list.filter(i => i && i.id && i.content && i.content.trim());
+  const json = "window.NOTE_DATA = "+JSON.stringify(valid,null,2);
+  await navigator.clipboard.writeText(json).catch(()=>{
+    const t=document.createElement('textarea'); t.value=json; document.body.appendChild(t); t.select(); document.execCommand('copy'); document.body.removeChild(t);
+  });
   alert(`复制完成，共 ${valid.length} 条`);
 };
 
@@ -794,7 +816,6 @@ function showDragger() {
   const top = rect.top + (lines * lineHeight) - 10;
   dragger.style.top = Math.min(Math.max(top, rect.top + 10), rect.bottom - 30) + 'px';
 }
-
 function hideDragger() { dragger.classList.remove('show'); isDragging = false; }
 
 mdBox.addEventListener('touchstart', function(e) {
@@ -806,7 +827,6 @@ mdBox.addEventListener('touchstart', function(e) {
     isDragging = true;
   }, LONG_PRESS_DELAY);
 });
-
 mdBox.addEventListener('touchmove', function(e) {
   if (longPressTimer) clearTimeout(longPressTimer);
   if (!isDragging) return;
@@ -826,7 +846,6 @@ mdBox.addEventListener('touchmove', function(e) {
   const top = rect.top + (lines * lineHeight) - 10;
   dragger.style.top = Math.min(Math.max(top, rect.top + 10), rect.bottom - 30) + 'px';
 });
-
 mdBox.addEventListener('touchend', function() {
   if (longPressTimer) clearTimeout(longPressTimer);
   if (isDragging) { setTimeout(hideDragger, 200); isDragging = false; }
@@ -846,17 +865,30 @@ window.addEventListener('keydown',function(e){
   if(e.ctrlKey&&e.key==='u'){ e.preventDefault(); insertUnderline(); }
 });
 
-// 移动端键盘适配（修复软键盘遮挡）
+// 移动端键盘适配
 (function(){
   const ivh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
   function handleResize() {
     const h = window.visualViewport ? window.visualViewport.height : window.innerHeight;
     const opened = h < ivh - 100;
     document.body.classList.toggle('keyboard-opened', opened);
-    if (opened && currentEditMode === 'rich') {
-      richBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    } else if (opened && currentEditMode === 'md') {
-      mdBox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    if (opened) {
+      setTimeout(() => {
+        const active = document.activeElement;
+        if (active && (active.id === 'richEditor' || active.id === 'mdEditor')) {
+          active.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        } else {
+          window.scrollTo(0, document.body.scrollHeight);
+        }
+        const toolbar = document.querySelector('.edit-toolbar-wrap');
+        if (toolbar) {
+          const toolbarRect = toolbar.getBoundingClientRect();
+          const viewportBottom = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+          if (toolbarRect.bottom > viewportBottom - 10) {
+            window.scrollBy(0, toolbarRect.bottom - viewportBottom + 10);
+          }
+        }
+      }, 200);
     }
   }
   if(window.visualViewport) window.visualViewport.addEventListener('resize', handleResize);
