@@ -322,35 +322,49 @@ function bindLongPress(el, onLongPress, onClick){
   let timer = null;
   let longTriggered = false;
   let startX = 0, startY = 0;
-  let isScroll = false;
+  let moved = false;
 
+  const clear = () => {
+    clearTimeout(timer);
+    timer = null;
+  };
+
+  // ===== 移动端 =====
   el.addEventListener('touchstart', e => {
     longTriggered = false;
-    isScroll = false;
+    moved = false;
     const t = e.touches[0];
     startX = t.clientX;
     startY = t.clientY;
+
+    clear();
     timer = setTimeout(() => {
       longTriggered = true;
       onLongPress();
     }, LONG_PRESS_TIME);
-  }, {passive:false});
+  }, { passive: true });
 
   el.addEventListener('touchmove', e => {
     const t = e.touches[0];
-    if(Math.abs(t.clientX-startX)>MOVE_THRESHOLD || Math.abs(t.clientY-startY)>MOVE_THRESHOLD){
-      isScroll = true;
-      clearTimeout(timer);
-      timer = null;
+    if (
+      Math.abs(t.clientX - startX) > MOVE_THRESHOLD ||
+      Math.abs(t.clientY - startY) > MOVE_THRESHOLD
+    ) {
+      moved = true;
+      clear();
     }
-  }, {passive:false});
+  }, { passive: true });
 
-  el.addEventListener('touchend touchcancel', e => {
-    clearTimeout(timer);
-    timer = null;
-    if (!longTriggered && !isScroll) onClick();
-  }, {passive:false});
+  el.addEventListener('touchend', e => {
+    if (!longTriggered && !moved) {
+      onClick();
+    }
+    clear();
+  }, { passive: true });
 
+  el.addEventListener('touchcancel', clear, { passive: true });
+
+  // ===== 桌面端 =====
   el.addEventListener('mousedown', () => {
     longTriggered = false;
     timer = setTimeout(() => {
@@ -359,24 +373,17 @@ function bindLongPress(el, onLongPress, onClick){
     }, LONG_PRESS_TIME);
   });
 
-  el.addEventListener('mouseup mouseleave', () => {
-    clearTimeout(timer);
-    timer = null;
+  el.addEventListener('mouseup', () => {
     if (!longTriggered) onClick();
+    clear();
   });
 
+  el.addEventListener('mouseleave', clear);
+
+  // 防止右键菜单干扰
   el.addEventListener('contextmenu', e => {
     e.preventDefault();
     onLongPress();
-  });
-
-  el.addEventListener('click', e => {
-    if(longTriggered || isScroll){
-      e.preventDefault();
-      e.stopPropagation();
-      return;
-    }
-    onClick();
   });
 }
 
