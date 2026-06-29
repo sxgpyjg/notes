@@ -1299,27 +1299,16 @@ const saveTimeBtn = document.getElementById("saveTimeBtn");
 const imgFileInput = document.getElementById("imgFileInput");
 const hiddenImgFile1 = document.getElementById("hiddenImgFile1");
 const hiddenImgFile2 = document.getElementById("hiddenImgFile2");
-const copyAllJsonBtn = document.getElementById("copyJsonBtn");
-const genCpBtn = document.getElementById("showTemplateBtn");
-const clearImgListBtn = document.getElementById("clearImgListBtn");
-const codeInsertBtn = document.getElementById("insertCodeBtn");
-const batchImgBtn = document.getElementById("batchImgBtn");
-const localImgBtn = document.getElementById("localImgBtn");
-const richBox = document.getElementById("richEditor");
-const mdBox = document.getElementById("mdEditor");
-const mdPreviewBox = document.getElementById("mdPreview");
-const fontSizeSelect = document.getElementById("fontSizeSel");
-const fontColorInput = document.getElementById("fontColor");
-const bgColorInput = document.getElementById("bgColor");
-const richModeBtn = document.getElementById("modeRich");
-const mdModeBtn = document.getElementById("modeMd");
-const moreToolsPanel = document.getElementById("moreToolsPanel");
-const exportBackupBtn = document.getElementById("exportFullBackup");
-const importBackupBtn = document.getElementById("importBackup");
-const backupFileInput = document.getElementById("backupFileInput");
-const wordCountTip = document.getElementById("wordCountTip");
-const matchCaseCheck = document.getElementById("matchCase");
-const customBgColorInput = document.getElementById("customBgColor");
+document.addEventListener("DOMContentLoaded", () => {
+  copyAllJsonBtn = document.getElementById("copyJsonBtn");
+  genCpBtn = document.getElementById("showTemplateBtn");
+  clearImgListBtn = document.getElementById("clearImgListBtn");
+  saveNormalBtn = document.getElementById("saveNormalBtn");
+  saveTimeBtn = document.getElementById("saveTimeBtn");
+  // 👆 把所有 getElementById 都挪进来
+  autoLoginCheck();
+});
+
 // 清空全部按钮DOM
 const clearAllContentBtn = document.getElementById("clearAllContentBtn");
 
@@ -1590,7 +1579,7 @@ localStorage.setItem(LOGIN_EXPIRE_KEY, expire);
 document.getElementById("loginWrap").style.display = "none";
 document.getElementById("mainWrap").style.display = "block";
 loadLocalCache();
-setTimeout(initLoadNote,100);
+
 }
  
 // 【核心修复】初始化加载笔记，回填不丢失、不破坏按钮逻辑
@@ -3020,18 +3009,17 @@ window.addEventListener("DOMContentLoaded", () => {
   calcWordCount();
 });
 // 补充绑定查找替换弹窗元素（前面脚本漏写获取，补上避免报错）
-const findReplaceMask = document.getElementById('findReplaceMask');
-const findInput = document.getElementById('findInput');
-const replaceInput = document.getElementById('replaceInput');
-const findNextBtn = document.getElementById('findNextBtn');
-const replaceSingleBtn = document.getElementById('replaceSingleBtn');
-const replaceAllBtn = document.getElementById('replaceAllBtn');
-const findReplaceClose = document.getElementById('findReplaceClose');
-const previewMask = document.getElementById('imgPreviewMask');
-const previewImg = document.getElementById('previewImg');
-const findReplaceBtn = document.getElementById('findReplaceBtn');
-let searchIndex = 0;
-let matchList = [];
+findReplaceMask = document.getElementById('findReplaceMask');
+findInput = document.getElementById('findInput');
+replaceInput = document.getElementById('replaceInput');
+findNextBtn = document.getElementById('findNextBtn');
+replaceSingleBtn = document.getElementById('replaceSingleBtn');
+replaceAllBtn = document.getElementById('replaceAllBtn');
+findReplaceClose = document.getElementById('findReplaceClose');
+previewMask = document.getElementById('imgPreviewMask');
+previewImg = document.getElementById('previewImg');
+findReplaceBtn = document.getElementById('findReplaceBtn');
+
 
 // 字号选择绑定
 fontSizeSelect.addEventListener("change", function(){
