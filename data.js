@@ -34,11 +34,18 @@ window.NOTE_DATA = [
   },
   {
     "id": 1782353813233,
-    "title": "表格",
-    "type": "演示",
-    "content": "<table style=\"width:100%;border-collapse:collapse;margin:8px 0;\"><tbody><tr><th style=\"border:1px solid #999;padding:6px 8px;\">标题1</th><th style=\"border:1px solid #999;padding:6px 8px;\">标题2</th><th style=\"border:1px solid #999;padding:6px 8px;\">标题1</th><th style=\"border:1px solid #999;padding:6px 8px;\">标题2</th></tr><tr><td style=\"border:1px solid #999;padding:6px 8px;\">----</td><td style=\"border:1px solid #999;padding:6px 8px;\">----</td><td style=\"border:1px solid #999;padding:6px 8px;\">----</td><td style=\"border:1px solid #999;padding:6px 8px;\">----</td></tr><tr><td style=\"border:1px solid #999;padding:6px 8px;\">----</td><td style=\"border:1px solid #999;padding:6px 8px;\">----</td><td style=\"border:1px solid #999;padding:6px 8px;\">----</td><td style=\"border:1px solid #999;padding:6px 8px;\">----</td></tr><tr><td style=\"border:1px solid #999;padding:6px 8px;\">----</td><td style=\"border:1px solid #999;padding:6px 8px;\">----</td><td style=\"border:1px solid #999;padding:6px 8px;\">----</td><td style=\"border:1px solid #999;padding:6px 8px;\">----</td></tr><tr><td style=\"border:1px solid #999;padding:6px 8px;\">内容</td><td style=\"border:1px solid #999;padding:6px 8px;\">内容</td><td style=\"border:1px solid #999;padding:6px 8px;\">内容</td><td style=\"border:1px solid #999;padding:6px 8px;\">内容</td></tr></tbody></table><br><br><br>",
-    "date": "2026-06-25 14:02:49",
-    "_isTempNew": true
+    "title": "新建",
+    "type": "本地图片",
+    "content": "<img loading=\"lazy\" src=\"https://cdn.jsdelivr.net/gh/sxgpyjg/notes@main/images/Screenshot_2026_0629_145537.png\" alt=\"本地图片\"><br>",
+    "date": "2026-06-30 07:46:34",
+    "_isTempNew": true,
+    "tags": [
+      "本地图片"
+    ],
+    "tagColors": {
+      "本地图片": "#6366F1"
+    },
+    "private": false
   },
   {
     "id": 1782359924692,
