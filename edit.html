@@ -2730,13 +2730,7 @@ backupFileInput.onchange = function(e){
   reader.readAsText(file);
 };
 
-//字号、文字颜色、高亮底色监听
-fontSizeSelect.addEventListener("change", function(){
-  document.execCommand("fontSize", false, this.value);
-  richBox.focus();
-  checkFormatActive();
-  calcWordCount();
-});
+
 fontColorInput.addEventListener("input", function(){
   document.execCommand("foreColor", false, this.value);
   richBox.focus();
