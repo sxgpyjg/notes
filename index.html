@@ -436,11 +436,14 @@ filterHeader.addEventListener('touchend touchmove touchcancel', () => {
 
 // 桌面端鼠标长按、右键
 filterHeader.addEventListener('mousedown', () => {
+  filterJustLongPressed = false;
   filterPressTimer = setTimeout(() => {
     filterPressTimer = null;
+    filterJustLongPressed = true; // ✅ 补这一行
     openAdminPage();
   }, LONG_PRESS_TIME);
 });
+
 filterHeader.addEventListener('mouseup mouseleave', () => {
   if (filterPressTimer) clearTimeout(filterPressTimer);
   filterPressTimer = null;

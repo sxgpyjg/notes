@@ -270,7 +270,7 @@ const LOGIN_EXPIRE_HOUR = 8;
 const PWD_STORE_KEY = "admin_save_pwd";
 const LOGIN_EXPIRE_KEY = "admin_login_expire";
 const LOCAL_NOTE_KEY = "notes";
-
+let filterJustLongPressed = false;
 let dataList = [];
 let currentFilter = "";
 let allTypes = new Set();
@@ -409,6 +409,10 @@ bindLongPress(
 /* ========== 筛选栏：点击展开 + 独立长按进管理页（脱离bindLongPress干扰） ========== */
 // 常规点击 → 展开/收起筛选
 filterHeader.addEventListener('click', () => {
+  if (filterJustLongPressed) {
+    filterJustLongPressed = false; // ✅ 消费掉
+    return;
+  }
   filterBody.classList.toggle('show');
   filterArrow.classList.toggle('rotate');
 });
@@ -418,8 +422,10 @@ let filterPressTimer = null;
 
 // 触屏长按
 filterHeader.addEventListener('touchstart', (e) => {
+  filterJustLongPressed = false; // ✅ 重置
   filterPressTimer = setTimeout(() => {
     filterPressTimer = null;
+    filterJustLongPressed = true; // ✅ 标记长按
     openAdminPage();
   }, LONG_PRESS_TIME);
 }, { passive: true });
