@@ -46,15 +46,18 @@ h1{
   color: #1d2133;
   font-weight: 600;
 }
+/* 改成和主页一致：容器68px，图标46px */
 #fullPageBtn{
-width:48px;height:48px;
+width:68px;height:68px;
 border:none;background:transparent;
 display:flex;align-items:center;justify-content:center;
 -webkit-tap-highlight-color:transparent;
 padding:0;
+transition:all 0.12s;
+cursor: pointer;
 }
 #fullPageBtn:active{transform:scale(0.92);}
-#fullPageBtn svg{width:26px;height:26px;}
+#fullPageBtn svg{width:46px;height:46px;}
 #fullPageBtn path{
   fill:none;
   stroke:#9ca3af;
@@ -175,7 +178,7 @@ padding:0;
 .slide-box {display:flex;transition:transform 0.3s ease;touch-action:pan-x;}
 .slide-item {width:100%;flex-shrink:0;display:flex;justify-content:center;align-items:center;}
 .slide-item img {max-width:100%;max-height:65vh;width:auto;height:auto;object-fit:contain;}
-.slide-dot {position:absolute;bottom:8px;left:50%;transform:translateX(-50%);display:flex;gap:6px;}
+.slide-dot {position:absolute;bottom:8px;left:50%;transform: translateX(-50%);display:flex;gap:6px;}
 .dot {width:8px;height:8px;border-radius:50%;background:#ccc;}
 .dot.active {background:#333;}
 </style>

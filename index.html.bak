@@ -271,7 +271,7 @@ const filterBody = document.getElementById('filterBody');
 const filterArrow = document.getElementById('filterArrow');
 
 /* ========== 振动工具 ========== */
-function vibrateOnce(ms = 50){
+function vibrateOnce(ms = 20){
   try{
     if(typeof navigator.vibrate === 'function'){
       navigator.vibrate(ms);
