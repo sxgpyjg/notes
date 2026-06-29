@@ -587,44 +587,55 @@ netImgBtn.onclick = function(){
 
 // 生成完整推送命令（含旧笔记内容，修复路径引号）
 document.getElementById('showTemplateBtn').onclick = async function(){
-  // 1. 先同步当前编辑器数据到 list
   syncFormToNoteList();
-  
-  // 2. 生成 data.js 内容（包含所有笔记，不过滤标题）
+
   const allNotes = list.filter(i => i && i.id && i.content);
   const jsContent = "window.NOTE_DATA = " + JSON.stringify(allNotes, null, 2);
-  
-  // 3. 构建完整终端命令
   const now = getNowTimeStr();
-  let cmd = `# === 图片复制 & 笔记推送命令 ===\n`;
-  cmd += `cd /storage/emulated/0/notes || exit\n`;
-  cmd += `mkdir -p images\n`;
-  // 添加图片 cp 命令（使用双引号防止空格问题）
-  imgUploadList.forEach(item => {
-    const src = item.src.replace(/"/g, '\\"');
-    const dest = item.name.replace(/"/g, '\\"');
-    cmd += `cp "${src}" "images/${dest}" && echo "✅ 已复制: ${dest}" || echo "❌ 复制失败: ${dest}"\n`;
+
+  let cmd = `# === 图片自动定位 + 复制 + 推送命令 ===\n`;
+  cmd += `cd ~/storage/shared/notes || exit 1\n`;  // 改为 ~/storage/shared/notes
+  cmd += `mkdir -p images\n\n`;
+
+  imgUploadList.forEach((item, idx) => {
+    const fileName = item.name.replace(/"/g, '\\"');
+    const destDir = `images/${fileName}`;
+    cmd += `# 图片 ${idx+1}: ${fileName}\n`;
+    cmd += `SRC=$(find ~/storage/shared/DCIM ~/storage/shared/Download ~/storage/shared/Pictures ~/storage/shared/tencent -name "${fileName}" 2>/dev/null | head -1)\n`;
+    cmd += `if [ -n "$SRC" ]; then\n`;
+    cmd += `  cp "$SRC" "${destDir}" && echo "✅ 已复制: ${fileName}"\n`;
+    cmd += `else\n`;
+    cmd += `  SRC=$(find ~/storage/shared -name "${fileName}" 2>/dev/null | head -1)\n`;
+    cmd += `  if [ -n "$SRC" ]; then\n`;
+    cmd += `    cp "$SRC" "${destDir}" && echo "✅ 已复制(全盘): ${fileName}"\n`;
+    cmd += `  else\n`;
+    cmd += `    echo "❌ 未找到文件: ${fileName}，请手动复制"\n`;
+    cmd += `    echo "   cp /真实路径/${fileName} images/"\n`;
+    cmd += `  fi\n`;
+    cmd += `fi\n\n`;
   });
-  // 删除旧 data.js 并用新内容重建
+
   cmd += `rm -f data.js\n`;
   cmd += `cat > data.js << 'EOF'\n${jsContent}\nEOF\n`;
-  // git 操作（先检查是否有变化）
   cmd += `git add images/ data.js\n`;
-  cmd += `if git diff --cached --quiet; then\n`;
-  cmd += `  echo "⚠️ 没有新变化，跳过提交"\n`;
-  cmd += `else\n`;
+  cmd += `if ! git diff --cached --quiet; then\n`;
   cmd += `  git commit -m "update notes ${now}"\n`;
-  cmd += `  git push origin main && echo "✅ 推送成功" || echo "❌ 推送失败"\n`;
+  cmd += `  git push origin main && echo "✅ 推送成功"\n`;
+  cmd += `else\n`;
+  cmd += `  echo "⚠️ 无变化，跳过提交"\n`;
   cmd += `fi\n`;
-  
-  // 4. 复制到剪贴板
-  await navigator.clipboard.writeText(cmd).catch(()=>{
-    const t=document.createElement('textarea'); t.value=cmd; document.body.appendChild(t); t.select(); document.execCommand('copy'); document.body.removeChild(t);
-  });
-  
-  alert('命令已复制。请按以下步骤操作：\n1. 在 Termux 中粘贴执行\n2. 确保已进入 /storage/emulated/0/notes 目录\n3. 命令会自动复制图片并推送。');
-};
 
+  await navigator.clipboard.writeText(cmd).catch(() => {
+    const t = document.createElement('textarea');
+    t.value = cmd;
+    document.body.appendChild(t);
+    t.select();
+    document.execCommand('copy');
+    document.body.removeChild(t);
+  });
+
+  alert(`命令已复制。路径已改为 ~/storage/shared/notes/images，请粘贴执行。`);
+};
 
 // 批量图床链接
 document.getElementById('batchImgBtn').onclick = function(){
