@@ -145,6 +145,19 @@ h1#secretTrigger{
   background: #e8eaff;
   color: #3950cc;
   flex-shrink: 0;
+  max-width: 80px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tag-private {
+  font-size: 10px;
+  padding: 2px 6px;
+  border-radius: 99px;
+  background: #fef3c7;
+  color: #b45309;
+  flex-shrink: 0;
+  font-weight: 600;
 }
 .tag{
   font-size: 10px;
@@ -329,14 +342,12 @@ function bindLongPress(el, onLongPress, onClick){
     timer = null;
   };
 
-  // ===== 移动端 =====
   el.addEventListener('touchstart', e => {
     longTriggered = false;
     moved = false;
     const t = e.touches[0];
     startX = t.clientX;
     startY = t.clientY;
-
     clear();
     timer = setTimeout(() => {
       longTriggered = true;
@@ -364,7 +375,6 @@ function bindLongPress(el, onLongPress, onClick){
 
   el.addEventListener('touchcancel', clear, { passive: true });
 
-  // ===== 桌面端 =====
   el.addEventListener('mousedown', () => {
     longTriggered = false;
     timer = setTimeout(() => {
@@ -380,7 +390,6 @@ function bindLongPress(el, onLongPress, onClick){
 
   el.addEventListener('mouseleave', clear);
 
-  // 防止右键菜单干扰
   el.addEventListener('contextmenu', e => {
     e.preventDefault();
     onLongPress();
@@ -406,11 +415,10 @@ bindLongPress(
   () => {}
 );
 
-/* ========== 筛选栏：点击展开 + 独立长按进管理页（脱离bindLongPress干扰） ========== */
-// 常规点击 → 展开/收起筛选
+/* ========== 筛选栏 ========== */
 filterHeader.addEventListener('click', () => {
   if (filterJustLongPressed) {
-    filterJustLongPressed = false; // ✅ 消费掉
+    filterJustLongPressed = false;
     return;
   }
   filterBody.classList.toggle('show');
@@ -418,7 +426,6 @@ filterHeader.addEventListener('click', () => {
 });
 let filterPressTimer = null;
 
-/* ========== 移动端 ========== */
 filterHeader.addEventListener('touchstart', () => {
   filterJustLongPressed = false;
   filterPressTimer = setTimeout(() => {
@@ -449,7 +456,6 @@ filterHeader.addEventListener('touchcancel', () => {
   }
 });
 
-/* ========== 桌面端（关键修正） ========== */
 filterHeader.addEventListener('mousedown', () => {
   filterJustLongPressed = false;
   filterPressTimer = setTimeout(() => {
@@ -460,7 +466,6 @@ filterHeader.addEventListener('mousedown', () => {
 });
 
 filterHeader.addEventListener('mouseup', () => {
-  // ✅ 长按成立后，直接吞掉本次 mouseup，不给你任何机会
   if (filterJustLongPressed) {
     filterJustLongPressed = false;
     if (filterPressTimer) clearTimeout(filterPressTimer);
@@ -478,14 +483,11 @@ filterHeader.addEventListener('mouseleave', () => {
   }
 });
 
-/* 右键直接当长按 */
 filterHeader.addEventListener('contextmenu', e => {
   e.preventDefault();
   openAdminPage();
 });
 
-
-// 兜底事件委托，防止动态筛选按钮内联onclick失效（保留原有renderFilter即可，可选追加）
 filterBody.addEventListener('click', (e) => {
   if (e.target.classList.contains('filter-btn')) {
     const tag = e.target.dataset.tag;
@@ -493,7 +495,6 @@ filterBody.addEventListener('click', (e) => {
     else filterByTag(tag);
   }
 });
-
 
 /* ========== 全屏 ========== */
 fullBtn.addEventListener('click', () => {
@@ -517,7 +518,6 @@ async function waitNoteData(){
 function loadNoteData(){
   if(window.NOTE_DATA && Array.isArray(window.NOTE_DATA)){
     dataList = JSON.parse(JSON.stringify(window.NOTE_DATA));
-    // 兼容旧type转tags
     dataList.forEach(item => {
       if (!Array.isArray(item.tags) && item.type) {
         item.tags = [item.type];
@@ -555,7 +555,6 @@ function renderFilter(){
   filterBody.innerHTML = html;
 }
 
-
 function filterByTag(tagVal){
   currentFilterTag = tagVal;
   renderFilter();
@@ -582,7 +581,6 @@ function escapeHtml(s){
 
 function renderNotes(){
   let list = dataList.filter(i=>isAdminLoggedIn() || !i.private);
-  // 标签筛选
   if(currentFilterTag){
     list = list.filter(item => (item.tags || []).includes(currentFilterTag));
   }
@@ -598,10 +596,13 @@ function renderNotes(){
     const img = item.cover || getFirstImgFromHtml(item.content);
     const imgHtml = img ? `<div class="card-img-box"><img src="${img}"></div>` : '';
     const previewContent = getPureTextPreview(item.content);
-    // 多标签渲染
-    const tagHtml = (item.tags || []).map(tag => 
+    // 多标签渲染 + 私密标记
+    const tagHtml = (item.tags || []).map(tag =>
       `<span class="tag-multi">${escapeHtml(tag)}</span>`
     ).join('');
+    const privateHtml = item.private
+      ? `<span class="tag-private">🔒 私密</span>`
+      : '';
 
     return `
     <div class="note-card" data-id="${escapeHtml(item.id)}">
@@ -609,7 +610,7 @@ function renderNotes(){
       <div class="card-right-wrap">
         <div class="card-head">
           <div class="card-title">${escapeHtml(item.title)}</div>
-          <div class="tag-group">${tagHtml}</div>
+          <div class="tag-group">${tagHtml}${privateHtml}</div>
         </div>
         <div class="card-date">${escapeHtml(item.date)}</div>
         <div class="card-preview">${previewContent}</div>
