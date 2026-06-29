@@ -41,7 +41,7 @@ h1#secretTrigger{
   touch-action: none; /* 阻止浏览器默认触摸行为干扰长按 */
 }
 #fullPageBtn{
-width:48px;height:48px;
+width:56px;height:56px;
 border:none;background:transparent;
 display:flex;align-items:center;justify-content:center;
 -webkit-tap-highlight-color:transparent;
@@ -51,7 +51,7 @@ cursor: pointer;
 }
 #fullPageBtn:active{transform:scale(0.92);}
 #fullPageBtn svg{
-  width:26px;height:26px;
+  width:34px;height:34px;
 }
 #fullPageBtn path{
   fill:none;
@@ -388,7 +388,7 @@ function toggleFilterPanel(){
   document.getElementById('filterBody').classList.toggle('show');
   document.getElementById('filterArrow').classList.toggle('rotate');
 }
-// 筛选头部：短按展开收起，长按管理员校验
+// 筛选头部：短按展开收起，长按才触发管理员校验
 (function bindFilterHeaderAction() {
   let pressTimer = null;
   let startX = 0, startY = 0;
@@ -403,10 +403,7 @@ function toggleFilterPanel(){
 
     pressTimer = setTimeout(() => {
       isLongPressTriggered = true;
-      // 长按触发管理员校验
-      if (!isAdminLoggedIn()) {
-        prompt("请输入管理员密码：");
-      }
+      openAdminPage();
     }, LONG_PRESS_TIME);
   }, { passive: false });
 
@@ -424,7 +421,6 @@ function toggleFilterPanel(){
   filterHeader.addEventListener('touchend touchcancel', () => {
     clearTimeout(pressTimer);
     pressTimer = null;
-    // 仅短按（未触发长按）才执行展开/收起
     if (!isLongPressTriggered) {
       toggleFilterPanel();
     }
@@ -437,9 +433,7 @@ function toggleFilterPanel(){
     mouseLongTriggered = false;
     mouseTimer = setTimeout(() => {
       mouseLongTriggered = true;
-      if (!isAdminLoggedIn()) {
-        prompt("请输入管理员密码：");
-      }
+      openAdminPage();
     }, LONG_PRESS_TIME);
   });
 
@@ -451,20 +445,15 @@ function toggleFilterPanel(){
     }
   });
 
-  // 右键
+  // 右键也走管理员逻辑
   filterHeader.addEventListener('contextmenu', (e) => {
     e.preventDefault();
-    if (!isAdminLoggedIn()) {
-      prompt("请输入管理员密码：");
-    }
+    openAdminPage();
   });
 
-  // 兜底常规 click 事件，兼容部分机型/浏览器触屏事件异常
-  filterHeader.addEventListener('click', (e) => {
-    // 避免和触屏/鼠标流程重复执行，做一次判断兜底
-    if (!isLongPressTriggered && !mouseLongTriggered) {
-      toggleFilterPanel();
-    }
+  // 兜底click，兼容触屏事件异常机型，仅切换面板
+  filterHeader.addEventListener('click', () => {
+    toggleFilterPanel();
   });
 })();
 
