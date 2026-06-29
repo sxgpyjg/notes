@@ -1665,7 +1665,7 @@ document.execCommand("italic", false, null);
 checkFormatActive();
 calcWordCount();
 }else{
-const tpl = "*";
+const tpl = "* *";
 mdBox.value += tpl;
 saveMdRecord();
 renderMdPreview();
@@ -1683,12 +1683,12 @@ document.execCommand("strikeThrough", false, null);
 checkFormatActive();
 calcWordCount();
 }else{
-const tpl = "~~~~";
+const tpl = "~~";
 mdBox.value += tpl;
 saveMdRecord();
 renderMdPreview();
 calcWordCount();
-const pos = mdBox.value.length - 2;
+const pos = mdBox.value.length - 1;
 mdBox.selectionStart = pos;
 mdBox.selectionEnd = pos;
 }
