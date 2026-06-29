@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
-<title>笔记编辑器（完整移植纯写作原生交互）</title>
+<title>笔记编辑器（多标签版）</title>
 <script src="./data.js?v=1"></script>
 
 <!-- 公式渲染KaTeX -->
@@ -28,6 +28,61 @@ body{
 .lock-scroll{
   overflow:hidden !important;
   touch-action:none !important;
+}
+
+/* ========== 新增标签栏样式 ========== */
+.tab-bar{
+  display:flex;
+  overflow-x:auto;
+  overflow-y:hidden;
+  gap:4px;
+  padding:6px 4px;
+  background:#fff;
+  border-radius:8px;
+  margin-bottom:10px;
+  scrollbar-width:thin;
+}
+.tab-bar::-webkit-scrollbar{ height:3px; }
+.tab-item{
+  flex:0 0 auto;
+  padding:5px 10px;
+  background:#eef2ff;
+  border-radius:6px;
+  font-size:13px;
+  display:flex;
+  align-items:center;
+  gap:6px;
+  cursor:pointer;
+  white-space:nowrap;
+}
+.tab-item.active{
+  background:#6366F1;
+  color:#fff;
+}
+.tab-close{
+  width:16px;
+  height:16px;
+  border-radius:50%;
+  background:rgba(0,0,0,0.15);
+  color:#333;
+  display:grid;
+  place-items:center;
+  font-size:12px;
+  line-height:1;
+}
+.tab-item.active .tab-close{
+  background:rgba(255,255,255,0.3);
+  color:#fff;
+}
+.tab-new{
+  flex:0 0 auto;
+  padding:5px 10px;
+  background:#22c55e;
+  color:#fff;
+  border-radius:6px;
+  font-size:13px;
+  cursor:pointer;
+  white-space:nowrap;
 }
 
 /* 双列按钮 绝对均分对称 */
@@ -95,7 +150,7 @@ body{
   opacity:0.9;
 }
 
-.title-input,.type-input,.tag-text-input{
+.title-input,.type-input{
   width:100%;
   border:1px solid #e0e3f0;
   border-radius:8px;
@@ -105,35 +160,8 @@ body{
   outline:none;
   background:#fff;
 }
-.title-input:focus,.type-input:focus,.tag-text-input:focus{
+.title-input:focus,.type-input:focus{
   border-color:#6366F1;
-}
-/* 新增标签徽章容器+样式 */
-.tag-badge-wrap {
-  display:flex;
-  gap:6px;
-  flex-wrap:wrap;
-  margin-bottom:10px;
-}
-.tag-badge {
-  background:#e8eaff;
-  color:#3950cc;
-  font-size:12px;
-  padding:3px 8px;
-  border-radius:12px;
-  display:flex;
-  align-items:center;
-  gap:4px;
-}
-.tag-badge button {
-  border:none;
-  background:transparent;
-  cursor:pointer;
-  font-weight:bold;
-  padding:0 4px;
-}
-.tag-badge button:active {
-  color:#f43f5e;
 }
 
 .edit-toolbar-wrap{
@@ -760,6 +788,12 @@ body.bg-custom .md-preview{
 <button class="tool-btn" onclick="location.href='admin-list.html'">返回管理列表</button>
 <button class="tool-btn" onclick="logoutAdmin()">退出登录</button>
 </div>
+
+<!-- 新增标签栏容器 -->
+<div class="tab-bar" id="tabBar">
+  <div class="tab-new" id="newTabBtn">+ 新建笔记</div>
+</div>
+
 <div class="tip-green" id="wordCountTip">纯文字数：0 | 总字符(含空格换行)：0</div>
 <div class="img-collapse">
   <div class="img-collapse-head" onclick="toggleImgPanel()">
@@ -798,9 +832,6 @@ body.bg-custom .md-preview{
   <input type="file" id="backupFileInput" accept=".json,.js">
 </div>
 <input class="title-input" placeholder="填写笔记标题">
-<!-- 新增标签输入区域 -->
-<input class="tag-text-input" id="tagTextInput" placeholder="输入标签，逗号/空格/回车添加，点×删除">
-<div class="tag-badge-wrap" id="tagBadgeWrap"></div>
 <input class="type-input" placeholder="自定义分类（开发笔记/随笔/教程）">
 <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
   <input type="checkbox" id="privateCheck">
@@ -933,7 +964,7 @@ body.bg-custom .md-preview{
 <script>
 // 统一写入主存储 notes，给管理页/复制按钮读取
 function buildSafeCpCmd(srcPath, destFileName) {
-  const destDir = "/storage/emulated/0/notes/";
+  const destDir = "/storage/emulated/0/notes/images/";
   return `cp ${srcPath} "${destDir}${destFileName}"`;
 }
 
@@ -1004,54 +1035,140 @@ let initViewHeight = window.visualViewport ? window.visualViewport.height : wind
 const ADMIN_PASSWORD = "admin123";
 let matchCase = false;
 
-// ========== 新增标签相关DOM与变量、函数 ==========
-const tagTextInput = document.getElementById('tagTextInput');
-const tagBadgeWrap = document.getElementById('tagBadgeWrap');
-let currentTags = [];
+// ========== 多标签全局数据 ==========
+let tabs = []; // { noteId: number|null, title: string }
+let activeTabIdx = -1;
+const tabBar = document.getElementById('tabBar');
+const newTabBtn = document.getElementById('newTabBtn');
 
-// 转义
-function escapeHtml(s) {
-  return String(s ?? "")
-    .replace(/&/g,'&amp;')
-    .replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;')
-    .replace(/"/g,'&quot;')
-    .replace(/'/g,'&#039;');
-}
+// 渲染标签栏
+function renderTabs() {
+  // 保留新建按钮，清空原有标签
+  const newBtn = document.getElementById('newTabBtn');
+  tabBar.innerHTML = '';
+  tabBar.appendChild(newBtn);
 
-// 渲染徽章
-function renderTagBadges() {
-  tagBadgeWrap.innerHTML = currentTags.map((tag, idx) => `
-    <span class="tag-badge">
-      ${escapeHtml(tag)}
-      <button onclick="removeTag(${idx})">×</button>
-    </span>
-  `).join('');
-}
-// 删除单个标签
-window.removeTag = function(idx) {
-  currentTags.splice(idx,1);
-  renderTagBadges();
-};
-// 解析输入添加标签
-function parseTagsFromInput() {
-  const raw = tagTextInput.value.trim();
-  if(!raw) return;
-  const parts = raw.split(/[,，\s]+/).map(s=>s.trim()).filter(s=>s);
-  parts.forEach(t=>{
-    if(!currentTags.includes(t)) currentTags.push(t);
+  tabs.forEach((tab, idx) => {
+    const tabEl = document.createElement('div');
+    tabEl.className = 'tab-item' + (idx === activeTabIdx ? ' active' : '');
+    tabEl.dataset.id = tab.noteId ?? '';
+    tabEl.innerText = tab.title || '未命名笔记';
+
+    const closeBtn = document.createElement('span');
+    closeBtn.className = 'tab-close';
+    closeBtn.innerText = '×';
+    // 阻止冒泡，避免切标签
+    closeBtn.onclick = (e) => {
+      e.stopPropagation();
+      closeTab(idx);
+    };
+    tabEl.appendChild(closeBtn);
+    // 点击切换标签
+    tabEl.onclick = () => switchTab(idx);
+    tabBar.appendChild(tabEl);
   });
-  tagTextInput.value = '';
-  renderTagBadges();
 }
-// 绑定输入事件
-tagTextInput.addEventListener('keydown', e=>{
-  if(e.key === 'Enter') {
-    parseTagsFromInput();
-    e.preventDefault();
+
+// 关闭标签
+function closeTab(idx) {
+  if(tabs.length <= 1) {
+    alert('至少保留一个标签');
+    return;
   }
-});
-tagTextInput.addEventListener('blur', parseTagsFromInput);
+  // 切换到相邻标签
+  let newActive = activeTabIdx;
+  if(idx === activeTabIdx) {
+    newActive = idx > 0 ? idx - 1 : 1;
+  } else if(activeTabIdx > idx) {
+    newActive -= 1;
+  }
+  tabs.splice(idx,1);
+  activeTabIdx = newActive;
+  renderTabs();
+  switchTab(activeTabIdx);
+}
+
+// 新建空白笔记标签
+function addNewTab() {
+  // 先保存当前激活标签内容
+  if(activeTabIdx >=0) syncFormToNoteList();
+  tabs.push({ noteId: null, title: '新建笔记' });
+  activeTabIdx = tabs.length -1;
+  renderTabs();
+  // 清空表单编辑器
+  targetNote = null;
+  titleInput.value = '';
+  typeInput.value = '';
+  document.getElementById('privateCheck').checked = false;
+  richBox.innerHTML = '';
+  richRecordStack = [''];
+  richRecordIndex =0;
+  mdBox.value = '';
+  saveMdRecord();
+  renderMdPreview();
+  calcWordCount();
+}
+
+// 切换到指定标签
+function switchTab(idx) {
+  if(idx <0 || idx >= tabs.length) return;
+  // 先同步当前标签内容
+  if(activeTabIdx >=0) syncFormToNoteList();
+  activeTabIdx = idx;
+  const tab = tabs[idx];
+  // 加载对应笔记
+  if(tab.noteId) {
+    targetNote = list.find(n => n.id === Number(tab.noteId)) || null;
+  } else {
+    targetNote = null;
+  }
+  // 回填表单/编辑器
+  if(targetNote) {
+    titleInput.value = targetNote.title || '';
+    typeInput.value = targetNote.type || '';
+    document.getElementById('privateCheck').checked = !!targetNote.private;
+    richBox.innerHTML = targetNote.content || '';
+    richRecordStack = [richBox.innerHTML];
+    richRecordIndex =0;
+    mdBox.value = htmlToMd(targetNote.content || '').replace(/\n{3,}/g,"\n\n");
+    saveMdRecord();
+    renderMdPreview();
+  } else {
+    // 空白新笔记
+    titleInput.value = '';
+    typeInput.value = '';
+    document.getElementById('privateCheck').checked = false;
+    richBox.innerHTML = '';
+    richRecordStack = [''];
+    richRecordIndex =0;
+    mdBox.value = '';
+    saveMdRecord();
+    renderMdPreview();
+  }
+  checkFormatActive();
+  calcWordCount();
+  renderTabs();
+}
+
+// 打开已有笔记（从路由/管理列表进入），创建标签并激活
+function openNoteTab(noteId) {
+  const note = list.find(n => n.id === Number(noteId));
+  if(!note) return;
+  // 已存在该笔记标签则直接切过去
+  const existIdx = tabs.findIndex(t => t.noteId === note.id);
+  if(existIdx >=0) {
+    switchTab(existIdx);
+    return;
+  }
+  // 保存当前内容，新增标签
+  if(activeTabIdx >=0) syncFormToNoteList();
+  tabs.push({ noteId: note.id, title: note.title || '笔记' });
+  activeTabIdx = tabs.length -1;
+  renderTabs();
+  switchTab(activeTabIdx);
+}
+
+newTabBtn.addEventListener('click', addNewTab);
 
 // 退出登录
 function logoutAdmin(){
@@ -1074,8 +1191,15 @@ function autoLoginCheck(){
     document.getElementById("loginWrap").style.display = "none";
     document.getElementById("mainWrap").style.display = "block";
     loadLocalCache();
+    // 初始化标签：路由有editId则打开对应笔记标签，否则新建空白标签
     window.addEventListener("DOMContentLoaded", ()=>{
-      setTimeout(initLoadNote, 300);
+      setTimeout(()=>{
+        if(editId) {
+          openNoteTab(Number(editId));
+        } else {
+          addNewTab();
+        }
+      }, 300);
     })
   }
 }
@@ -1374,7 +1498,7 @@ function htmlToMd(htmlStr){
     .replace(/<em>(.*?)<\/em>/g, '*$1*')
     .replace(/<s>(.*?)<\/s>/g, '~~$1~~')
     .replace(/<li>(.*?)<\/li>/g, '- $1')
-    .replace(/<img.*?width="(\d+)px".*?src="(.*?)".*?alt="(.*?)".*?>/g, '![$3]($2){width=$1}')
+    .replace(/<img.*?width="(\d+)px".*?src="(.*?)".*?alt="(.*?)".*?>/g, '![![$3]($2){width=$1}')
     .replace(/<img.*?src="(.*?)".*?alt="(.*?)".*?>/g, '![$2]($1)')
     .replace(/<br>/g, '\n');
   text = text.replace(/<(?!p style="text-align:center"|u|table|tr|th|td)[^>]+>/g, '');
@@ -1471,12 +1595,7 @@ setTimeout(initLoadNote,100);
 // 【核心修复】初始化加载笔记，回填不丢失、不破坏按钮逻辑
 function initLoadNote(){
 imgUploadList = [];
-if(!editId) {
-  // 新建笔记，清空标签
-  currentTags = [];
-  renderTagBadges();
-  return;
-}
+if(!editId) return;
 const target = list.find(item=>item.id === Number(editId));
 if(!target) return;
 targetNote = target;
@@ -1484,16 +1603,6 @@ titleInput.value = target.title;
 typeInput.value = target.type;
 // 私密状态回填
 document.getElementById("privateCheck").checked = !!target.private;
-
-// 标签回填+兼容旧type
-if (!Array.isArray(target.tags) && target.type) {
-  currentTags = [target.type];
-} else {
-  currentTags = Array.isArray(target.tags) ? [...target.tags] : [];
-}
-renderTagBadges();
-tagTextInput.value = '';
-
 richBox.innerHTML = target.content || "";
 
 richRecordStack = [richBox.innerHTML];
@@ -2388,15 +2497,20 @@ if(currentEditMode === "rich") content = richBox.innerHTML.trim();
 else content = mdToHtml(mdBox.value);
 const nowTime = getNowTimeStr();
 if(targetNote){
-  // 编辑已有笔记，同步私密、标签
+  // 编辑已有笔记，同步私密状态
   const idx = list.findIndex(item=>item.id === targetNote.id);
   list[idx].title = title;
   list[idx].type = type;
   list[idx].content = content;
   list[idx].date = nowTime;
   list[idx].private = isPrivate;
-  list[idx].tags = [...currentTags]; // 写入标签数组
   delete list[idx]._isTempNew;
+  // 更新对应标签标题
+  const tabIdx = tabs.findIndex(t => t.noteId === targetNote.id);
+  if(tabIdx >= 0) {
+    tabs[tabIdx].title = title || '笔记';
+    renderTabs();
+  }
 }else{
   // 新建草稿：找到原有草稿更新，不存在则新增
   const tempIdx = list.findIndex(item=>item._isTempNew === true);
@@ -2406,7 +2520,9 @@ if(targetNote){
     list[tempIdx].content = content;
     list[tempIdx].date = nowTime;
     list[tempIdx].private = isPrivate;
-    list[tempIdx].tags = [...currentTags]; // 写入标签数组
+    // 更新当前新标签标题
+    if(activeTabIdx >=0) tabs[activeTabIdx].title = title || '新建笔记';
+    renderTabs();
   }else{
     const newNote = {
       id: Date.now(),
@@ -2415,10 +2531,12 @@ if(targetNote){
       content,
       date: nowTime,
       private: isPrivate,
-      tags: [...currentTags], // 写入标签数组
       _isTempNew: true
     };
     list.push(newNote);
+    // 更新当前新标签标题
+    if(activeTabIdx >=0) tabs[activeTabIdx].title = title || '新建笔记';
+    renderTabs();
   }
 }
 saveLocalCache();
@@ -2486,30 +2604,24 @@ if(!title){
 alert("笔记标题不能为空");
 return;
 }
-// 不再强制校验type，兼容仅用tags场景
+if(!type){
+alert("分类不能为空");
+return;
+}
 const nowTime = getNowTimeStr();
 const newId = Date.now();
 if(targetNote){
 const idx = list.findIndex(item=>item.id === targetNote.id);
-if(idx > -1) {
-  delete list[idx]._isTempNew;
-  list[idx].title = title;
-  list[idx].type = type;
-  list[idx].content = content;
-  list[idx].date = nowTime;
-  list[idx].private = document.getElementById("privateCheck").checked;
-  list[idx].tags = [...currentTags];
-}
+if(idx > -1) delete list[idx]._isTempNew;
 }else{
 list.push({
 id: newId,
 title,
 type,
 content,
-date: nowTime,
-private: document.getElementById("privateCheck").checked,
-tags: [...currentTags]
+date: nowTime
 });
+}
 }
 //过滤无效笔记
 list = list.filter(item=>{
@@ -2597,7 +2709,12 @@ saveNoteToStorage(list);
 window.NOTE_DATA = list;
 alert(`导入成功，共${list.length}条笔记，切换页面即可生效`);
 loadLocalCache();
-if(editId) initLoadNote();
+// 清空已有标签，重新建立标签
+tabs = [];
+activeTabIdx = -1;
+renderTabs();
+if(editId) openNoteTab(Number(editId));
+else addNewTab();
 }catch(err){
 alert("文件解析失败，请选择notes.json或data.js备份");
 console.error(err);
@@ -2620,16 +2737,17 @@ calcWordCount();
 });
 bgColorInput.addEventListener("input", function(){
   richBox.focus();
-  const sel = window.getSelection(); // 修正
+  const sel = window.getSelection();
+  // 无选中文字直接退出
   if (!sel.rangeCount || sel.getRangeAt(0).collapsed) return;
   const range = sel.getRangeAt(0);
   const span = document.createElement("span");
   span.style.backgroundColor = this.value;
+  // 给选中文字包裹底色span
   range.surroundContents(span);
   checkFormatActive();
   calcWordCount();
 });
-
 
 // ========== 查找替换功能（纯文本/富文本双模式兼容） ==========
 const findReplaceBtn = document.getElementById('findReplaceBtn');
@@ -2968,9 +3086,7 @@ function getFullJsText() {
 window.addEventListener("DOMContentLoaded", () => {
   renderMdPreview();
   calcWordCount();
-  renderTagBadges(); // 初始化标签徽章容器
 });
 </script>
 </body>
 </html>
-
