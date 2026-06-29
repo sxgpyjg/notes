@@ -436,15 +436,27 @@ filterHeader.addEventListener('touchend touchmove touchcancel', () => {
 
 // 桌面端鼠标长按、右键
 filterHeader.addEventListener('mousedown', () => {
-  filterJustLongPressed = false;
+  filterJustLongPressed = false; // ✅ 重置
   filterPressTimer = setTimeout(() => {
     filterPressTimer = null;
-    filterJustLongPressed = true; // ✅ 补这一行
+    filterJustLongPressed = true; // ✅ 关键：标记长按
     openAdminPage();
   }, LONG_PRESS_TIME);
 });
 
-filterHeader.addEventListener('mouseup mouseleave', () => {
+
+filterHeader.addEventListener('mouseup', () => {
+  if (filterJustLongPressed) {
+    filterJustLongPressed = false; // ✅ 消费掉
+    if (filterPressTimer) clearTimeout(filterPressTimer);
+    filterPressTimer = null;
+    return;
+  }
+  if (filterPressTimer) clearTimeout(filterPressTimer);
+  filterPressTimer = null;
+});
+
+filterHeader.addEventListener('mouseleave', () => {
   if (filterPressTimer) clearTimeout(filterPressTimer);
   filterPressTimer = null;
 });

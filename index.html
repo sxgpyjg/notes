@@ -416,38 +416,53 @@ filterHeader.addEventListener('click', () => {
   filterBody.classList.toggle('show');
   filterArrow.classList.toggle('rotate');
 });
-
-// 长按定时器变量
 let filterPressTimer = null;
 
-// 触屏长按
-filterHeader.addEventListener('touchstart', (e) => {
-  filterJustLongPressed = false; // ✅ 重置
+/* ========== 移动端 ========== */
+filterHeader.addEventListener('touchstart', () => {
+  filterJustLongPressed = false;
   filterPressTimer = setTimeout(() => {
     filterPressTimer = null;
-    filterJustLongPressed = true; // ✅ 标记长按
+    filterJustLongPressed = true;
     openAdminPage();
   }, LONG_PRESS_TIME);
 }, { passive: true });
-filterHeader.addEventListener('touchend touchmove touchcancel', () => {
-  if (filterPressTimer) clearTimeout(filterPressTimer);
-  filterPressTimer = null;
+
+filterHeader.addEventListener('touchend', () => {
+  if (filterPressTimer) {
+    clearTimeout(filterPressTimer);
+    filterPressTimer = null;
+  }
 });
 
-// 桌面端鼠标长按、右键
+filterHeader.addEventListener('touchmove', () => {
+  if (filterPressTimer) {
+    clearTimeout(filterPressTimer);
+    filterPressTimer = null;
+  }
+}, { passive: true });
+
+filterHeader.addEventListener('touchcancel', () => {
+  if (filterPressTimer) {
+    clearTimeout(filterPressTimer);
+    filterPressTimer = null;
+  }
+});
+
+/* ========== 桌面端（关键修正） ========== */
 filterHeader.addEventListener('mousedown', () => {
-  filterJustLongPressed = false; // ✅ 重置
+  filterJustLongPressed = false;
   filterPressTimer = setTimeout(() => {
     filterPressTimer = null;
-    filterJustLongPressed = true; // ✅ 关键：标记长按
+    filterJustLongPressed = true;
     openAdminPage();
   }, LONG_PRESS_TIME);
 });
 
-
 filterHeader.addEventListener('mouseup', () => {
+  // ✅ 长按成立后，直接吞掉本次 mouseup，不给你任何机会
   if (filterJustLongPressed) {
-    filterJustLongPressed = false; // ✅ 消费掉
+    filterJustLongPressed = false;
     if (filterPressTimer) clearTimeout(filterPressTimer);
     filterPressTimer = null;
     return;
@@ -457,13 +472,18 @@ filterHeader.addEventListener('mouseup', () => {
 });
 
 filterHeader.addEventListener('mouseleave', () => {
-  if (filterPressTimer) clearTimeout(filterPressTimer);
-  filterPressTimer = null;
+  if (filterPressTimer) {
+    clearTimeout(filterPressTimer);
+    filterPressTimer = null;
+  }
 });
-filterHeader.addEventListener('contextmenu', (e) => {
+
+/* 右键直接当长按 */
+filterHeader.addEventListener('contextmenu', e => {
   e.preventDefault();
   openAdminPage();
 });
+
 
 // 兜底事件委托，防止动态筛选按钮内联onclick失效（保留原有renderFilter即可，可选追加）
 filterBody.addEventListener('click', (e) => {
