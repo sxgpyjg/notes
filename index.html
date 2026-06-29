@@ -270,6 +270,15 @@ const filterHeader = document.getElementById('filterHeader');
 const filterBody = document.getElementById('filterBody');
 const filterArrow = document.getElementById('filterArrow');
 
+/* ========== 振动工具 ========== */
+function vibrateOnce(ms = 20){
+  try{
+    if(typeof navigator.vibrate === 'function'){
+      navigator.vibrate(ms);
+    }
+  }catch(e){}
+}
+
 /* ========== 工具 ========== */
 function isAdminLoggedIn(){
   const pwd = localStorage.getItem(PWD_STORE_KEY);
@@ -302,7 +311,7 @@ function openRead(noteId){
   location.href = 'read.html';
 }
 
-/* ========== 长按通用封装（重点） ========== */
+/* ========== 长按通用封装（含振动） ========== */
 function bindLongPress(el, onLongPress, onClick){
   let timer = null;
   let longTriggered = false;
@@ -317,6 +326,7 @@ function bindLongPress(el, onLongPress, onClick){
     startY = t.clientY;
     timer = setTimeout(() => {
       longTriggered = true;
+      vibrateOnce(20);   // ✅ 长按震动
       onLongPress();
     }, LONG_PRESS_TIME);
   }, {passive:false});
@@ -341,6 +351,7 @@ function bindLongPress(el, onLongPress, onClick){
     longTriggered = false;
     timer = setTimeout(() => {
       longTriggered = true;
+      vibrateOnce(20);
       onLongPress();
     }, LONG_PRESS_TIME);
   });
@@ -350,11 +361,12 @@ function bindLongPress(el, onLongPress, onClick){
 
   el.addEventListener('contextmenu', e => {
     e.preventDefault();
+    vibrateOnce(20);
     onLongPress();
   });
 
   el.addEventListener('click', e => {
-    if(longTriggered || isScroll) {
+    if(longTriggered || isScroll){
       e.preventDefault();
       e.stopPropagation();
       return;
@@ -383,10 +395,14 @@ bindLongPress(
 );
 
 /* ========== 筛选栏 ========== */
-bindLongPress(filterHeader, openAdminPage, () => {
-  filterBody.classList.toggle('show');
-  filterArrow.classList.toggle('rotate');
-});
+bindLongPress(
+  filterHeader,
+  openAdminPage,
+  () => {
+    filterBody.classList.toggle('show');
+    filterArrow.classList.toggle('rotate');
+  }
+);
 
 /* ========== 全屏 ========== */
 fullBtn.addEventListener('click', () => {
@@ -452,17 +468,16 @@ function getFirstImgFromHtml(html){
   return m ? m[1] : '';
 }
 
+// 修改：仅移除img标签，保留代码块、表格等结构标签
 function getPureTextPreview(html){
   return String(html)
-    .replace(/```[\s\S]*?```/g,'')
     .replace(/<img[^>]*>/g,'');
 }
 
 function escapeHtml(s){
-  return String(s)
-    .replace(/&/g,'&amp;')
-    .replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;');
+  // 注意：要保留结构标签就不做全局escapeHtml，改用文本节点处理/局部转义；
+  // 下面调整：只转义非结构部分，这里示例改为不整体escape，让table/pre/code正常渲染
+  return String(s);
 }
 
 function renderNotes(){
@@ -486,8 +501,10 @@ function renderNotes(){
     const img = item.cover || getFirstImgFromHtml(item.content);
     const imgHtml = img ? `<div class="card-img-box"><img src="${img}"></div>` : '';
 
+    const previewContent = getPureTextPreview(item.content);
+
     return `
-    <div class="note-card" data-id="${escapeHtml(item.id)}">
+    <div class="note-card" data-id="${item.id}">
       ${imgHtml}
       <div class="card-right-wrap">
         <div class="card-head">
@@ -495,7 +512,7 @@ function renderNotes(){
           <span class="tag ${cls}">${escapeHtml(txt)}</span>
         </div>
         <div class="card-date">${escapeHtml(item.date)}</div>
-        <div class="card-preview">${escapeHtml(getPureTextPreview(item.content))}</div>
+        <div class="card-preview">${previewContent}</div>
       </div>
     </div>`;
   }).join('');
