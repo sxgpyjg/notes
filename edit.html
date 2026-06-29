@@ -1189,22 +1189,24 @@ function autoLoginCheck(){
     localStorage.removeItem(LOGIN_EXPIRE_KEY);
     return;
   }
-  if(savedPwd && savedPwd === ADMIN_PASSWORD){
-    document.getElementById("loginWrap").style.cssText = "display:none!important";
-    document.getElementById("mainWrap").style.cssText = "display:block!important";
-    loadLocalCache();
-    // 初始化标签：路由有editId则打开对应笔记标签，否则新建空白标签
-    window.addEventListener("DOMContentLoaded", ()=>{
-      setTimeout(()=>{
-        if(editId) {
-          openNoteTab(Number(editId));
-        } else {
-          addNewTab();
-        }
-      }, 300);
-    })
-  }
+  if (savedPwd && savedPwd === ADMIN_PASSWORD) {
+  document.getElementById("loginWrap").style.cssText =
+    "display:none!important;z-index:-9999;pointer-events:none;visibility:hidden;";
+
+  document.getElementById("mainWrap").style.cssText =
+    "display:block!important;z-index:1;";
+
+  loadLocalCache();
+
+  setTimeout(() => {
+    if (editId) {
+      openNoteTab(Number(editId));
+    } else {
+      addNewTab();
+    }
+  }, 50);
 }
+
 autoLoginCheck();
 
 function loadLocalCache(){
@@ -1577,7 +1579,8 @@ return;
 localStorage.setItem(PWD_STORE_KEY, inputPwd);
 const expire = Date.now() + LOGIN_EXPIRE_HOUR * 3600 * 1000;
 localStorage.setItem(LOGIN_EXPIRE_KEY, expire);
-document.getElementById("loginWrap").style.cssText = "display:none!important";
+document.getElementById("loginWrap").style.cssText =
+  "display:none!important;z-index:-9999;pointer-events:none;visibility:hidden;";
 document.getElementById("mainWrap").style.cssText = "display:block!important";
 loadLocalCache();
 
