@@ -1533,6 +1533,10 @@ function checkFormatActive(){
   const isUnder = document.queryCommandState("underline");
   const isStrike = document.queryCommandState("strikeThrough");
   if(isBold) document.querySelector('[onclick="formatBold()"]').classList.add("active-format");
+
+  // ========== 加上这一行！斜体变色 ==========
+  if(isItalic) document.querySelector('[onclick="formatItalic()"]').classList.add("active-format");
+
   if(isUnder) document.querySelector('[onclick="insertUnderline()"]').classList.add("active-format");
   if(isStrike) document.querySelector('[onclick="formatStrikeThrough()"]').classList.add("active-format");
  
@@ -1562,6 +1566,7 @@ function checkFormatActive(){
     document.querySelector('[onclick="insertCenter()"]').classList.add("active-format");
   }
 }
+
 richBox.addEventListener("selectionchange", checkFormatActive);
  
 // 字数统计
@@ -1662,7 +1667,10 @@ function formatItalic(){
 if(currentEditMode === "rich"){
 richBox.focus();
 document.execCommand("italic", false, null);
+// 加延时，解决斜体检测不到、按钮不变色
+setTimeout(()=>{
 checkFormatActive();
+},20);
 calcWordCount();
 }else{
 const tpl = "* *";
@@ -1675,6 +1683,7 @@ mdBox.selectionStart = pos;
 mdBox.selectionEnd = pos;
 }
 }
+
 //删除线
 function formatStrikeThrough(){
 if(currentEditMode === "rich"){
