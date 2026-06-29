@@ -383,9 +383,12 @@ window.delNote = function(id){
   if(!confirm("确认永久删除这条笔记？删除后无法恢复")){
     return;
   }
-  let list = loadAllNotes();
+  // 直接使用 window.NOTE_DATA（它已经从 localStorage 同步）
+  let list = window.NOTE_DATA || [];
   list = list.filter(item => item.id !== id);
   saveAllNotes(list);
+  // 同步更新 remoteNoteData，避免后续 loadAllNotes 返回旧数据
+  remoteNoteData = list;
   sessionStorage.setItem('cleanNoteSnapshot', JSON.stringify(list));
   alert("已删除并更新纯净快照；复制纯净data.js后替换仓库文件并git push才能全局生效");
   render();
