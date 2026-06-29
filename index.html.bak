@@ -406,15 +406,53 @@ bindLongPress(
   () => {}
 );
 
-/* ========== 筛选栏 ========== */
-bindLongPress(
-  filterHeader,
-  openAdminPage,
-  () => {
-    filterBody.classList.toggle('show');
-    filterArrow.classList.toggle('rotate');
+/* ========== 筛选栏：点击展开 + 独立长按进管理页（脱离bindLongPress干扰） ========== */
+// 常规点击 → 展开/收起筛选
+filterHeader.addEventListener('click', () => {
+  filterBody.classList.toggle('show');
+  filterArrow.classList.toggle('rotate');
+});
+
+// 长按定时器变量
+let filterPressTimer = null;
+
+// 触屏长按
+filterHeader.addEventListener('touchstart', (e) => {
+  filterPressTimer = setTimeout(() => {
+    filterPressTimer = null;
+    openAdminPage();
+  }, LONG_PRESS_TIME);
+}, { passive: true });
+filterHeader.addEventListener('touchend touchmove touchcancel', () => {
+  if (filterPressTimer) clearTimeout(filterPressTimer);
+  filterPressTimer = null;
+});
+
+// 桌面端鼠标长按、右键
+filterHeader.addEventListener('mousedown', () => {
+  filterPressTimer = setTimeout(() => {
+    filterPressTimer = null;
+    openAdminPage();
+  }, LONG_PRESS_TIME);
+});
+filterHeader.addEventListener('mouseup mouseleave', () => {
+  if (filterPressTimer) clearTimeout(filterPressTimer);
+  filterPressTimer = null;
+});
+filterHeader.addEventListener('contextmenu', (e) => {
+  e.preventDefault();
+  openAdminPage();
+});
+
+// 兜底事件委托，防止动态筛选按钮内联onclick失效（保留原有renderFilter即可，可选追加）
+filterBody.addEventListener('click', (e) => {
+  if (e.target.classList.contains('filter-btn')) {
+    const tag = e.target.dataset.tag;
+    if (tag === 'null') filterByTag(null);
+    else filterByTag(tag);
   }
-);
+});
+
 
 /* ========== 全屏 ========== */
 fullBtn.addEventListener('click', () => {
@@ -468,12 +506,14 @@ window.addEventListener('load', async () => {
 function renderFilter(){
   allTypes.clear();
   dataList.forEach(i=> (i.tags || []).forEach(t => allTypes.add(t)));
-  let html = `<button class="filter-btn ${currentFilterTag===null?'active':''}" onclick="filterByTag(null)">全部</button>`;
+  let html = `<button class="filter-btn ${currentFilterTag===null?'active':''}" onclick="filterByTag(null)" data-tag="null">全部</button>`;
   allTypes.forEach(t=>{
-    html += `<button class="filter-btn ${currentFilterTag===t?'active':''}" onclick="filterByTag('${escapeHtml(t)}')">${escapeHtml(t)}</button>`;
+    const escT = escapeHtml(t);
+    html += `<button class="filter-btn ${currentFilterTag===t?'active':''}" onclick="filterByTag('${escT}')" data-tag="${escT}">${escT}</button>`;
   });
   filterBody.innerHTML = html;
 }
+
 
 function filterByTag(tagVal){
   currentFilterTag = tagVal;
