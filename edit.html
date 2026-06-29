@@ -867,10 +867,7 @@ body.bg-custom .md-preview{
   <input type="checkbox" id="privateCheck">
   <label for="privateCheck">设为私密（仅管理员登录可见，博客/相册游客完全不显示）</label>
 </div>
-<div class="tags-input-wrap" id="tagsInputWrap">
-  <input type="text" class="tag-chip-input" id="tagChipInput" placeholder="添加标签后回车确认">
-</div>
-<div class="tags-hint">输入文字后按回车添加标签，点 × 删除</div>
+
 
 <div class="mode-switch">
   <button id="modeRich" class="active" onclick="switchMode('rich')">富文本可视化编辑</button>
@@ -1486,7 +1483,7 @@ function switchMode(mode){
 
 // 优化md转html
 function mdToHtml(mdStr){
-  return mdStr
+  let text = mdStr
     .replace(/\$\$([\s\S]*?)\$\$/g, (m,formula)=>{
       try{ return katex.renderToString(formula,{displayMode:true}) }catch{ return m; }
     })
@@ -1494,36 +1491,12 @@ function mdToHtml(mdStr){
       try{ return katex.renderToString(formula,{displayMode:false}) }catch{ return m; }
     })
     .replace(/```([\s\S]*?)```/g, '<pre style="background:#f5f5f5;padding:10px;border-radius:6px;white-space:pre-wrap;"><code>$1</code></pre>')
-    .replace(/<u>(.*?)<\/u>/g, '<u>$1</u>')
-    .replace(/<p style="text-align:center">(.*?)<\/p>/g, '<p style="text-align:center">$1</p>')
-    .replace(/^### (.*)$/gm, '<h3>$1</h3>')
-    .replace(/^## (.*)$/gm, '<h2>$1</h2>')
-    .replace(/^# (.*)$/gm, '<h1>$1</h1>')
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    .replace(/\*(.*?)\*/g, '<em>$1</em>')
-    .replace(/~~(.*?)~~/g, '<s>$1</s>')
-    .replace(/^\- (.*)$/gm, '<li>$1</li>')
-    .replace(/!\[(.*?)\]\((https?:\/\/[^\s)]+)\)\{width=(\d+)\}/g, '<img src="$2" alt="$1" style="max-width:100%;margin:8px 0;width:$3px;">')
-    .replace(/!\[(.*?)\]\((https?:\/\/[^\s)]+)\)/g, '<img src="$2" alt="$1" style="max-width:100%;margin:8px 0;">')
-    .replace(/\n/g, '<br>');
-}
-// 优化html转md：保留表格、u、居中标签
-function htmlToMd(htmlStr){
-  let text = htmlStr
-    .replace(/<pre style="background:#f5f5f5;padding:10px;border-radius:6px;white-space:pre-wrap;"><code>([\s\S]*?)<\/code><\/pre>/g, '```\n$1\n```')
-    .replace(/<h1>(.*?)<\/h1>/g, '# $1')
-    .replace(/<h2>(.*?)<\/h2>/g, '## $1')
-    .replace(/<h3>(.*?)<\/h3>/g, '### $1')
-    .replace(/<strong>(.*?)<\/strong>/g, '**$1**')
-    .replace(/<em>(.*?)<\/em>/g, '*$1*')
-    .replace(/<s>(.*?)<\/s>/g, '~~$1~~')
-    .replace(/<li>(.*?)<\/li>/g, '- $1')
-    .replace(/<img.*?width="(\d+)px".*?src="(.*?)".*?alt="(.*?)".*?>/g, '![![$3]($2){width=$1}')
-    .replace(/<img.*?src="(.*?)".*?alt="(.*?)".*?>/g, '![$2]($1)')
-    .replace(/<br>/g, '\n');
+    .replace(/<u>(.*?)<\/u>/g, '<u>$1</u>');
+
   text = text.replace(/<(?!p style="text-align:center"|u|table|tr|th|td)[^>]+>/g, '');
   return text;
 }
+
 function renderMdPreview(){
   mdPreviewBox.innerHTML = mdToHtml(mdBox.value);
 }
