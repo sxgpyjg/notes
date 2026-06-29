@@ -16,7 +16,7 @@ window.NOTE_DATA = [
     "title": "实验",
     "type": "本地图片",
     "content": "<img loading=\"lazy\" src=\"https://cdn.jsdelivr.net/gh/sxgpyjg/notes@main/images/1_Screenshot_2026_0629_145537.png\" alt=\"本地图片\"><br>",
-    "date": "2026-06-30 06:58:16",
+    "date": "2026-06-30 07:00:10",
     "tags": [
       "本地图片"
     ],
