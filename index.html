@@ -527,7 +527,8 @@ window.addEventListener('load', async () => {
 });
 
 /* ========== 标签颜色同步（新增） ========== */
-function getTagStyle(tagName) {
+function getTagStyle(tagName, colorMap) {
+  const color = (colorMap && colorMap[tagName]) || '';
   const tagColors = JSON.parse(localStorage.getItem('tagColors') || '{}');
   const color = tagColors[tagName];
   if (color) {
@@ -598,7 +599,8 @@ function renderNotes(){
     const previewContent = getPureTextPreview(item.content);
     // 多标签渲染 + 私密标记 + 颜色同步
     const tagHtml = (item.tags || []).map(tag =>
-      `<span class="tag-multi" data-tag="${escapeHtml(tag)}" style="${getTagStyle(tag)}">${escapeHtml(tag)}</span>`
+      `<span class="tag-multi" data-tag="${escapeHtml(tag)}" style="${getTagStyle(tag, item.tagColors)}"
+>${escapeHtml(tag)}</span>`
     ).join('');
     const privateHtml = item.private
       ? `<span class="tag-private">🔒 私密</span>`
