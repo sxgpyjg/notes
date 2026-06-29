@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
-<title>笔记编辑器（多标签版）</title>
+<title>笔记编辑器（完整移植纯写作原生交互）</title>
 <script src="./data.js?v=1"></script>
 
 <!-- 公式渲染KaTeX -->
@@ -15,10 +15,7 @@
   padding:0;
   box-sizing:border-box;
   font-family:system-ui,-apple-system,sans-serif;
-  /* 强制干掉登录框，解决手机浏览器赖着不走的问题 */
-  #loginWrap { display: none !important; }
 }
-
 html,body{
   height:100%;
   overflow-x:hidden;
@@ -31,61 +28,6 @@ body{
 .lock-scroll{
   overflow:hidden !important;
   touch-action:none !important;
-}
-
-/* ========== 新增标签栏样式 ========== */
-.tab-bar{
-  display:flex;
-  overflow-x:auto;
-  overflow-y:hidden;
-  gap:4px;
-  padding:6px 4px;
-  background:#fff;
-  border-radius:8px;
-  margin-bottom:10px;
-  scrollbar-width:thin;
-}
-.tab-bar::-webkit-scrollbar{ height:3px; }
-.tab-item{
-  flex:0 0 auto;
-  padding:5px 10px;
-  background:#eef2ff;
-  border-radius:6px;
-  font-size:13px;
-  display:flex;
-  align-items:center;
-  gap:6px;
-  cursor:pointer;
-  white-space:nowrap;
-}
-.tab-item.active{
-  background:#6366F1;
-  color:#fff;
-}
-.tab-close{
-  width:16px;
-  height:16px;
-  border-radius:50%;
-  background:rgba(0,0,0,0.15);
-  color:#333;
-  display:grid;
-  place-items:center;
-  font-size:12px;
-  line-height:1;
-}
-.tab-item.active .tab-close{
-  background:rgba(255,255,255,0.3);
-  color:#fff;
-}
-.tab-new{
-  flex:0 0 auto;
-  padding:5px 10px;
-  background:#22c55e;
-  color:#fff;
-  border-radius:6px;
-  font-size:13px;
-  cursor:pointer;
-  white-space:nowrap;
 }
 
 /* 双列按钮 绝对均分对称 */
@@ -782,7 +724,7 @@ body.bg-custom .md-preview{
     <button onclick="checkPwd()">确认进入</button>
   </div>
 </div>
-<div id="mainWrap">
+<div id="mainWrap" style="display:none">
 <div class="tool-bar">
   <button class="link-btn blog-link" onclick="window.open('https://sxgpyjg.github.io','_blank')">博客主页</button>
   <button class="link-btn album-link" onclick="window.open('https://sxgpyjg.github.io/blog','_blank')">图文相册</button>
@@ -791,12 +733,6 @@ body.bg-custom .md-preview{
 <button class="tool-btn" onclick="location.href='admin-list.html'">返回管理列表</button>
 <button class="tool-btn" onclick="logoutAdmin()">退出登录</button>
 </div>
-
-<!-- 新增标签栏容器 -->
-<div class="tab-bar" id="tabBar">
-  <div class="tab-new" id="newTabBtn">+ 新建笔记</div>
-</div>
-
 <div class="tip-green" id="wordCountTip">纯文字数：0 | 总字符(含空格换行)：0</div>
 <div class="img-collapse">
   <div class="img-collapse-head" onclick="toggleImgPanel()">
@@ -966,7 +902,6 @@ body.bg-custom .md-preview{
 
 <script>
 // 统一写入主存储 notes，给管理页/复制按钮读取
-
 function buildSafeCpCmd(srcPath, destFileName) {
   const destDir = "/storage/emulated/0/notes/images/";
   return `cp ${srcPath} "${destDir}${destFileName}"`;
@@ -1039,141 +974,6 @@ let initViewHeight = window.visualViewport ? window.visualViewport.height : wind
 const ADMIN_PASSWORD = "admin123";
 let matchCase = false;
 
-// ========== 多标签全局数据 ==========
-let tabs = []; // { noteId: number|null, title: string }
-let activeTabIdx = -1;
-const tabBar = document.getElementById('tabBar');
-const newTabBtn = document.getElementById('newTabBtn');
-
-// 渲染标签栏
-function renderTabs() {
-  // 保留新建按钮，清空原有标签
-  const newBtn = document.getElementById('newTabBtn');
-  tabBar.innerHTML = '';
-  tabBar.appendChild(newBtn);
-
-  tabs.forEach((tab, idx) => {
-    const tabEl = document.createElement('div');
-    tabEl.className = 'tab-item' + (idx === activeTabIdx ? ' active' : '');
-    tabEl.dataset.id = tab.noteId ?? '';
-    tabEl.innerText = tab.title || '未命名笔记';
-
-    const closeBtn = document.createElement('span');
-    closeBtn.className = 'tab-close';
-    closeBtn.innerText = '×';
-    // 阻止冒泡，避免切标签
-    closeBtn.onclick = (e) => {
-      e.stopPropagation();
-      closeTab(idx);
-    };
-    tabEl.appendChild(closeBtn);
-    // 点击切换标签
-    tabEl.onclick = () => switchTab(idx);
-    tabBar.appendChild(tabEl);
-  });
-}
-
-// 关闭标签
-function closeTab(idx) {
-  if(tabs.length <= 1) {
-    alert('至少保留一个标签');
-    return;
-  }
-  // 切换到相邻标签
-  let newActive = activeTabIdx;
-  if(idx === activeTabIdx) {
-    newActive = idx > 0 ? idx - 1 : 1;
-  } else if(activeTabIdx > idx) {
-    newActive -= 1;
-  }
-  tabs.splice(idx,1);
-  activeTabIdx = newActive;
-  renderTabs();
-  switchTab(activeTabIdx);
-}
-
-// 新建空白笔记标签
-function addNewTab() {
-  // 先保存当前激活标签内容
-  if(activeTabIdx >=0) syncFormToNoteList();
-  tabs.push({ noteId: null, title: '新建笔记' });
-  activeTabIdx = tabs.length -1;
-  renderTabs();
-  // 清空表单编辑器
-  targetNote = null;
-  titleInput.value = '';
-  typeInput.value = '';
-  document.getElementById('privateCheck').checked = false;
-  richBox.innerHTML = '';
-  richRecordStack = [''];
-  richRecordIndex =0;
-  mdBox.value = '';
-  saveMdRecord();
-  renderMdPreview();
-  calcWordCount();
-}
-
-// 切换到指定标签
-function switchTab(idx) {
-  if(idx <0 || idx >= tabs.length) return;
-  // 先同步当前标签内容
-  if(activeTabIdx >=0) syncFormToNoteList();
-  activeTabIdx = idx;
-  const tab = tabs[idx];
-  imgUploadList = []; // 重置图片列表，避免跨标签串数据
-  // 加载对应笔记
-  if(tab.noteId) {
-    targetNote = list.find(n => n.id === Number(tab.noteId)) || null;
-  } else {
-    targetNote = null;
-  }
-  // 回填表单/编辑器
-  if(targetNote) {
-    titleInput.value = targetNote.title || '';
-    typeInput.value = targetNote.type || '';
-    document.getElementById('privateCheck').checked = !!targetNote.private;
-    richBox.innerHTML = targetNote.content || '';
-    richRecordStack = [richBox.innerHTML];
-    richRecordIndex =0;
-    mdBox.value = htmlToMd(targetNote.content || '').replace(/\n{3,}/g,"\n\n");
-    saveMdRecord();
-    renderMdPreview();
-  } else {
-    // 空白新笔记
-    titleInput.value = '';
-    typeInput.value = '';
-    document.getElementById('privateCheck').checked = false;
-    richBox.innerHTML = '';
-    richRecordStack = [''];
-    richRecordIndex =0;
-    mdBox.value = '';
-    saveMdRecord();
-    renderMdPreview();
-  }
-  checkFormatActive();
-  calcWordCount();
-  renderTabs();
-}
-
-// 打开已有笔记（从路由/管理列表进入），创建标签并激活
-function openNoteTab(noteId) {
-  const note = list.find(n => n.id === Number(noteId));
-  if(!note) return;
-  // 已存在该笔记标签则直接切过去
-  const existIdx = tabs.findIndex(t => t.noteId === note.id);
-  if(existIdx >=0) {
-    switchTab(existIdx);
-    return;
-  }
-  // 保存当前内容，新增标签
-  if(activeTabIdx >=0) syncFormToNoteList();
-  tabs.push({ noteId: note.id, title: note.title || '笔记' });
-  activeTabIdx = tabs.length -1;
-  renderTabs();
-  switchTab(activeTabIdx);
-}
-
-newTabBtn.addEventListener('click', addNewTab);
 
 // 退出登录
 function logoutAdmin(){
@@ -1192,26 +992,15 @@ function autoLoginCheck(){
     localStorage.removeItem(LOGIN_EXPIRE_KEY);
     return;
   }
-  if (savedPwd && savedPwd === ADMIN_PASSWORD) {
-  // ✅ 物理移除登录框（手机 100% 生效）
-  const loginWrap = document.getElementById("loginWrap");
-  if (loginWrap) loginWrap.remove();
-
-  document.getElementById("mainWrap").style.cssText =
-    "display:block!important;z-index:1;";
-
-  loadLocalCache();
-
-  setTimeout(() => {
-    if (editId) {
-      openNoteTab(Number(editId));
-    } else {
-      addNewTab();
-    }
-  }, 50);
+  if(savedPwd && savedPwd === ADMIN_PASSWORD){
+    document.getElementById("loginWrap").style.display = "none";
+    document.getElementById("mainWrap").style.display = "block";
+    loadLocalCache();
+    window.addEventListener("DOMContentLoaded", ()=>{
+      setTimeout(initLoadNote, 300);
+    })
+  }
 }
-
-
 autoLoginCheck();
 
 function loadLocalCache(){
@@ -1307,22 +1096,33 @@ const saveTimeBtn = document.getElementById("saveTimeBtn");
 const imgFileInput = document.getElementById("imgFileInput");
 const hiddenImgFile1 = document.getElementById("hiddenImgFile1");
 const hiddenImgFile2 = document.getElementById("hiddenImgFile2");
-document.addEventListener("DOMContentLoaded", () => {
-  copyAllJsonBtn = document.getElementById("copyJsonBtn");
-  genCpBtn = document.getElementById("showTemplateBtn");
-  clearImgListBtn = document.getElementById("clearImgListBtn");
-  saveNormalBtn = document.getElementById("saveNormalBtn");
-  saveTimeBtn = document.getElementById("saveTimeBtn");
-  // 👆 把所有 getElementById 都挪进来
-  autoLoginCheck();
-});
-
+const copyAllJsonBtn = document.getElementById("copyJsonBtn");
+const genCpBtn = document.getElementById("showTemplateBtn");
+const clearImgListBtn = document.getElementById("clearImgListBtn");
+const codeInsertBtn = document.getElementById("insertCodeBtn");
+const batchImgBtn = document.getElementById("batchImgBtn");
+const localImgBtn = document.getElementById("localImgBtn");
+const richBox = document.getElementById("richEditor");
+const mdBox = document.getElementById("mdEditor");
+const mdPreviewBox = document.getElementById("mdPreview");
+const fontSizeSelect = document.getElementById("fontSizeSel");
+const fontColorInput = document.getElementById("fontColor");
+const bgColorInput = document.getElementById("bgColor");
+const richModeBtn = document.getElementById("modeRich");
+const mdModeBtn = document.getElementById("modeMd");
+const moreToolsPanel = document.getElementById("moreToolsPanel");
+const exportBackupBtn = document.getElementById("exportFullBackup");
+const importBackupBtn = document.getElementById("importBackup");
+const backupFileInput = document.getElementById("backupFileInput");
+const wordCountTip = document.getElementById("wordCountTip");
+const matchCaseCheck = document.getElementById("matchCase");
+const customBgColorInput = document.getElementById("customBgColor");
 // 清空全部按钮DOM
 const clearAllContentBtn = document.getElementById("clearAllContentBtn");
 
 // 编辑区整体底色修改修复
 if(customBgColorInput){
-  customBgColorInput.addEventListener("input",function(){
+  customBgColorInput.addEventListener("input", function(){
     // 更新全局自定义底色变量，适配css主题
     document.body.style.setProperty("--custom-bg", this.value);
     // 同步三个编辑容器底色
@@ -1496,7 +1296,7 @@ function htmlToMd(htmlStr){
     .replace(/<em>(.*?)<\/em>/g, '*$1*')
     .replace(/<s>(.*?)<\/s>/g, '~~$1~~')
     .replace(/<li>(.*?)<\/li>/g, '- $1')
-    .replace(/<img.*?width="(\d+)px".*?src="(.*?)".*?alt="(.*?)".*?>/g, '![$3]($2){width=$1}')
+    .replace(/<img.*?width="(\d+)px".*?src="(.*?)".*?alt="(.*?)".*?>/g, '![![$3]($2){width=$1}')
     .replace(/<img.*?src="(.*?)".*?alt="(.*?)".*?>/g, '![$2]($1)')
     .replace(/<br>/g, '\n');
   text = text.replace(/<(?!p style="text-align:center"|u|table|tr|th|td)[^>]+>/g, '');
@@ -1584,34 +1384,11 @@ return;
 localStorage.setItem(PWD_STORE_KEY, inputPwd);
 const expire = Date.now() + LOGIN_EXPIRE_HOUR * 3600 * 1000;
 localStorage.setItem(LOGIN_EXPIRE_KEY, expire);
-function checkPwd(){
-  const inputPwd = document.getElementById("pwdInput").value.trim();
-  if(inputPwd !== ADMIN_PASSWORD){
-    alert("密码错误，无法进入编辑器");
-    return;
-  }
-
-  // ✅ 物理移除登录框
-  const loginWrap = document.getElementById("loginWrap");
-  if (loginPwd) loginWrap.remove();
-
-  localStorage.setItem(PWD_STORE_KEY, inputPwd);
-  localStorage.setItem(LOGIN_EXPIRE_KEY, Date.now() + LOGIN_EXPIRE_HOUR * 3600 * 1000);
-
-  document.getElementById("mainWrap").style.cssText =
-    "display:block!important;z-index:1;";
-
-  loadLocalCache();
-
-  setTimeout(() => {
-    if (editId) {
-      openNoteTab(Number(editId));
-    } else {
-      addNewTab();
-    }
-  }, 50);
+document.getElementById("loginWrap").style.display = "none";
+document.getElementById("mainWrap").style.display = "block";
+loadLocalCache();
+setTimeout(initLoadNote,100);
 }
-
  
 // 【核心修复】初始化加载笔记，回填不丢失、不破坏按钮逻辑
 function initLoadNote(){
@@ -2324,7 +2101,7 @@ insertLocalImgTagTerminal(safeName);
 let fullPath = file.path || "";
 let termuxSrc;
 if (fullPath) {
-  fullPath = fullPath.replace(/^\/storage/emulated/0\//i, "/storage/emulated/0/");
+  fullPath = fullPath.replace(/^\/storage\/emulated\/0\//i, "/storage/emulated/0/");
   fullPath = fullPath.replace(/\/download\//gi, "/Download/");
   termuxSrc = fullPath;
 }
@@ -2409,7 +2186,7 @@ let termuxSrc;
 const fileName = file.name;
 const fnLower = fileName.toLowerCase();
 if (fullPath) {
-  fullPath = fullPath.replace(/^\/storage/emulated/0\//i, "/storage/emulated/0/");
+  fullPath = fullPath.replace(/^\/storage\/emulated\/0\//i, "/storage/emulated/0/");
   fullPath = fullPath.replace(/\/download\//gi, "/Download/");
   termuxSrc = fullPath;
 }else {
@@ -2526,12 +2303,6 @@ if(targetNote){
   list[idx].date = nowTime;
   list[idx].private = isPrivate;
   delete list[idx]._isTempNew;
-  // 更新对应标签标题
-  const tabIdx = tabs.findIndex(t => t.noteId === targetNote.id);
-  if(tabIdx >= 0) {
-    tabs[tabIdx].title = title || '笔记';
-    renderTabs();
-  }
 }else{
   // 新建草稿：找到原有草稿更新，不存在则新增
   const tempIdx = list.findIndex(item=>item._isTempNew === true);
@@ -2541,9 +2312,6 @@ if(targetNote){
     list[tempIdx].content = content;
     list[tempIdx].date = nowTime;
     list[tempIdx].private = isPrivate;
-    // 更新当前新标签标题
-    if(activeTabIdx >=0) tabs[activeTabIdx].title = title || '新建笔记';
-    renderTabs();
   }else{
     const newNote = {
       id: Date.now(),
@@ -2555,9 +2323,6 @@ if(targetNote){
       _isTempNew: true
     };
     list.push(newNote);
-    // 更新当前新标签标题
-    if(activeTabIdx >=0) tabs[activeTabIdx].title = title || '新建笔记';
-    renderTabs();
   }
 }
 saveLocalCache();
@@ -2616,206 +2381,205 @@ alert("图片复制脚本已复制");
 
 //下载data.js文件
 function downloadDataJs(isTimeStamp){
-  // 先同步当前表单/标签数据进list
-  syncFormToNoteList();
-  const title = titleInput.value.trim();
-  const type = typeInput.value.trim();
-  if(!title){
-    alert("笔记标题不能为空");
-    return;
-  }
-  if(!type){
-    alert("分类不能为空");
-    return;
-  }
-  const nowTime = getNowTimeStr();
-  let content = "";
-  if(currentEditMode === "rich") content = richBox.innerHTML.trim();
-  else content = mdToHtml(mdBox.value);
+const title = titleInput.value.trim();
+const type = typeInput.value.trim();
+let content = "";
+if(currentEditMode === "rich") content = richBox.innerHTML.trim();
+else content = mdToHtml(mdBox.value);
+if(!title){
+alert("笔记标题不能为空");
+return;
+}
+if(!type){
+alert("分类不能为空");
+return;
+}
+const nowTime = getNowTimeStr();
+const newId = Date.now();
+if(targetNote){
+const idx = list.findIndex(item=>item.id === targetNote.id);
+if(idx > -1) delete list[idx]._isTempNew;
+}else{
+list.push({
+id: newId,
+title,
+type,
+content,
+date: nowTime
+});
+}
+//过滤无效笔记
+list = list.filter(item=>{
+const t = (item.title||"").trim();
+return t.length > 0 && item.id && item.content;
+});
 
-  // 已有笔记更新，新建则在syncFormToNoteList已处理草稿逻辑，此处不再重复push
-  if(targetNote){
-    const idx = list.findIndex(item=>item.id === targetNote.id);
-    if(idx > -1) {
-      list[idx].title = title;
-      list[idx].type = type;
-      list[idx].content = content;
-      list[idx].date = nowTime;
-      list[idx].private = document.getElementById("privateCheck").checked;
-      delete list[idx]._isTempNew;
-    }
-  }
-
-  // 统一过滤无效笔记（复用复制按钮逻辑）
-  const validNotes = list.filter(item => {
-    if (!item || !item.id) return false;
-    const titleStr = (item.title || "").trim();    return titleStr.length > 0 && item.content;
-  });
-  list = validNotes;
-
-  saveLocalCache();
-  saveNoteToStorage(list);
-  const jsText = "window.NOTE_DATA = " + JSON.stringify(list, null, 2);
-  const blob = new Blob([jsText], {type:"application/javascript"});
-  const a = document.createElement("a");
-  let fileName = "data.js";
-  if(isTimeStamp){
-    const safeTime = nowTime.replace(/[: ]/g,"-");
-    fileName = `data_${safeTime}.js`;
-  }
-  a.href = URL.createObjectURL(blob);
-  a.download = fileName;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(a.href);
-  alert(`${fileName} 下载完成，可同步仓库`);
+saveLocalCache();
+saveNoteToStorage(list);
+const jsText = getFullJsText();
+const blob = new Blob([jsText], {type:"application/javascript"});
+const a = document.createElement("a");
+let fileName = "data.js";
+if(isTimeStamp){
+const safeTime = nowTime.replace(/[: ]/g,"-");
+fileName = `data_${safeTime}.js`;
+}
+a.href = URL.createObjectURL(blob);
+a.download = fileName;
+document.body.appendChild(a);
+a.click();
+document.body.removeChild(a);
+URL.revokeObjectURL(a.href);
+alert(`${fileName} 下载完成，可同步仓库`);
 }
 saveNormalBtn.onclick = ()=>downloadDataJs(false);
 saveTimeBtn.onclick = ()=>downloadDataJs(true);
-
-//Ctrl+S/Z/Y/F/B 快捷键绑定
+//Ctrl+S 快捷键复制代码
 window.addEventListener("keydown", function(e){
-  if(e.ctrlKey && e.key === "s"){
-    e.preventDefault();
-    copyAllJsonBtn.click();
-  }
-  if(e.ctrlKey && e.key.toLowerCase() === "z"){
-    e.preventDefault();
-    globalUndo();
-  }
-  if(e.ctrlKey && e.key.toLowerCase() === "y"){
-    e.preventDefault();
-    globalRedo();
-  }
-  if(e.ctrlKey && e.key.toLowerCase() === "f"){
-    e.preventDefault();
-    findReplaceBtn.click();
-  }
-  if(e.ctrlKey && e.key.toLowerCase() === "b"){
-    e.preventDefault();
-    formatBold();
-  }
+if(e.ctrlKey && e.key === "s"){
+e.preventDefault();
+copyAllJsonBtn.click();
+}
+if(e.ctrlKey && e.key.toLowerCase() === "z"){
+e.preventDefault();
+globalUndo();
+}
+if(e.ctrlKey && e.key.toLowerCase() === "y"){
+e.preventDefault();
+globalRedo();
+}
+if(e.ctrlKey && e.key.toLowerCase() === "f"){
+e.preventDefault();
+findReplaceBtn.click();
+}
+if(e.ctrlKey && e.key.toLowerCase() === "b"){
+e.preventDefault();
+formatBold();
+}
 });
-
 //导出完整备份json
 exportBackupBtn.onclick = function(){
-  const jsonRaw = JSON.stringify(list, null, 2);
-  const blob = new Blob([jsonRaw], {type:"application/json"});
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "notes完整备份.json";
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(a.href);
-  alert("大容量备份JSON已下载完成，无5MB限制");
+const jsonRaw = JSON.stringify(list, null, 2);
+const blob = new Blob([jsonRaw], {type:"application/json"});
+const a = document.createElement("a");
+a.href = URL.createObjectURL(blob);
+a.download = "notes完整备份.json";
+document.body.appendChild(a);
+a.click();
+document.body.removeChild(a);
+URL.revokeObjectURL(a.href);
+alert("大容量备份JSON已下载，无5MB限制");
 };
-
 //导入备份文件
 importBackupBtn.onclick = ()=> backupFileInput.click();
 backupFileInput.onchange = function(e){
-  const file = e.target.files[0];
-  if(!file) return;
-  const maxSize = 20 * 1024 * 1024;
-  if(file.size > maxSize){
-    alert("备份文件不能超过20MB，请拆分后重试");
-    return;
-  }
-  if(!confirm("导入将覆盖当前所有笔记数据，确定继续？")) return;
-  const reader = new FileReader();
-  reader.onload = function(res){
-    try{
-      let raw = res.target.result;
-      if(raw.startsWith("window.NOTE_DATA = ")) raw = raw.replace("window.NOTE_DATA = ","");
-      const fullArr = JSON.parse(raw);
-      if(!Array.isArray(fullArr)) throw new Error("格式非笔记数组");
-      list = fullArr;
-      saveLocalCache();
-      saveNoteToStorage(list);
-      window.NOTE_DATA = list;
-      alert(`导入成功，共加载${list.length}条笔记，切换页面生效`);
-      loadLocalCache();
-      // 重置标签并重建
-      tabs = [];
-      activeTabIdx = -1;
-      renderTabs();
-      if(editId) openNoteTab(Number(editId));
-      else addNewTab();
-    }catch(err){
-      alert("解析失败，请使用notes.json或data.js备份文件");
-      console.error("导入解析错误", err);
-    }
-  };
-  reader.readAsText(file);
+const file = e.target.files[0];
+if(!file) return;
+const maxSize = 20 * 1024 * 1024;
+if(file.size > maxSize){
+alert("备份文件不能超过20MB，请拆分后导入");
+return;
+}
+if(!confirm("导入会覆盖当前所有笔记，确定继续？")) return;
+const reader = new FileReader();
+reader.onload = function(res){
+try{
+let raw = res.target.result;
+if(raw.startsWith("window.NOTE_DATA = ")) raw = raw.replace("window.NOTE_DATA = ","");
+const fullNoteArr = JSON.parse(raw);
+if(!Array.isArray(fullNoteArr)) throw "文件格式错误";
+list = fullNoteArr;
+saveLocalCache(); //修复：导入后同步缓存
+saveNoteToStorage(list);
+window.NOTE_DATA = list;
+alert(`导入成功，共${list.length}条笔记，切换页面即可生效`);
+loadLocalCache();
+if(editId) initLoadNote();
+}catch(err){
+alert("文件解析失败，请选择notes.json或data.js备份");
+console.error(err);
+}
 };
-
-
+reader.readAsText(file);
+};
+//字号、文字颜色、文字底色监听
+fontSizeSelect.addEventListener("change", function(){
+document.execCommand("fontSize", false, this.value);
+richBox.focus();
+checkFormatActive();
+calcWordCount();
+});
 fontColorInput.addEventListener("input", function(){
-  document.execCommand("foreColor", false, this.value);
-  richBox.focus();
-  checkFormatActive();
-  calcWordCount();
+document.execCommand("foreColor", false, this.value);
+richBox.focus();
+checkFormatActive();
+calcWordCount();
 });
 bgColorInput.addEventListener("input", function(){
   richBox.focus();
   const sel = window.getSelection();
+  // 无选中文字直接退出
   if (!sel.rangeCount || sel.getRangeAt(0).collapsed) return;
   const range = sel.getRangeAt(0);
   const span = document.createElement("span");
   span.style.backgroundColor = this.value;
+  // 给选中文字包裹底色span
   range.surroundContents(span);
   checkFormatActive();
   calcWordCount();
 });
 
-// ========== 查找替换功能 ==========
+// ========== 查找替换功能（纯文本/富文本双模式兼容） ==========
+const findReplaceBtn = document.getElementById('findReplaceBtn');
+const findReplaceMask = document.getElementById('findReplaceMask');
+const findReplaceClose = document.getElementById('findReplaceClose');
+const findInput = document.getElementById('findInput');
+const replaceInput = document.getElementById('replaceInput');
+const findNextBtn = document.getElementById('findNextBtn');
+const replaceAllBtn = document.getElementById('replaceAllBtn');
+const replaceSingleBtn = document.getElementById('replaceSingleBtn');
+let searchIndex = 0;
+let matchList = [];
 matchCaseCheck.addEventListener("change", ()=>{
-  matchCase = matchCaseCheck.checked;
+matchCase = matchCaseCheck.checked;
 });
-// 弹窗重置居中
-function resetBoxPos() {
-  const box = document.querySelector('.find-replace-box');
-  box.style.left = '50%';
-  box.style.top = '50%';
-  box.style.transform = 'translate(-50%, -50%)';
-}
+// 打开弹窗
 findReplaceBtn.addEventListener('click', ()=>{
-  document.body.classList.add("lock-scroll");
-  findReplaceMask.classList.add('show');
-  const selText = window.getSelection().toString().trim();
-  if(selText) findInput.value = selText;
-  findInput.focus();
-  searchIndex = 0;
-  matchList = [];
-  resetBoxPos();
+document.body.classList.add("lock-scroll");
+findReplaceMask.classList.add('show');
+const selText = window.getSelection().toString().trim();
+if(selText) findInput.value = selText;
+findInput.focus();
+searchIndex = 0;
+matchList = [];
+resetBoxPos();
 });
+// 关闭弹窗按钮
 findReplaceClose.addEventListener('click', ()=>{
-  document.body.classList.remove("lock-scroll");
-  findReplaceMask.classList.remove('show');
+document.body.classList.remove("lock-scroll");
+findReplaceMask.classList.remove('show');
 });
 findReplaceMask.addEventListener('click', (e)=>{
-  if(e.target === findReplaceMask){
-    document.body.classList.remove("lock-scroll");
-    findReplaceMask.classList.remove('show');
-  }
+if(e.target === findReplaceMask){
+document.body.classList.remove("lock-scroll");
+findReplaceMask.classList.remove('show');
+}
 });
-
-// 递归遍历富文本找到起始位置文本节点
+// 修复：完整递归遍历富文本，嵌套标签文字正常选中
 function selectRichText(start, len){
   const sel = window.getSelection();
   const range = document.createRange();
   let offset = 0;
-  let targetNode = null;
+  let targetTextNode = null;
   let nodeOffset = 0;
 
   function walk(el) {
     for (const node of el.childNodes) {
-      if (targetNode) return true;
+      if (targetTextNode) return true;
       if (node.nodeType === Node.TEXT_NODE) {
         const textLen = node.textContent.length;
         if (offset + textLen > start) {
-          targetNode = node;
+          targetTextNode = node;
           nodeOffset = start - offset;
           return true;
         }
@@ -2828,170 +2592,200 @@ function selectRichText(start, len){
   }
   walk(richBox);
 
-  if(targetNode){
-    range.setStart(targetNode, nodeOffset);
-    range.setEnd(targetNode, nodeOffset + len);
+  if(targetTextNode){
+    range.setStart(targetTextNode, nodeOffset);
+    range.setEnd(targetTextNode, nodeOffset + len);
     sel.removeAllRanges();
     sel.addRange(range);
     richBox.focus();
   }
 }
-
+// 自动识别当前激活编辑器读取内容
 function getEditorText(){
-  if(mdBox.style.display !== 'none'){
-    return mdBox.value;
-  }else{
-    return richBox.innerText;
-  }
+const txtEditor = document.getElementById('mdEditor');
+const richEditor = document.getElementById('richEditor');
+if(txtEditor.style.display !== 'none'){
+return txtEditor.value;
+}else{
+return richEditor.innerText;
 }
-
+}
+// 写入内容到当前编辑器
+function setEditorText(val){
+const txtEditor = document.getElementById('mdEditor');
+const richEditor = document.getElementById('richEditor');
+if(txtEditor.style.display !== 'none'){
+txtEditor.value = val;
+saveMdRecord();
+renderMdPreview();
+calcWordCount();
+}else{
+// 富文本模式替换文本逻辑简化示例，按需扩展
+richEditor.innerText = val;
+calcWordCount();
+}
+}
+// 查找下一处
 findNextBtn.addEventListener('click', ()=>{
-  const findText = findInput.value.trim();
-  if(!findText){
-    alert("请输入查找内容");
-    return;
-  }
-  const text = getEditorText();
-  const regFlag = matchCase ? "g" : "gi";
-  const reg = new RegExp(findText, regFlag);
-  matchList = [];
-  let m;
-  while((m = reg.exec(text)) !== null){
-    matchList.push(m.index);
-  }
-  if(matchList.length === 0){
-    alert("未找到匹配内容");
-    return;
-  }
-  if(searchIndex >= matchList.length) searchIndex = 0;
-  const pos = matchList[searchIndex];
-  if(currentEditMode === "rich"){
-    selectRichText(pos, findText.length);
-  }else{
-    mdBox.focus();
-    mdBox.setSelectionRange(pos, pos + findText.length);
-  }
-  searchIndex++;
+const findText = findInput.value.trim();
+if(!findText){
+alert("请输入查找内容");
+return;
+}
+const text = getEditorText();
+const regFlag = matchCase ? "g" : "gi";
+const reg = new RegExp(findText, regFlag);
+matchList = [];
+let match;
+while((match = reg.exec(text)) !== null){
+matchList.push(match.index);
+}
+if(matchList.length === 0){
+alert("未找到匹配内容");
+return;
+}
+if(searchIndex >= matchList.length) searchIndex = 0;
+alert(`匹配到第${searchIndex+1}/${matchList.length}处`);
+if(currentEditMode === "rich"){
+selectRichText(matchList[searchIndex], findText.length);
+}
+searchIndex++;
 });
-
-replaceSingleBtn.addEventListener('click', ()=>{
-  const findText = findInput.value.trim();
-  const repText = replaceInput.value;
-  if (!findText) {
-    alert("请输入查找内容");
-    return;
-  }
-  if (matchList.length === 0) {
-    alert("请先点击下一处定位匹配内容");
-    return;
-  }
-  const curIdx = (searchIndex - 1) >= 0 ? (searchIndex -1) : 0;
-  if(currentEditMode === "rich"){
-    document.execCommand("insertText",false,repText);
-  }else{
-    const curPos = matchList[curIdx];
-    let txt = getEditorText();
-    const left = txt.slice(0, curPos);
-    const right = txt.slice(curPos + findText.length);
-    mdBox.value = left + repText + right;
-    saveMdRecord();
-    renderMdPreview();
-    calcWordCount();
-  }
-  // 重生成匹配列表
-  const freshTxt = getEditorText();
-  const regFlag = matchCase ? "g" : "gi";
-  const reg = new RegExp(findText, regFlag);
-  matchList = [];
-  let m;
-  while((m = reg.exec(freshTxt)) !== null) matchList.push(m.index);
-  searchIndex = 0;
-  alert("已完成单次替换");
-  findNextBtn.click();
-});
-
+// 全部替换
 replaceAllBtn.addEventListener('click', ()=>{
-  const findText = findInput.value.trim();
-  const repText = replaceInput.value;
-  if(!findText){
-    alert("请输入查找内容");
-    return;
-  }
-  if(currentEditMode === "rich"){
-    alert("富文本模式不支持一键全部替换，请逐处替换或切到Markdown模式");
-    return;
-  }
-  const oldTxt = mdBox.value;
-  const regFlag = matchCase ? "g" : "gi";
-  const newTxt = oldTxt.replace(new RegExp(findText, regFlag), repText);
-  if(oldTxt === newTxt){
-    alert("未找到需替换内容");
-    return;
-  }
-  mdBox.value = newTxt;
-  saveMdRecord();
-  renderMdPreview();
-  calcWordCount();
-  const cnt = (oldTxt.match(new RegExp(findText, regFlag)) || []).length;
-  alert(`完成全部替换，共${cnt}处`);
+const findText = findInput.value.trim();
+const repText = replaceInput.value;
+if(!findText){
+alert("请输入查找内容");
+return;
+}
+if(currentEditMode === "rich"){
+alert("富文本模式不支持一键全部替换，可使用单次替换逐处修改");
+return;
+}
+const oldText = getEditorText();
+const regFlag = matchCase ? "g" : "gi";
+const reg = new RegExp(findText, regFlag);
+const newText = oldText.replace(reg, repText);
+if(oldText === newText){
+alert("未找到可替换内容");
+return;
+}
+mdBox.value = newText;
+saveMdRecord();
+renderMdPreview();
+calcWordCount();
+const count = (oldText.match(new RegExp(findText,regFlag)) || []).length;
+alert(`替换完成，共替换${count}处`);
 });
-
-// 弹窗拖拽逻辑
-const findMask = findReplaceMask;
-const findBox = document.querySelector('.find-replace-box');
+// 单次替换当前匹配
+replaceSingleBtn.addEventListener('click', () => {
+const findText = findInput.value.trim();
+const repText = replaceInput.value;
+if (!findText) {
+alert("请输入查找内容");
+return;
+}
+if (matchList.length === 0) {
+alert("请先点击查找下一个定位匹配内容");
+return;
+}
+if(currentEditMode === "rich"){
+document.execCommand("insertText",false,repText);
+calcWordCount();
+}else{
+const curPos = matchList[searchIndex - 1 >= 0 ? searchIndex - 1 : 0];
+let oldText = getEditorText();
+const leftPart = oldText.slice(0, curPos);
+const rightPart = oldText.slice(curPos + findText.length);
+const newText = leftPart + repText + rightPart;
+mdBox.value = newText;
+saveMdRecord();
+renderMdPreview();
+calcWordCount();
+}
+alert("已替换当前这一处");
+findNextBtn.click();
+const freshText = getEditorText();
+const regFlag = matchCase ? "g" : "gi";
+const reg = new RegExp(findText, regFlag);
+matchList = [];
+let match;
+while ((match = reg.exec(freshText)) !== null) {
+matchList.push(match.index);
+}
+searchIndex = 0;
+});
+// 弹窗拖拽 修复偏移、卡顿、触屏穿透 + 边界限制
+const mask = findReplaceMask;
+const box = document.querySelector('.find-replace-box');
 let drag = false;
-let startX, startY, boxStartX, boxStartY;
-
-findBox.addEventListener('mousedown', (e) => {
-  const tag = e.target.tagName;
-  if (tag === 'INPUT' || tag === 'BUTTON') return;
-  e.preventDefault();
-  drag = true;
-  startX = e.clientX;
-  startY = e.clientY;
-  const rect = findBox.getBoundingClientRect();
-  boxStartX = rect.left;
-  boxStartY = rect.top;
-  findBox.style.transform = "none";
+let startX, startY;
+let boxStartX, boxStartY;
+// 重置居中
+function resetBoxPos() {
+box.style.left = '50%';
+box.style.top = '50%';
+box.style.transform = 'translate(-50%, -50%)';
+}
+resetBoxPos();
+// 鼠标按下
+box.addEventListener('mousedown', (e) => {
+const tag = e.target.tagName;
+if (tag === 'INPUT' || tag === 'BUTTON') return;
+e.preventDefault();
+drag = true;
+startX = e.clientX;
+startY = e.clientY;
+const rect = box.getBoundingClientRect();
+boxStartX = rect.left;
+boxStartY = rect.top;
+box.style.transform = "none";
 });
 document.addEventListener("mousemove", (e) => {
-  if (!drag) return;
-  let left = boxStartX + (e.clientX - startX);
-  let top = boxStartY + (e.clientY - startY);
-  left = Math.max(0, Math.min(left, window.innerWidth - findBox.offsetWidth));
-  top = Math.max(0, Math.min(top, window.innerHeight - findBox.offsetHeight));
-  findBox.style.left = `${left}px`;
-  findBox.style.top = `${top}px`;
+if (!drag) return;
+const dx = e.clientX - startX;
+const dy = e.clientY - startY;
+let left = boxStartX + dx;
+let top = boxStartY + dy;
+// 边界约束，防止拖出屏幕
+left = Math.max(0, Math.min(left, window.innerWidth - box.offsetWidth));
+top = Math.max(0, Math.min(top, window.innerHeight - box.offsetHeight));
+box.style.left = `${left}px`;
+box.style.top = `${top}px`;
 });
 document.addEventListener("mouseup", () => drag = false);
-
-//触屏拖拽
-findBox.addEventListener("touchstart", (e) => {
-  const target = e.target.tagName;
-  if (target === "INPUT" || target === "BUTTON") return;
-  e.preventDefault();
-  drag = true;
-  const touch = e.touches[0];
-  startX = touch.clientX;
-  startY = touch.clientY;
-  const rect = findBox.getBoundingClientRect();
-  boxStartX = rect.left;
-  boxStartY = rect.top;
-  findBox.style.transform = "none";
+//触屏拖拽兼容
+box.addEventListener("touchstart", (e) => {
+const target = e.target.tagName;
+if (target === "INPUT" || target === "BUTTON") return;
+e.preventDefault();
+drag = true;
+const touch = e.touches[0];
+startX = touch.clientX;
+startY = touch.clientY;
+const rect = box.getBoundingClientRect();
+boxStartX = rect.left;
+boxStartY = rect.top;
+box.style.transform = "none";
 });
 document.addEventListener("touchmove", (e) => {
-  if (!drag) return;
-  const touch = e.touches[0];
-  let left = boxStartX + (touch.clientX - startX);
-  let top = boxStartY + (touch.clientY - startY);
-  left = Math.max(0, Math.min(left, window.innerWidth - findBox.offsetWidth));
-  top = Math.max(0, Math.min(top, window.innerHeight - findBox.offsetHeight));
-  findBox.style.left = `${left}px`;
-  findBox.style.top = `${top}px`;
+if (!drag) return;
+const touch = e.touches[0];
+const dx = touch.clientX - startX;
+const dy = touch.clientY - startY;
+let left = boxStartX + dx;
+let top = boxStartY + dy;
+left = Math.max(0, Math.min(left, window.innerWidth - box.offsetWidth));
+top = Math.max(0, Math.min(top, window.innerHeight - box.offsetHeight));
+box.style.left = `${left}px`;
+box.style.top = `${top}px`;
 });
 document.addEventListener("touchend", () => drag = false);
 
-//大图预览关闭
+// 大图预览点击关闭
+const previewMask = document.getElementById("imgPreviewMask");
+const previewImg = document.getElementById("previewImg");
 previewMask.addEventListener("click", () => {
   previewMask.classList.remove("show");
 });
@@ -3000,74 +2794,79 @@ function openImgPreview(src) {
   previewMask.classList.add("show");
 }
 
-// 切换编辑底色
+// 工具函数：获取当前时间字符串
+function getNowTimeStr() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  const h = String(d.getHours()).padStart(2, "0");
+  const mi = String(d.getMinutes()).padStart(2, "0");
+  const s = String(d.getSeconds()).padStart(2, "0");
+  return `${y}-${m}-${day} ${h}:${mi}:${s}`;
+}
+// 切换预设编辑底色，清除自定义行内背景
 function changeEditorBg(type){
+  // 清空全部主题class
   document.body.classList.remove(
     "bg-cream","bg-gray","bg-paper","bg-softblue",
     "bg-sepia","bg-dark","bg-midnight","bg-custom"
   );
+  // 清空行内自定义背景，让预设主题CSS正常生效
   richBox.style.backgroundColor = "";
   mdBox.style.backgroundColor = "";
   mdPreviewBox.style.backgroundColor = "";
 
   if(type === "custom"){
     document.body.classList.add("bg-custom");
+    // 显示自定义取色器
     customBgColorInput.style.display = "block";
   }else{
     document.body.classList.add("bg-" + type);
+    // 隐藏取色器
     customBgColorInput.style.display = "none";
   }
   calcWordCount();
 }
 
-//重置为纯白底色
+// 重置编辑区为默认纯白
 function resetDefaultBg(){
   document.body.classList.remove(
     "bg-cream","bg-gray","bg-paper","bg-softblue",
     "bg-sepia","bg-dark","bg-midnight","bg-custom"
   );
+  // 清空所有编辑容器自定义行内底色
   richBox.style.backgroundColor = "";
   mdBox.style.backgroundColor = "";
   mdPreviewBox.style.backgroundColor = "";
+  // 隐藏取色器
   customBgColorInput.style.display = "none";
   calcWordCount();
 }
 
+// 存储读写封装
+function saveNoteToStorage(arr) {
+  localStorage.setItem("notes", JSON.stringify(arr));
+  window.NOTE_DATA = arr;
+}
+function saveLocalCache() {
+  const tempObj = {
+    list: list,
+    targetId: targetNote ? targetNote.id : null,
+    imgUploadList: imgUploadList,
+    serial: globalImgSerial
+  };
+  localStorage.setItem(CACHE_KEY, JSON.stringify(tempObj));
+}
+function getFullJsText() {
+  return "window.NOTE_DATA = " + JSON.stringify(list, null, 2);
+}
+
 // 初始化页面
 window.addEventListener("DOMContentLoaded", () => {
-  customBgColorInput.style.display = "none";
   renderMdPreview();
   calcWordCount();
 });
-// 补充绑定查找替换弹窗元素（前面脚本漏写获取，补上避免报错）
-findReplaceMask = document.getElementById('findReplaceMask');
-findInput = document.getElementById('findInput');
-replaceInput = document.getElementById('replaceInput');
-findNextBtn = document.getElementById('findNextBtn');
-replaceSingleBtn = document.getElementById('replaceSingleBtn');
-replaceAllBtn = document.getElementById('replaceAllBtn');
-findReplaceClose = document.getElementById('findReplaceClose');
-previewMask = document.getElementById('imgPreviewMask');
-previewImg = document.getElementById('previewImg');
-findReplaceBtn = document.getElementById('findReplaceBtn');
-
-
-// 字号选择绑定
-fontSizeSelect.addEventListener("change", function(){
-  richBox.focus();
-  document.execCommand("fontSize", false, this.value);
-  checkFormatActive();
-  calcWordCount();
-});
-
-// 收尾，确保加载完成渲染正常
-window.addEventListener("load", () => {
-  renderMdPreview();
-  calcWordCount();
-});
-
 </script>
 </body>
 </html>
-
-
