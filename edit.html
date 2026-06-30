@@ -105,11 +105,21 @@ body.keyboard-opened .edit-toolbar-wrap{position:fixed;bottom:var(--keyboard-hei
   <input type="text" class="tag-chip-input" id="tagChipInput" placeholder="添加标签（回车确认）">
 </div>
 <div class="tags-hint">回车添加，点击色块换颜色，× 删除</div>
-<div class="private-switch-group">
-  <label class="switch"><input type="checkbox" id="privateCheck"><span class="slider"></span></label>
-  <span class="switch-label private">设为私密</span>
-  <span style="font-size:11px;color:#94a3b8;">（仅管理员可见）</span>
+<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px;">
+  <div class="private-switch-group" style="margin-bottom:0;padding:4px 8px;">
+    <label class="switch"><input type="checkbox" id="privateCheck"><span class="slider"></span></label>
+    <span class="switch-label private">设为私密</span>
+  </div>
+  <div class="switch-wrap" style="margin-bottom:0;">
+    <label class="switch">
+      <input type="checkbox" id="useDownloadCheck">
+      <span class="slider"></span>
+    </label>
+    <span class="switch-label" style="font-size:13px;">下载方式</span>
+  </div>
+  <span style="font-size:11px;color:#94a3b8;">（仅管理员可见 | 关闭则内联data.js）</span>
 </div>
+
 <div class="mode-switch">
   <button id="modeRich" class="active" onclick="switchMode('rich')">富文本</button>
   <button id="modeMd" onclick="switchMode('md')">Markdown</button>
@@ -571,75 +581,95 @@ netImgBtn.onclick = function(){
 
 //========== 生成推送命令 ==========
 document.getElementById('showTemplateBtn').onclick = async function(){
-  // 1. 同步当前编辑内容到 list
   syncFormToNoteList();
   
-  // 2. 生成并下载 data_temp.js 文件
+  const useDownload = document.getElementById('useDownloadCheck').checked;
   const allNotes = list.filter(i => i && i.id);
-  const jsContent = "window.NOTE_DATA = " + JSON.stringify(allNotes, null, 2); // 保留缩进可读性
-  const blob = new Blob([jsContent], {type: 'application/javascript'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'data_temp.js';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-  
-  // 3. 生成推送命令（不包含 data.js 内容，仅文件复制 + git）
   const now = getNowTimeStr();
-  let cmd = `# === 图片复制 & 推送命令（data.js 已单独下载） ===\n`;
-  cmd += `cd ~/storage/shared/notes || exit 1\n`;
-  cmd += `mkdir -p images\n\n`;
-  
-  // 图片复制
+
+  // ===== 基础命令：图片复制 + git 操作（两者共享） =====
+  let cmdBatch = `cd ~/storage/shared/notes || exit 1\n`;
+  cmdBatch += `mkdir -p images\n\n`;
   imgUploadList.forEach((item, idx) => {
     const fileName = item.name.replace(/"/g, '\\"');
-    cmd += `# 图片 ${idx+1}: ${fileName}\n`;
-    cmd += `SRC=$(find ~/storage/shared/DCIM ~/storage/shared/Download ~/storage/shared/Pictures ~/storage/shared/tencent -name "${fileName}" 2>/dev/null | head -1)\n`;
-    cmd += `if [ -n "$SRC" ]; then\n`;
-    cmd += `  cp "$SRC" images/"${fileName}" && echo "✅ 已复制: ${fileName}"\n`;
+    cmdBatch += `# 图片 ${idx+1}: ${fileName}\n`;
+    cmdBatch += `SRC=$(find /storage/emulated/0/DCIM /storage/emulated/0/Download /storage/emulated/0/Pictures /storage/emulated/0/tencent -name "${fileName}" 2>/dev/null | head -1)\n`;
+    cmdBatch += `if [ -n "$SRC" ]; then\n`;
+    cmdBatch += `  cp "$SRC" images/"${fileName}" && echo "✅ 已复制: ${fileName}"\n`;
+    cmdBatch += `else\n`;
+    cmdBatch += `  SRC=$(find /storage/emulated/0 -name "${fileName}" 2>/dev/null | head -1)\n`;
+    cmdBatch += `  if [ -n "$SRC" ]; then\n`;
+    cmdBatch += `    cp "$SRC" images/"${fileName}" && echo "✅ 已复制(全盘): ${fileName}"\n`;
+    cmdBatch += `  else\n`;
+    cmdBatch += `    echo "❌ 未找到文件: ${fileName}"\n`;
+    cmdBatch += `  fi\n`;
+    cmdBatch += `fi\n\n`;
+  });
+
+  // ===== Git 操作（两者共享） =====
+  let cmdGit = `git add images/ data.js\n`;
+  cmdGit += `if ! git diff --cached --quiet; then\n`;
+  cmdGit += `  git commit -m "update notes ${now}"\n`;
+  cmdGit += `  git push origin main && echo "✅ 推送成功"\n`;
+  cmdGit += `else\n`;
+  cmdGit += `  echo "无变化，跳过提交"\n`;
+  cmdGit += `fi\n`;
+
+  if (useDownload) {
+    // ===== 下载方式 =====
+    // 1. 生成并下载 data_temp.js
+    const jsContent = "window.NOTE_DATA = " + JSON.stringify(allNotes, null, 2);
+    const blob = new Blob([jsContent], {type: 'application/javascript'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'data_temp.js';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    // 2. 生成短命令（不含 data.js 内容）
+    let cmd = `# === 图片复制 + 下载 data.js 推送命令 ===\n`;
+    cmd += cmdBatch;
+    cmd += `# 复制 data.js（请确保 data_temp.js 已下载到 /storage/emulated/0/Download/）\n`;
+    cmd += `if [ -f /storage/emulated/0/Download/data_temp.js ]; then\n`;
+    cmd += `  cp /storage/emulated/0/Download/data_temp.js data.js && echo "✅ data.js 已更新"\n`;
+    cmd += `  rm -f /storage/emulated/0/Download/data_temp.js\n`;
     cmd += `else\n`;
-    cmd += `  SRC=$(find ~/storage/shared -name "${fileName}" 2>/dev/null | head -1)\n`;
-    cmd += `  if [ -n "$SRC" ]; then\n`;
-    cmd += `    cp "$SRC" images/"${fileName}" && echo "✅ 已复制(全盘): ${fileName}"\n`;
-    cmd += `  else\n`;
-    cmd += `    echo "❌ 未找到文件: ${fileName}"\n`;
-    cmd += `  fi\n`;
+    cmd += `  echo "❌ 未找到 data_temp.js，请手动复制"\n`;
     cmd += `fi\n\n`;
-  });
-  
-  // data.js 文件操作（从下载目录复制）
-  cmd += `# 复制 data.js（请确保已下载 data_temp.js 到 ~/storage/shared/Download/）\n`;
-  cmd += `if [ -f ~/storage/shared/Download/data_temp.js ]; then\n`;
-  cmd += `  cp ~/storage/shared/Download/data_temp.js data.js && echo "✅ data.js 已更新"\n`;
-  cmd += `  rm -f ~/storage/shared/Download/data_temp.js\n`;
-  cmd += `else\n`;
-  cmd += `  echo "❌ 未找到 data_temp.js，请手动将 data_temp.js 复制到 notes 目录并重命名"\n`;
-  cmd += `  echo "   cp /路径/data_temp.js data.js"\n`;
-  cmd += `fi\n\n`;
-  
-  // git 推送
-  cmd += `git add images/ data.js\n`;
-  cmd += `if ! git diff --cached --quiet; then\n`;
-  cmd += `  git commit -m "update notes ${now}"\n`;
-  cmd += `  git push origin main && echo "✅ 推送成功"\n`;
-  cmd += `else\n`;
-  cmd += `  echo "⚠️ 无变化，跳过提交"\n`;
-  cmd += `fi\n`;
-  
-  // 4. 复制命令到剪贴板
-  await navigator.clipboard.writeText(cmd).catch(() => {
-    const t = document.createElement('textarea');
-    t.value = cmd;
-    document.body.appendChild(t);
-    t.select();
-    document.execCommand('copy');
-    document.body.removeChild(t);
-  });
-  
-  alert(`📄 data_temp.js 已开始下载\n📋 推送命令已复制到剪贴板\n\n请先等待下载完成，然后在 Termux 中粘贴执行命令。`);
+    cmd += cmdGit;
+
+    await navigator.clipboard.writeText(cmd).catch(() => {
+      const t = document.createElement('textarea');
+      t.value = cmd;
+      document.body.appendChild(t);
+      t.select();
+      document.execCommand('copy');
+      document.body.removeChild(t);
+    });
+    alert(`📄 data_temp.js 已开始下载\n📋 短命令已复制，请在下载完成后执行。`);
+
+  } else {
+    // ===== 内联方式（紧凑 JSON） =====
+    const jsContent = "window.NOTE_DATA = " + JSON.stringify(allNotes);
+    let cmd = `# === 图片复制 + data.js 内联推送命令 ===\n`;
+    cmd += cmdBatch;
+    cmd += `rm -f data.js\n`;
+    cmd += `cat > data.js << 'EOF'\n${jsContent}\nEOF\n`;
+    cmd += cmdGit;
+
+    await navigator.clipboard.writeText(cmd).catch(() => {
+      const t = document.createElement('textarea');
+      t.value = cmd;
+      document.body.appendChild(t);
+      t.select();
+      document.execCommand('copy');
+      document.body.removeChild(t);
+    });
+    alert(`📋 完整推送命令已复制（data.js 已内联，可直接粘贴执行）。`);
+  }
 };
 
 // 批量图床链接
