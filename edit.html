@@ -3,79 +3,490 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
-<title>笔记编辑器（最终修复版）</title>
+<title>笔记编辑器（完整最终版）</title>
 <script src="./data.js?v=1"></script>
 <style>
-*{margin:0;padding:0;box-sizing:border-box;font-family:system-ui,-apple-system,sans-serif;}
-body{background:linear-gradient(135deg,#f5f7fe,#eef2ff);padding:10px 10px 60px;overflow-x:hidden;}
-body.keyboard-opened{padding-bottom:60px!important;}
-.lock-scroll{overflow:hidden!important;touch-action:none!important;}
-.tool-box,.save-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0 10px;}
-.tool-bar{display:flex;gap:8px;margin-bottom:10px;}
-.tool-btn{background:#fff;border:1px solid #e8ecf4;border-radius:8px;padding:8px 10px;font-size:13px;color:#333;box-shadow:0 1px 3px rgba(99,102,241,.06);cursor:pointer;transition:all .15s;}
-.tool-btn:hover{background:#f0f3ff;border-color:#6366F1;}
-.tool-btn:active{background:#e0e7ff;}
-.save-btn{border:0;border-radius:8px;padding:10px 0;width:100%;font-size:14px;font-weight:600;color:#fff;background:linear-gradient(135deg,#6366F1,#4f46e5);box-shadow:0 3px 12px rgba(99,102,241,.2);cursor:pointer;transition:transform .15s;}
-.save-btn:active{transform:scale(.97);}
-.title-input{width:100%;border:2px solid #e2e8f0;border-radius:10px;padding:10px 14px;font-size:15px;background:#fff;outline:none;margin-bottom:8px;transition:border-color .2s;}
-.title-input:focus{border-color:#6366F1;}
-.tags-input-wrap{width:100%;border:2px solid #e2e8f0;border-radius:10px;padding:6px 8px;margin-bottom:8px;background:#fff;display:flex;flex-wrap:wrap;align-items:center;gap:4px;min-height:38px;cursor:text;transition:border-color .2s;}
-.tags-input-wrap:focus-within{border-color:#6366F1;}
-.tag-chip{display:inline-flex;align-items:center;gap:3px;border-radius:99px;padding:2px 4px 2px 8px;font-size:12px;line-height:1.4;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.tag-chip-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
-.tag-chip-remove{display:inline-flex;width:14px;height:14px;border-radius:50%;align-items:center;justify-content:center;font-size:11px;cursor:pointer;flex-shrink:0;}
-.tag-chip-remove::before{content:"×";font-weight:bold;}
-.tag-chip-input{flex:1;min-width:65px;border:none;outline:none;background:transparent;font-size:13px;padding:3px 2px;}
-.tags-hint{font-size:10px;color:#9ca3af;margin:-6px 0 6px 4px;}
-.edit-toolbar-wrap{position:fixed;bottom:0;left:0;width:100%;background:#fff;border-top:1px solid #e0e3f0;z-index:999;padding-bottom:env(safe-area-inset-bottom);border-radius:12px 12px 0 0;box-shadow:0 -4px 15px rgba(0,0,0,.05);}
-body.keyboard-opened .edit-toolbar-wrap{position:absolute;bottom:0;}
-.toolbar-main{display:flex;flex-wrap:wrap;gap:2px;padding:4px 4px;align-items:center;}
-.icon-btn{border:1px solid #ddd;background:#fff;border-radius:4px;width:26px;height:26px;font-size:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;}
-.icon-btn:hover{background:#eef2ff;border-color:#6366F1;}
-.icon-btn:active{background:#e0e7ff;}
-.icon-btn.active-format{background:#6366F1!important;color:#fff!important;border-color:#4f46e5!important;}
-.color-input{width:24px;height:24px;border:none;cursor:pointer;border-radius:3px;padding:0;}
-.editor-wrap{margin-bottom:10px;}
-.rich-editor{width:100%;min-height:200px;border:2px solid #e2e8f0;border-radius:10px;padding:12px;font-size:15px;outline:none;background:#fff;line-height:1.7;position:relative;}
-.rich-editor:focus{border-color:#6366F1;}
-.rich-editor img{max-width:100%;height:auto;border-radius:6px;margin:6px 0;display:block;cursor:pointer;}
-.rich-editor table{width:100%;border-collapse:collapse;margin:6px 0;}
-.rich-editor th,.rich-editor td{border:1px solid #999;padding:4px 6px;min-width:40px;}
-.md-editor{width:100%;min-height:180px;border:2px solid #e2e8f0;border-radius:10px;padding:12px;font-size:14px;outline:none;background:#f8fafc;line-height:1.6;font-family:monospace;resize:vertical;}
-.md-editor:focus{border-color:#6366F1;}
-.md-preview{width:100%;min-height:180px;border:2px solid #e2e8f0;border-radius:10px;padding:12px;background:#fff;margin-top:6px;line-height:1.6;}
-.mode-switch{display:flex;gap:8px;margin-bottom:6px;}
-.mode-switch button{flex:1;padding:6px 0;border-radius:8px;border:2px solid #6366F1;background:#fff;color:#6366F1;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;}
-.mode-switch button.active{background:#6366F1;color:#fff;}
-#imgFileInput{opacity:0;position:absolute;width:0;height:0;}
-.warn{color:#e53e3e;font-size:11px;margin-bottom:6px;background:#fff2f4;padding:4px 8px;border-radius:6px;}
-.tip-green{color:#16a34a;font-size:11px;margin-bottom:6px;background:#f0fdf4;padding:4px 8px;border-radius:6px;}
-.login-modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:9999;}
-.login-box{background:#fff;padding:18px;border-radius:10px;width:85%;max-width:280px;}
-.login-box input{width:100%;padding:8px;margin:8px 0;border:1px solid #ddd;border-radius:6px;}
-.login-box button{width:100%;padding:8px;background:#6366F1;color:#fff;border:none;border-radius:6px;cursor:pointer;}
-.find-replace-mask{position:fixed;inset:0;background:rgba(0,0,0,.25);display:none;align-items:center;justify-content:center;z-index:9999;}
-.find-replace-mask.show{display:flex;}
-.find-replace-box{background:rgba(255,255,255,.95);width:min(80%,300px);border-radius:12px;padding:14px;backdrop-filter:blur(8px);box-shadow:0 8px 25px rgba(0,0,0,.12);}
-.find-replace-box input{width:100%;padding:6px 8px;border:1px solid #ddd;border-radius:6px;font-size:12px;margin-bottom:8px;}
-.switch-wrap{display:flex;align-items:center;gap:6px;margin-bottom:8px;}
-.switch{position:relative;width:36px;height:20px;flex-shrink:0;cursor:pointer;}
-.switch input{opacity:0;width:0;height:0;position:absolute;}
-.slider{position:absolute;cursor:pointer;inset:0;background:#ccc;border-radius:20px;transition:.3s;}
-.slider:before{content:"";position:absolute;height:14px;width:14px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s;}
-.switch input:checked+.slider{background:#6366F1;}
-.switch input:checked+.slider:before{transform:translateX(16px);}
-.private-switch-group{display:flex;align-items:center;gap:8px;margin-bottom:8px;padding:4px 8px;background:#f1f5f9;border-radius:8px;}
-.private-switch-group .switch-label{font-size:13px;color:#475569;font-weight:500;}
-.private-switch-group .switch-label.private{color:#dc2626;font-weight:600;}
-.img-preview-mask{position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:999999;display:none;align-items:center;justify-content:center;}
-.img-preview-mask.show{display:flex;}
-.img-preview-img{max-width:95vw;max-height:95vh;object-fit:contain;}
-.cursor-dragger{position:fixed;bottom:80px;left:10px;right:10px;height:20px;background:rgba(99,102,241,0.15);border-radius:10px;display:none;z-index:10000;touch-action:none;}
-.cursor-dragger.show{display:flex;align-items:center;justify-content:center;}
-.cursor-dragger .thumb{width:24px;height:24px;background:#6366F1;border-radius:50%;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.2);}
-#imgPanelBody{display:block!important;}
-#imgArrow{transform:rotate(180deg);}
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+body {
+  background: linear-gradient(135deg, #f5f7fe, #eef2ff);
+  padding: 10px 10px 60px;
+  overflow-x: hidden;
+}
+body.keyboard-opened {
+  padding-bottom: 60px !important;
+}
+.lock-scroll {
+  overflow: hidden !important;
+  touch-action: none !important;
+}
+.tool-box,
+.save-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin: 8px 0 10px;
+}
+.tool-bar {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.tool-btn {
+  background: #fff;
+  border: 1px solid #e8ecf4;
+  border-radius: 8px;
+  padding: 8px 10px;
+  font-size: 13px;
+  color: #333;
+  box-shadow: 0 1px 3px rgba(99, 102, 241, 0.06);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.tool-btn:hover {
+  background: #f0f3ff;
+  border-color: #6366f1;
+}
+.tool-btn:active {
+  background: #e0e7ff;
+}
+.save-btn {
+  border: 0;
+  border-radius: 8px;
+  padding: 10px 0;
+  width: 100%;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  background: linear-gradient(135deg, #6366f1, #4f46e5);
+  box-shadow: 0 3px 12px rgba(99, 102, 241, 0.2);
+  cursor: pointer;
+  transition: transform 0.15s;
+  display: none;
+}
+.save-btn:active {
+  transform: scale(0.97);
+}
+.title-input {
+  width: 100%;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 15px;
+  background: #fff;
+  outline: none;
+  margin-bottom: 8px;
+  transition: border-color 0.2s;
+}
+.title-input:focus {
+  border-color: #6366f1;
+}
+.tags-input-wrap {
+  width: 100%;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 6px 8px;
+  margin-bottom: 8px;
+  background: #fff;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  min-height: 38px;
+  cursor: text;
+  transition: border-color 0.2s;
+}
+.tags-input-wrap:focus-within {
+  border-color: #6366f1;
+}
+.tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  border-radius: 99px;
+  padding: 2px 4px 2px 8px;
+  font-size: 12px;
+  line-height: 1.4;
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tag-chip-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.tag-chip-remove {
+  display: inline-flex;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.tag-chip-remove::before {
+  content: "×";
+  font-weight: bold;
+}
+.tag-chip-input {
+  flex: 1;
+  min-width: 65px;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 13px;
+  padding: 3px 2px;
+}
+.tags-hint {
+  font-size: 10px;
+  color: #9ca3af;
+  margin: -6px 0 6px 4px;
+}
+.edit-toolbar-wrap {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  background: #fff;
+  border-top: 1px solid #e0e3f0;
+  z-index: 999;
+  padding-bottom: env(safe-area-inset-bottom);
+  border-radius: 12px 12px 0 0;
+  box-shadow: 0 -4px 15px rgba(0, 0, 0, 0.05);
+  transition: bottom 0.2s;
+}
+body.keyboard-opened .edit-toolbar-wrap {
+  position: fixed;
+  bottom: var(--keyboard-height, 0);
+}
+.toolbar-main {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 4px 4px;
+  align-items: center;
+}
+.icon-btn {
+  border: 1px solid #ddd;
+  background: #fff;
+  border-radius: 4px;
+  width: 26px;
+  height: 26px;
+  font-size: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.icon-btn:hover {
+  background: #eef2ff;
+  border-color: #6366f1;
+}
+.icon-btn:active {
+  background: #e0e7ff;
+}
+.icon-btn.active-format {
+  background: #6366f1 !important;
+  color: #fff !important;
+  border-color: #4f46e5 !important;
+}
+.color-input {
+  width: 24px;
+  height: 24px;
+  border: none;
+  cursor: pointer;
+  border-radius: 3px;
+  padding: 0;
+}
+.editor-wrap {
+  margin-bottom: 10px;
+}
+.rich-editor {
+  width: 100%;
+  min-height: 200px;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 12px;
+  font-size: 15px;
+  outline: none;
+  background: #fff;
+  line-height: 1.7;
+  position: relative;
+}
+.rich-editor:focus {
+  border-color: #6366f1;
+}
+.rich-editor img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 6px;
+  margin: 6px 0;
+  display: block;
+  cursor: pointer;
+}
+.rich-editor table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 6px 0;
+}
+.rich-editor th,
+.rich-editor td {
+  border: 1px solid #999;
+  padding: 4px 6px;
+  min-width: 40px;
+}
+.md-editor {
+  width: 100%;
+  min-height: 180px;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 12px;
+  font-size: 14px;
+  outline: none;
+  background: #f8fafc;
+  line-height: 1.6;
+  font-family: monospace;
+  resize: vertical;
+}
+.md-editor:focus {
+  border-color: #6366f1;
+}
+.md-preview {
+  width: 100%;
+  min-height: 180px;
+  border: 2px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 12px;
+  background: #fff;
+  margin-top: 6px;
+  line-height: 1.6;
+}
+.mode-switch {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.mode-switch button {
+  flex: 1;
+  padding: 6px 0;
+  border-radius: 8px;
+  border: 2px solid #6366f1;
+  background: #fff;
+  color: #6366f1;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.mode-switch button.active {
+  background: #6366f1;
+  color: #fff;
+}
+#imgFileInput {
+  opacity: 0;
+  position: absolute;
+  width: 0;
+  height: 0;
+}
+.warn {
+  color: #e53e3e;
+  font-size: 11px;
+  margin-bottom: 6px;
+  background: #fff2f4;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+.tip-green {
+  color: #16a34a;
+  font-size: 11px;
+  margin-bottom: 6px;
+  background: #f0fdf4;
+  padding: 4px 8px;
+  border-radius: 6px;
+}
+.login-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+.login-box {
+  background: #fff;
+  padding: 18px;
+  border-radius: 10px;
+  width: 85%;
+  max-width: 280px;
+}
+.login-box input {
+  width: 100%;
+  padding: 8px;
+  margin: 8px 0;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+}
+.login-box button {
+  width: 100%;
+  padding: 8px;
+  background: #6366f1;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.find-replace-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.25);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+.find-replace-mask.show {
+  display: flex;
+}
+.find-replace-box {
+  background: rgba(255, 255, 255, 0.95);
+  width: min(80%, 300px);
+  border-radius: 12px;
+  padding: 14px;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.12);
+  position: fixed;
+  cursor: move;
+  user-select: none;
+  will-change: left, top;
+}
+.find-replace-box input {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+.switch-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.switch {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+  position: absolute;
+}
+.slider {
+  position: absolute;
+  cursor: pointer;
+  inset: 0;
+  background: #ccc;
+  border-radius: 20px;
+  transition: 0.3s;
+}
+.slider:before {
+  content: "";
+  position: absolute;
+  height: 14px;
+  width: 14px;
+  left: 3px;
+  bottom: 3px;
+  background: #fff;
+  border-radius: 50%;
+  transition: 0.3s;
+}
+.switch input:checked + .slider {
+  background: #6366f1;
+}
+.switch input:checked + .slider:before {
+  transform: translateX(16px);
+}
+.private-switch-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  padding: 4px 8px;
+  background: #f1f5f9;
+  border-radius: 8px;
+}
+.private-switch-group .switch-label {
+  font-size: 13px;
+  color: #475569;
+  font-weight: 500;
+}
+.private-switch-group .switch-label.private {
+  color: #dc2626;
+  font-weight: 600;
+}
+.img-preview-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.9);
+  z-index: 999999;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+.img-preview-mask.show {
+  display: flex;
+}
+.img-preview-img {
+  max-width: 95vw;
+  max-height: 95vh;
+  object-fit: contain;
+}
+.cursor-dragger {
+  position: fixed;
+  bottom: 80px;
+  left: 10px;
+  right: 10px;
+  height: 20px;
+  background: rgba(99, 102, 241, 0.15);
+  border-radius: 10px;
+  display: none;
+  z-index: 10000;
+  touch-action: none;
+}
+.cursor-dragger.show {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cursor-dragger .thumb {
+  width: 24px;
+  height: 24px;
+  background: #6366f1;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+#imgPanelBody {
+  display: block !important;
+}
+#imgArrow {
+  transform: rotate(180deg);
+}
 </style>
 </head>
 <body>
@@ -92,8 +503,6 @@ body.keyboard-opened .edit-toolbar-wrap{position:absolute;bottom:0;}
   <button class="tool-btn" onclick="logoutAdmin()">退出登录</button>
 </div>
 <div class="tip-green" id="wordCountTip">纯文字数：0 | 总字符：0</div>
-
-<!-- 图片素材面板（默认展开） -->
 <div class="img-collapse" style="border:1px solid #dbeafe;border-radius:8px;margin:8px 0;overflow:hidden;">
   <div style="padding:10px 12px;background:linear-gradient(135deg,#eff6ff,#eef2ff);cursor:pointer;display:flex;justify-content:space-between;align-items:center;font-weight:600;font-size:14px;" onclick="toggleImgPanel()">
     <span>图片素材面板</span>
@@ -112,16 +521,7 @@ body.keyboard-opened .edit-toolbar-wrap{position:absolute;bottom:0;}
     <input type="file" id="imgFileInput" multiple>
   </div>
 </div>
-
-<div class="save-row">
-  <button class="save-btn" id="saveNormalBtn">下载 data.js（无时间戳）</button>
-  <button class="save-btn save-btn-time" id="saveTimeBtn">下载 data_时间戳.js</button>
-</div>
-<div class="save-row">
-  <button class="save-btn" id="exportFullBackup">导出完整备份notes.json</button>
-  <button class="save-btn" id="importBackup">导入本地备份文件</button>
-  <input type="file" id="backupFileInput" accept=".json,.js">
-</div>
+<!-- 四个按钮已移除 -->
 <input class="title-input" placeholder="填写笔记标题">
 <div class="tags-input-wrap" id="tagsInputWrap">
   <input type="text" class="tag-chip-input" id="tagChipInput" placeholder="添加标签（回车确认）">
@@ -139,7 +539,7 @@ body.keyboard-opened .edit-toolbar-wrap{position:absolute;bottom:0;}
   <button id="modeRich" class="active" onclick="switchMode('rich')">富文本</button>
   <button id="modeMd" onclick="switchMode('md')">Markdown</button>
 </div>
-<div class="edit-toolbar-wrap">
+<div class="edit-toolbar-wrap" id="editToolbar">
   <div class="toolbar-main">
     <button class="icon-btn" data-tip="撤销" onclick="globalUndo()">↩</button>
     <button class="icon-btn" data-tip="重做" onclick="globalRedo()">↪</button>
@@ -183,10 +583,8 @@ body.keyboard-opened .edit-toolbar-wrap{position:absolute;bottom:0;}
   <div class="md-preview" id="mdPreview" style="display:none"></div>
 </div>
 </div>
-
-<!-- 查找替换弹窗 -->
 <div class="find-replace-mask" id="findReplaceMask">
-  <div class="find-replace-box">
+  <div class="find-replace-box" id="findReplaceBox">
     <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
       <span style="font-weight:600;font-size:14px;">查找替换</span>
       <button id="findReplaceClose" style="border:none;background:transparent;font-size:16px;cursor:pointer;">×</button>
@@ -207,11 +605,9 @@ body.keyboard-opened .edit-toolbar-wrap{position:absolute;bottom:0;}
     </div>
   </div>
 </div>
-<!-- 大图预览 -->
 <div class="img-preview-mask" id="imgPreviewMask">
   <img class="img-preview-img" id="previewImg">
 </div>
-<!-- 光标拖拽条 -->
 <div class="cursor-dragger" id="cursorDragger">
   <div class="thumb"></div>
 </div>
@@ -254,6 +650,7 @@ const replaceInput = document.getElementById("replaceInput");
 const matchCaseCheck = document.getElementById("matchCase");
 const cursorDragger = document.getElementById("cursorDragger");
 const netImgBtn = document.getElementById("netImgBtn");
+const editToolbar = document.getElementById("editToolbar");
 
 // ========== 工具函数 ==========
 function getNowTimeStr(){
@@ -330,79 +727,41 @@ if(tagChipInput){
 
 // ========== 数据持久化 ==========
 function saveLocalCache() {
-  localStorage.setItem(
-    CACHE_KEY,
-    JSON.stringify({
-      list,
-      targetId: targetNote ? targetNote.id : null,
-      imgUploadList,
-      serial: globalImgSerial
-    })
-  );
+  localStorage.setItem(CACHE_KEY,JSON.stringify({list,targetId:targetNote?.id,imgUploadList,serial:globalImgSerial}));
 }
-
 function loadLocalCache() {
-  // 优先从 localStorage 获取完整的笔记列表
   let raw = null;
-  try {
-    raw = localStorage.getItem("notes");
-  } catch(e) {
-    console.warn("读取 localStorage 失败", e);
-  }
-
+  try { raw = localStorage.getItem("notes"); } catch(e) { console.warn("读取 localStorage 失败",e); }
   if (raw) {
     try {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
         list = parsed;
-        list.forEach(item => {
-          if (!Array.isArray(item.tags) && item.type) {
-            item.tags = [item.type];
-          }
-        });
-        console.log("✅ loadLocalCache: 从 localStorage 加载了", list.length, "条笔记");
-      } else {
-        throw new Error("localStorage 数据为空或无效");
-      }
+        list.forEach(item => { if (!Array.isArray(item.tags) && item.type) item.tags = [item.type]; });
+        console.log("✅ loadLocalCache: 从 localStorage 加载了",list.length,"条笔记");
+      } else { throw new Error("localStorage 数据为空或无效"); }
     } catch(e) {
-      console.warn("⚠️ parse localStorage 失败，回退到 window.NOTE_DATA", e);
+      console.warn("⚠️ parse localStorage 失败，回退到 window.NOTE_DATA",e);
       fallbackToWindowData();
     }
   } else {
     console.warn("⚠️ localStorage 无数据，回退到 window.NOTE_DATA");
     fallbackToWindowData();
   }
-
-  // 合并临时草稿
   try {
     const cacheStr = localStorage.getItem(CACHE_KEY);
     if (cacheStr) {
       const tempCache = JSON.parse(cacheStr);
       const tempDraft = tempCache.list?.find(item => item._isTempNew === true);
-      if (tempDraft && !list.some(n => n.id === tempDraft.id)) {
-        list.push(tempDraft);
-        console.log("✅ 合并了临时草稿");
-      }
+      if (tempDraft && !list.some(n => n.id === tempDraft.id)) { list.push(tempDraft); console.log("✅ 合并了临时草稿"); }
     }
-  } catch(e) {
-    console.warn("⚠️ 合并草稿失败", e);
-  }
-
-  if (!list || !Array.isArray(list)) {
-    console.error("❌ list 未能正确初始化，强制设为空数组");
-    list = [];
-  }
-  console.log("✅ 最终 list 长度:", list.length);
+  } catch(e) { console.warn("⚠️ 合并草稿失败",e); }
+  if (!list || !Array.isArray(list)) { console.error("❌ list 未能正确初始化，强制设为空数组"); list = []; }
+  console.log("✅ 最终 list 长度:",list.length);
 }
-
 function fallbackToWindowData() {
-  if (window.NOTE_DATA && Array.isArray(window.NOTE_DATA)) {
-    list = JSON.parse(JSON.stringify(window.NOTE_DATA));
-    console.log("✅ 从 window.NOTE_DATA 加载了", list.length, "条笔记");
-  } else {
-    list = [];
-    console.warn("⚠️ window.NOTE_DATA 也不存在，list 为空");
-  }
+  if (window.NOTE_DATA && Array.isArray(window.NOTE_DATA)) { list = JSON.parse(JSON.stringify(window.NOTE_DATA)); console.log("✅ 从 window.NOTE_DATA 加载了",list.length,"条笔记"); }
+  else { list = []; console.warn("⚠️ window.NOTE_DATA 也不存在，list 为空"); }
 }
 
 // ========== 登录 ==========
@@ -583,7 +942,6 @@ function clearAllNotesContent(){ if(!confirm('清空全部内容？'))return; ri
 
 // ========== 图片上传（本地） ==========
 function insertLocalImgTagTerminal(safeName) {
-  // 强制使用CDN路径，忽略本地路径
   const url = `https://cdn.jsdelivr.net/gh/sxgpyjg/notes@main/images/${safeName}`;
   if(currentEditMode==='rich'){ document.execCommand('insertHTML',false,`<img loading="lazy" src="${url}" alt="本地图片" style="max-width:100%;margin:6px 0;"><br>`); richBox.focus(); }
   else{ mdBox.value+=`![本地图](${url})\n\n`; saveMdRecord(); renderMdPreview(); calcWordCount(); }
@@ -591,15 +949,11 @@ function insertLocalImgTagTerminal(safeName) {
 function handleFileSelect(files){
   if(!files||!files.length)return;
   Array.from(files).forEach(file=>{
-    // 直接使用原始文件名，不加序号
     const originalName = file.name;
-    // 过滤特殊字符（仅保留字母数字下划线横线中文点和括号，避免路径问题）
     const safeName = originalName.replace(/[^\w\-\.\u4e00-\u9fa5\(\)]/g, '_');
-    
     let realPath = file.path||'';
     if(!realPath){
       const fn = originalName.toLowerCase();
-      // 改进的路径猜测（优先 Pictures/Screenshots）
       if (/screenshot|screen_shot/i.test(fn)) {
         realPath = `/storage/emulated/0/Pictures/Screenshots/${originalName}`;
       } else if (/wx_|wechat|mmexport/i.test(fn)) {
@@ -620,22 +974,14 @@ function handleFileSelect(files){
     }
     const userPath = prompt(`请确认图片源路径（可修改）：\n${safeName}`, realPath);
     const finalPath = (userPath&&userPath.trim()) ? userPath.trim() : realPath;
-    // cp 源路径使用 finalPath，目标文件名使用 safeName（与原始文件名一致）
     const cpCmd = `cp "${finalPath}" ~/storage/shared/notes/images/"${safeName}"`;
-    imgUploadList.push({
-      name: safeName,         // 目标文件名（等于原始文件名）
-      originalName: originalName, // 原始文件名（供find搜索）
-      src: finalPath,
-      copyCmd: cpCmd
-    });
+    imgUploadList.push({name:safeName, originalName:originalName, src:finalPath, copyCmd:cpCmd});
     insertLocalImgTagTerminal(safeName);
   });
 }
-
 document.getElementById('localImgBtn').onclick=()=>imgFileInput.click();
 imgFileInput.onchange=function(e){ handleFileSelect(e.target.files); this.value=''; };
 
-// 网络图床（独立按钮）
 netImgBtn.onclick = function(){
   const mask = document.createElement("div");
   mask.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99999;display:flex;align-items:center;justify-content:center;padding:10px;';
@@ -663,22 +1009,17 @@ netImgBtn.onclick = function(){
   setTimeout(()=>document.getElementById('imgLinkInput').focus(),100);
 };
 
-// 生成完整推送命令（含旧笔记内容，修复路径引号）
 document.getElementById('showTemplateBtn').onclick = async function(){
   syncFormToNoteList();
-
   const allNotes = list.filter(i => i && i.id);
   const jsContent = "window.NOTE_DATA = " + JSON.stringify(allNotes, null, 2);
   const now = getNowTimeStr();
-
   let cmd = `# === 图片自动定位 + 复制 + 推送命令 ===\n`;
   cmd += `cd ~/storage/shared/notes || exit 1\n`;
   cmd += `mkdir -p images\n\n`;
-
   imgUploadList.forEach((item, idx) => {
     const fileName = item.name.replace(/"/g, '\\"');
     cmd += `# 图片 ${idx+1}: ${fileName}\n`;
-    // find 在 ~/storage/shared 下搜索
     cmd += `SRC=$(find ~/storage/shared/DCIM ~/storage/shared/Download ~/storage/shared/Pictures ~/storage/shared/tencent -name "${fileName}" 2>/dev/null | head -1)\n`;
     cmd += `if [ -n "$SRC" ]; then\n`;
     cmd += `  cp "$SRC" images/"${fileName}" && echo "✅ 已复制: ${fileName}"\n`;
@@ -692,7 +1033,6 @@ document.getElementById('showTemplateBtn').onclick = async function(){
     cmd += `  fi\n`;
     cmd += `fi\n\n`;
   });
-
   cmd += `rm -f data.js\n`;
   cmd += `cat > data.js << 'EOF'\n${jsContent}\nEOF\n`;
   cmd += `git add images/ data.js\n`;
@@ -702,7 +1042,6 @@ document.getElementById('showTemplateBtn').onclick = async function(){
   cmd += `else\n`;
   cmd += `  echo "⚠️ 无变化，跳过提交"\n`;
   cmd += `fi\n`;
-
   await navigator.clipboard.writeText(cmd).catch(() => {
     const t = document.createElement('textarea');
     t.value = cmd;
@@ -711,12 +1050,9 @@ document.getElementById('showTemplateBtn').onclick = async function(){
     document.execCommand('copy');
     document.body.removeChild(t);
   });
-
-  alert(`命令已复制。路径已改为 ~/storage/shared/notes/images。`);
+  alert(`命令已复制。笔记数量：${allNotes.length} 条`);
 };
 
-
-// 批量图床链接
 document.getElementById('batchImgBtn').onclick = function(){
   const urls = prompt("批量粘贴图床链接，一行一张：");
   if(!urls) return;
@@ -728,9 +1064,7 @@ document.getElementById('batchImgBtn').onclick = function(){
   if(currentEditMode==='md') { saveMdRecord(); renderMdPreview(); calcWordCount(); }
   alert(`插入 ${arr.length} 张图片`);
 };
-
 document.getElementById('clearImgListBtn').onclick = () => { imgUploadList = []; alert("已清空"); };
-
 function toggleImgPanel() {
   const panel = document.getElementById('imgPanelBody');
   const arrow = document.getElementById('imgArrow');
@@ -738,12 +1072,8 @@ function toggleImgPanel() {
   arrow.classList.toggle('rotate');
 }
 
-// 【修复】一键复制 data.js，确保包含所有笔记
 document.getElementById('copyJsonBtn').onclick = async function(){
-  // 暂时跳过 syncFormToNoteList，直接使用当前 list
-  // syncFormToNoteList();  // 先注释掉这一行
-  const valid = list.filter(i => i && i.id && i.title && i.title.trim() && i.content && i.content.trim());
-  console.log('valid length:', valid.length);
+  const valid = list.filter(i => i && i.id && i.content && i.content.trim());
   const json = "window.NOTE_DATA = " + JSON.stringify(valid, null, 2);
   await navigator.clipboard.writeText(json).catch(() => {
     const t = document.createElement('textarea');
@@ -756,7 +1086,6 @@ document.getElementById('copyJsonBtn').onclick = async function(){
   alert(`复制完成，共 ${valid.length} 条`);
 };
 
-
 // ========== 同步表单 ==========
 function syncFormToNoteList(){
   const t=titleInput.value.trim();
@@ -766,84 +1095,71 @@ function syncFormToNoteList(){
   const content=currentEditMode==='rich'?richBox.innerHTML.trim():mdToHtml(mdBox.value);
   const now=getNowTimeStr();
   const tagColors={}; tags.forEach(t=>{ const k=t.toLowerCase().trim(); if(tagColorMap[k]) tagColors[k]=tagColorMap[k]; });
-  
   if(targetNote){
     const idx=list.findIndex(i=>i.id===targetNote.id);
-    if(idx>-1){ 
-      list[idx]={...list[idx], title:t, type:finalType, tags, tagColors, content, date:now, private:isPrivate}; 
-      delete list[idx]._isTempNew; 
-    }
+    if(idx>-1){ list[idx]={...list[idx],title:t,type:finalType,tags,tagColors,content,date:now,private:isPrivate}; delete list[idx]._isTempNew; }
   }else{
-    // 不再查找已有草稿，始终创建新草稿，避免覆盖任何已有笔记
-    const newNote = {
-      id: Date.now(),
-      title: t,
-      type: finalType,
-      tags: tags,
-      tagColors: tagColors,
-      content: content,
-      date: now,
-      private: isPrivate,
-      _isTempNew: true
-    };
+    const newNote = {id:Date.now(),title:t,type:finalType,tags:tags,tagColors:tagColors,content:content,date:now,private:isPrivate,_isTempNew:true};
     list.push(newNote);
-    // 将 targetNote 指向新草稿，以便后续编辑可继续更新它
     targetNote = newNote;
   }
-  
-  saveLocalCache(); 
-  localStorage.setItem("notes", JSON.stringify(list)); 
-  window.NOTE_DATA = list;
+  saveLocalCache(); localStorage.setItem("notes",JSON.stringify(list)); window.NOTE_DATA=list;
 }
 
-// ========== 下载 data.js ==========
-function downloadDataJs(ts){
-  syncFormToNoteList();
-  const t=titleInput.value.trim(); if(!t)return alert('标题不能为空');
-  list=list.filter(i=>i&&i.id&&(i.title||'').trim()&&i.content);
-  const blob=new Blob([getFullJsText()],{type:'application/javascript'});
-  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=ts?`data_${getNowTimeStr().replace(/[: ]/g,'-')}.js`:'data.js'; a.click(); URL.revokeObjectURL(a.href);
-}
-document.getElementById('saveNormalBtn').onclick=()=>downloadDataJs(false);
-document.getElementById('saveTimeBtn').onclick=()=>downloadDataJs(true);
-
-// 导出备份
-document.getElementById('exportFullBackup').onclick = function(){
-  const json = JSON.stringify(list, null, 2);
-  const blob = new Blob([json], {type:'application/json'});
-  const a = document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='notes完整备份.json'; a.click(); URL.revokeObjectURL(a.href);
-};
-document.getElementById('importBackup').onclick = () => document.getElementById('backupFileInput').click();
-document.getElementById('backupFileInput').onchange = function(e){
-  const file = e.target.files[0];
-  if(!file || file.size>20*1024*1024) return alert('文件过大或无效');
-  if(!confirm('导入将覆盖当前所有笔记')) return;
-  const reader = new FileReader();
-  reader.onload = function(res){
-    try{
-      let raw = res.target.result;
-      if(raw.startsWith('window.NOTE_DATA = ')) raw = raw.replace('window.NOTE_DATA = ','');
-      const arr = JSON.parse(raw);
-      if(!Array.isArray(arr)) throw '格式错误';
-      list = arr;
-      saveLocalCache(); localStorage.setItem("notes",JSON.stringify(list)); window.NOTE_DATA=list;
-      alert(`导入 ${arr.length} 条`);
-      if(editId) initLoadNote();
-    } catch(e){ alert('解析失败'); }
-  };
-  reader.readAsText(file);
-};
-
-// ========== 查找替换 ==========
+// ========== 查找替换（含拖曳） ==========
 const findReplaceBtn=document.getElementById('findReplaceBtn');
+const findReplaceBox=document.getElementById('findReplaceBox');
 document.getElementById('findReplaceClose').onclick=()=>{ findReplaceMask.classList.remove('show'); document.body.classList.remove('lock-scroll'); };
 findReplaceBtn.onclick=()=>{
   document.body.classList.add('lock-scroll'); findReplaceMask.classList.add('show');
   const s=window.getSelection().toString().trim(); if(s) findInput.value=s;
   searchIndex=0; matchList=[]; setTimeout(()=>findInput.focus(),100);
+  findReplaceBox.style.left = '50%'; findReplaceBox.style.top = '50%'; findReplaceBox.style.transform = 'translate(-50%, -50%)';
 };
 findReplaceMask.onclick=e=>{ if(e.target===findReplaceMask){ findReplaceMask.classList.remove('show'); document.body.classList.remove('lock-scroll'); } };
 matchCaseCheck.addEventListener('change',()=>{ matchCase=matchCaseCheck.checked; });
+// 拖曳
+(function(){
+  let dragging = false, startX, startY, offsetX, offsetY;
+  findReplaceBox.addEventListener('mousedown', function(e) {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
+    e.preventDefault();
+    dragging = true;
+    const rect = this.getBoundingClientRect();
+    startX = e.clientX; startY = e.clientY;
+    offsetX = startX - rect.left; offsetY = startY - rect.top;
+    this.style.transform = 'none';
+    this.style.left = rect.left + 'px'; this.style.top = rect.top + 'px';
+  });
+  document.addEventListener('mousemove', function(e) {
+    if (!dragging) return;
+    let left = e.clientX - offsetX, top = e.clientY - offsetY;
+    left = Math.max(0, Math.min(left, window.innerWidth - findReplaceBox.offsetWidth));
+    top = Math.max(0, Math.min(top, window.innerHeight - findReplaceBox.offsetHeight));
+    findReplaceBox.style.left = left + 'px'; findReplaceBox.style.top = top + 'px';
+  });
+  document.addEventListener('mouseup', () => dragging = false);
+  findReplaceBox.addEventListener('touchstart', function(e) {
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
+    const touch = e.touches[0];
+    dragging = true;
+    const rect = this.getBoundingClientRect();
+    startX = touch.clientX; startY = touch.clientY;
+    offsetX = startX - rect.left; offsetY = startY - rect.top;
+    this.style.transform = 'none';
+    this.style.left = rect.left + 'px'; this.style.top = rect.top + 'px';
+  });
+  document.addEventListener('touchmove', function(e) {
+    if (!dragging) return;
+    const touch = e.touches[0];
+    let left = touch.clientX - offsetX, top = touch.clientY - offsetY;
+    left = Math.max(0, Math.min(left, window.innerWidth - findReplaceBox.offsetWidth));
+    top = Math.max(0, Math.min(top, window.innerHeight - findReplaceBox.offsetHeight));
+    findReplaceBox.style.left = left + 'px'; findReplaceBox.style.top = top + 'px';
+  });
+  document.addEventListener('touchend', () => dragging = false);
+})();
+
 function getEditorText(){ return currentEditMode==='rich'?richBox.innerText:mdBox.value; }
 function selectRichText(start,len){
   const sel=window.getSelection(); const range=document.createRange();
@@ -887,96 +1203,61 @@ document.getElementById('imgPreviewMask').onclick=function(e){ if(e.target===thi
 fontSizeSelect.onchange=function(){ document.execCommand('fontSize',false,this.value); richBox.focus(); calcWordCount(); };
 fontColorInput.oninput=function(){ document.execCommand('foreColor',false,this.value); richBox.focus(); calcWordCount(); };
 bgColorInput.oninput=function(){
-  richBox.focus();
-  const sel=window.getSelection();
-  if(!sel.rangeCount||sel.getRangeAt(0).collapsed) return;
+  richBox.focus(); const sel=window.getSelection(); if(!sel.rangeCount||sel.getRangeAt(0).collapsed) return;
   try { document.execCommand('hiliteColor', false, this.value); } catch(e) {
     const range=sel.getRangeAt(0); const span=document.createElement('span'); span.style.backgroundColor=this.value; range.surroundContents(span);
   }
   calcWordCount();
 };
 
-// ========== 纯纯写作风格回车退出格式标记（增强版） ==========
+// ========== 回车退出格式标记 ==========
 mdBox.addEventListener('keydown',function(e){
   if(e.key==='Enter'){
     const val=this.value, pos=this.selectionStart;
-    const pairs=[
-      {s:'**',e:'**'}, {s:'*',e:'*'}, {s:'~~',e:'~~'},
-      {s:'`',e:'`'}, {s:'$$',e:'$$'}, {s:'[',e:']'},
-      {s:'<u>',e:'</u>'}, {s:'![',e:']'}
-    ];
+    const pairs=[{s:'**',e:'**'},{s:'*',e:'*'},{s:'~~',e:'~~'},{s:'`',e:'`'},{s:'$$',e:'$$'},{s:'[',e:']'},{s:'<u>',e:'</u>'},{s:'![',e:']'}];
     for(const p of pairs){
       const sl=p.s.length, el=p.e.length;
-      const lineStart = val.lastIndexOf('\n', pos-1)+1;
-      const before = val.slice(lineStart, pos);
-      const after = val.slice(pos, val.indexOf('\n', pos)>0 ? val.indexOf('\n', pos) : val.length);
-      const lastStart = before.lastIndexOf(p.s);
-      const firstEnd = after.indexOf(p.e);
-      if(lastStart !== -1 && firstEnd !== -1 && before.slice(lastStart+sl).indexOf(p.e) === -1 && after.slice(0, firstEnd).indexOf(p.s) === -1){
-        e.preventDefault();
-        this.value = val.slice(0, pos) + '\n' + val.slice(pos + firstEnd + el);
-        this.selectionStart = this.selectionEnd = pos + 1;
-        saveMdRecord(); renderMdPreview(); calcWordCount();
-        return;
+      const lineStart=val.lastIndexOf('\n',pos-1)+1;
+      const before=val.slice(lineStart,pos), after=val.slice(pos,val.indexOf('\n',pos)>0?val.indexOf('\n',pos):val.length);
+      const lastStart=before.lastIndexOf(p.s), firstEnd=after.indexOf(p.e);
+      if(lastStart!==-1&&firstEnd!==-1&&before.slice(lastStart+sl).indexOf(p.e)===-1&&after.slice(0,firstEnd).indexOf(p.s)===-1){
+        e.preventDefault(); this.value=val.slice(0,pos)+'\n'+val.slice(pos+firstEnd+el); this.selectionStart=this.selectionEnd=pos+1;
+        saveMdRecord(); renderMdPreview(); calcWordCount(); return;
       }
     }
   }
 });
 
-// ========== 光标拖拽（类似纯纯写作） ==========
-let isDragging = false;
-let dragStartX = 0;
-let longPressTimer = null;
-const LONG_PRESS_DELAY = 600;
-
-function showDragger() {
-  if (currentEditMode !== 'md') return;
-  const ta = mdBox;
-  if (ta.style.display === 'none') return;
+// ========== 光标拖拽 ==========
+let isDragging=false, dragStartX=0, longPressTimer=null;
+const LONG_PRESS_DELAY=600;
+function showDragger(){
+  if(currentEditMode!=='md')return; const ta=mdBox; if(ta.style.display==='none')return;
   dragger.classList.add('show');
-  const rect = ta.getBoundingClientRect();
-  const lineHeight = parseInt(getComputedStyle(ta).lineHeight) || 20;
-  const lines = ta.value.substr(0, ta.selectionStart).split('\n').length;
-  const top = rect.top + (lines * lineHeight) - 10;
-  dragger.style.top = Math.min(Math.max(top, rect.top + 10), rect.bottom - 30) + 'px';
+  const rect=ta.getBoundingClientRect(), lineHeight=parseInt(getComputedStyle(ta).lineHeight)||20;
+  const lines=ta.value.substr(0,ta.selectionStart).split('\n').length;
+  const top=rect.top+(lines*lineHeight)-10;
+  dragger.style.top=Math.min(Math.max(top,rect.top+10),rect.bottom-30)+'px';
 }
-function hideDragger() { dragger.classList.remove('show'); isDragging = false; }
-
-mdBox.addEventListener('touchstart', function(e) {
-  if (e.touches.length !== 1) return;
-  longPressTimer = setTimeout(() => {
-    showDragger();
-    const touch = e.touches[0];
-    dragStartX = touch.clientX;
-    isDragging = true;
-  }, LONG_PRESS_DELAY);
+function hideDragger(){ dragger.classList.remove('show'); isDragging=false; }
+mdBox.addEventListener('touchstart',function(e){
+  if(e.touches.length!==1)return;
+  longPressTimer=setTimeout(()=>{showDragger(); const t=e.touches[0]; dragStartX=t.clientX; isDragging=true;},LONG_PRESS_DELAY);
 });
-mdBox.addEventListener('touchmove', function(e) {
-  if (longPressTimer) clearTimeout(longPressTimer);
-  if (!isDragging) return;
-  e.preventDefault();
-  const touch = e.touches[0];
-  const dx = touch.clientX - dragStartX;
-  dragStartX = touch.clientX;
-  const len = mdBox.value.length;
-  const step = Math.round(dx * 0.5);
-  let newPos = mdBox.selectionStart + step;
-  newPos = Math.max(0, Math.min(len, newPos));
-  mdBox.selectionStart = mdBox.selectionEnd = newPos;
-  mdBox.focus();
-  const rect = mdBox.getBoundingClientRect();
-  const lineHeight = parseInt(getComputedStyle(mdBox).lineHeight) || 20;
-  const lines = mdBox.value.substr(0, newPos).split('\n').length;
-  const top = rect.top + (lines * lineHeight) - 10;
-  dragger.style.top = Math.min(Math.max(top, rect.top + 10), rect.bottom - 30) + 'px';
+mdBox.addEventListener('touchmove',function(e){
+  if(longPressTimer)clearTimeout(longPressTimer);
+  if(!isDragging)return; e.preventDefault();
+  const touch=e.touches[0], dx=touch.clientX-dragStartX; dragStartX=touch.clientX;
+  const len=mdBox.value.length, step=Math.round(dx*0.5);
+  let newPos=mdBox.selectionStart+step; newPos=Math.max(0,Math.min(len,newPos));
+  mdBox.selectionStart=mdBox.selectionEnd=newPos; mdBox.focus();
+  const rect=mdBox.getBoundingClientRect(), lineHeight=parseInt(getComputedStyle(mdBox).lineHeight)||20;
+  const lines=mdBox.value.substr(0,newPos).split('\n').length;
+  const top=rect.top+(lines*lineHeight)-10;
+  dragger.style.top=Math.min(Math.max(top,rect.top+10),rect.bottom-30)+'px';
 });
-mdBox.addEventListener('touchend', function() {
-  if (longPressTimer) clearTimeout(longPressTimer);
-  if (isDragging) { setTimeout(hideDragger, 200); isDragging = false; }
-});
-document.addEventListener('touchstart', function(e) {
-  if (!dragger.contains(e.target) && e.target !== mdBox) hideDragger();
-});
+mdBox.addEventListener('touchend',function(){ if(longPressTimer)clearTimeout(longPressTimer); if(isDragging){setTimeout(hideDragger,200);isDragging=false;} });
+document.addEventListener('touchstart',function(e){if(!dragger.contains(e.target)&&e.target!==mdBox)hideDragger();});
 
 // ========== 快捷键 ==========
 window.addEventListener('keydown',function(e){
@@ -989,37 +1270,22 @@ window.addEventListener('keydown',function(e){
   if(e.ctrlKey&&e.key==='u'){ e.preventDefault(); insertUnderline(); }
 });
 
-// 移动端键盘适配
+// ========== 移动端键盘适配 ==========
 (function(){
-  const ivh = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-  function handleResize() {
-    const h = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-    const opened = h < ivh - 100;
-    document.body.classList.toggle('keyboard-opened', opened);
-    if (opened) {
-      setTimeout(() => {
-        const active = document.activeElement;
-        if (active && (active.id === 'richEditor' || active.id === 'mdEditor')) {
-          active.scrollIntoView({ behavior: 'smooth', block: 'end' });
-        } else {
-          window.scrollTo(0, document.body.scrollHeight);
-        }
-        const toolbar = document.querySelector('.edit-toolbar-wrap');
-        if (toolbar) {
-          const toolbarRect = toolbar.getBoundingClientRect();
-          const viewportBottom = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-          if (toolbarRect.bottom > viewportBottom - 10) {
-            window.scrollBy(0, toolbarRect.bottom - viewportBottom + 10);
-          }
-        }
-      }, 200);
-    }
+  let initVh=window.visualViewport?window.visualViewport.height:window.innerHeight;
+  function handleResize(){
+    const curH=window.visualViewport?window.visualViewport.height:window.innerHeight;
+    const keyboardHeight=initVh-curH; const opened=keyboardHeight>100;
+    document.body.classList.toggle('keyboard-opened',opened);
+    if(opened){
+      document.documentElement.style.setProperty('--keyboard-height',keyboardHeight+'px');
+      setTimeout(()=>{const a=document.activeElement; if(a&&(a.id==='richEditor'||a.id==='mdEditor')) a.scrollIntoView({behavior:'smooth',block:'end'});},200);
+    } else { document.documentElement.style.setProperty('--keyboard-height','0px'); }
   }
-  if(window.visualViewport) window.visualViewport.addEventListener('resize', handleResize);
-  else window.addEventListener('resize', handleResize);
+  if(window.visualViewport) window.visualViewport.addEventListener('resize',handleResize); else window.addEventListener('resize',handleResize);
 })();
 
-// 初始化
+// ========== 初始化 ==========
 window.addEventListener("DOMContentLoaded",()=>{ renderMdPreview(); calcWordCount(); });
 </script>
 </body>
