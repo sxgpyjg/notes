@@ -98,7 +98,7 @@ body.keyboard-opened .edit-toolbar-wrap{position:fixed;bottom:var(--keyboard-hei
   <button class="tool-btn" id="downloadDataBtn">下载data.js</button>
   <button class="tool-btn" id="batchImgBtn">批量图床链接</button>
 </div>
-<input type="file" id="imgFileInput" multiple style="display:none;">
+<input type="file" id="imgFileInput" multiple style="display:none;">   <!-- 添加这一行 -->
 <input class="title-input" placeholder="填写笔记标题">
 
 <div class="tags-input-wrap" id="tagsInputWrap">
@@ -210,7 +210,7 @@ let richRecordStack = [], richRecordIndex = -1;
 let currentTags = [], tagColorMap = {};
 let globalImgSerial = Number(localStorage.getItem("img_serial")||0);
 let searchIndex = 0, matchList = [], matchCase = false;
-let dragMode = false;
+let dragMode = false; // 拖曳光标模式
 
 const titleInput = document.querySelector(".title-input");
 const tagChipInput = document.getElementById("tagChipInput");
@@ -508,6 +508,7 @@ function insertUl(){ if(currentEditMode==='rich'){ document.execCommand('insertT
 function insertOrderedList(){ if(currentEditMode==='rich'){ document.execCommand('insertText',false,'1. '); richBox.focus(); calcWordCount(); } else { mdBox.value+='1. '; saveMdRecord(); renderMdPreview(); calcWordCount(); } }
 function insertTaskList(){ if(currentEditMode==='rich'){ document.execCommand('insertText',false,'- [ ] '); richBox.focus(); calcWordCount(); } else { mdBox.value+='- [ ] '; saveMdRecord(); renderMdPreview(); calcWordCount(); } }
 function insertTable(){
+  // 弹出对话框让用户选择行数和列数
   const rows = parseInt(prompt("请输入表格行数（包括表头）：", "3"), 10) || 3;
   const cols = parseInt(prompt("请输入表格列数：", "2"), 10) || 2;
   let tableHtml = '<table style="width:100%;border-collapse:collapse;margin:6px 0;">';
@@ -557,6 +558,7 @@ function handleFileSelect(files){
 }
 document.getElementById('localImgBtn').onclick=()=>imgFileInput.click();
 imgFileInput.onchange=function(e){ handleFileSelect(e.target.files); this.value=''; };
+
 netImgBtn.onclick = function(){
   const mask = document.createElement("div");
   mask.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99999;display:flex;align-items:center;justify-content:center;padding:10px;';
@@ -577,22 +579,15 @@ netImgBtn.onclick = function(){
   setTimeout(()=>document.getElementById('imgLinkInput').focus(),100);
 };
 
-//========== 生成推送命令（已加入空白检查） ==========
+//========== 生成推送命令 ==========
 document.getElementById('showTemplateBtn').onclick = async function(){
-  // 先检查内容是否为空
-  const plainText = currentEditMode==='rich' ? (richBox.innerText||'').trim() : mdBox.value.trim();
-  if (!plainText || plainText === '') {
-    alert('⚠️ 笔记内容为空，无法生成推送命令');
-    return;
-  }
-  const saved = syncFormToNoteList();
-  if (!saved) return;
+  syncFormToNoteList();
   
   const useDownload = document.getElementById('useDownloadCheck').checked;
   const allNotes = list.filter(i => i && i.id);
   const now = getNowTimeStr();
 
-  // ===== 基础命令：图片复制 + git 操作 =====
+  // ===== 基础命令：图片复制 + git 操作（两者共享） =====
   let cmdBatch = `cd ~/storage/shared/notes || exit 1\n`;
   cmdBatch += `mkdir -p images\n\n`;
   imgUploadList.forEach((item, idx) => {
@@ -611,6 +606,7 @@ document.getElementById('showTemplateBtn').onclick = async function(){
     cmdBatch += `fi\n\n`;
   });
 
+  // ===== Git 操作（两者共享） =====
   let cmdGit = `git add images/ data.js\n`;
   cmdGit += `if ! git diff --cached --quiet; then\n`;
   cmdGit += `  git commit -m "update notes ${now}"\n`;
@@ -620,6 +616,8 @@ document.getElementById('showTemplateBtn').onclick = async function(){
   cmdGit += `fi\n`;
 
   if (useDownload) {
+    // ===== 下载方式 =====
+    // 1. 生成并下载 data_temp.js
     const jsContent = "window.NOTE_DATA = " + JSON.stringify(allNotes, null, 2);
     const blob = new Blob([jsContent], {type: 'application/javascript'});
     const url = URL.createObjectURL(blob);
@@ -631,6 +629,7 @@ document.getElementById('showTemplateBtn').onclick = async function(){
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 
+    // 2. 生成短命令（不含 data.js 内容）
     let cmd = `# === 图片复制 + 下载 data.js 推送命令 ===\n`;
     cmd += cmdBatch;
     cmd += `# 复制 data.js（请确保 data_temp.js 已下载到 /storage/emulated/0/Download/）\n`;
@@ -651,7 +650,9 @@ document.getElementById('showTemplateBtn').onclick = async function(){
       document.body.removeChild(t);
     });
     alert(`📄 data_temp.js 已开始下载\n📋 短命令已复制，请在下载完成后执行。`);
+
   } else {
+    // ===== 内联方式（紧凑 JSON） =====
     const jsContent = "window.NOTE_DATA = " + JSON.stringify(allNotes);
     let cmd = `# === 图片复制 + data.js 内联推送命令 ===\n`;
     cmd += cmdBatch;
@@ -684,20 +685,17 @@ document.getElementById('batchImgBtn').onclick = function(){
   alert(`插入 ${arr.length} 张图片`);
 };
 
-// 下载 data.js（已加入空白检查）
+// 下载 data.js
 document.getElementById('downloadDataBtn').onclick = function(){
-  const saved = syncFormToNoteList();
-  if (!saved) return;
+  syncFormToNoteList();
   const allNotes = list.filter(i => i && i.id && (i.title||'').trim() && i.content);
   const js = "window.NOTE_DATA = " + JSON.stringify(allNotes, null, 2);
   const blob = new Blob([js], {type:'application/javascript'});
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'data.js'; a.click(); URL.revokeObjectURL(a.href);
 };
 
-//========== 一键复制（已加入空白检查） ==========
+//========== 一键复制 ==========
 document.getElementById('copyJsonBtn').onclick = async function(){
-  const saved = syncFormToNoteList();
-  if (!saved) return;
   const valid = list.filter(i => i && i.id && i.content && i.content.trim());
   const json = "window.NOTE_DATA = " + JSON.stringify(valid, null, 2);
   await navigator.clipboard.writeText(json).catch(() => {
@@ -706,31 +704,24 @@ document.getElementById('copyJsonBtn').onclick = async function(){
   alert(`复制完成，共 ${valid.length} 条`);
 };
 
-//========== 同步表单（已加入空白检查） ==========
+//========== 同步表单 ==========
 function syncFormToNoteList(){
   const t=titleInput.value.trim();
   const tags=getCurrentTags();
   const finalType=tags.length?tags[0]:'';
   const isPrivate=document.getElementById('privateCheck').checked;
   const content=currentEditMode==='rich'?richBox.innerHTML.trim():mdToHtml(mdBox.value);
-  
-  // ===== 新增：拒绝空白笔记 =====
-  const plainText = currentEditMode==='rich' ? (richBox.innerText||'').trim() : mdBox.value.trim();
-  if (!plainText || plainText === '') {
-    alert('⚠️ 笔记内容不能为空，无法保存/上传');
-    return false;
-  }
-  
+  const now=getNowTimeStr();
+  const tagColors={}; tags.forEach(t=>{ const k=t.toLowerCase().trim(); if(tagColorMap[k]) tagColors[k]=tagColorMap[k]; });
   if(targetNote){
     const idx=list.findIndex(i=>i.id===targetNote.id);
-    if(idx>-1){ list[idx]={...list[idx],title:t,type:finalType,tags,tagColors,content,date:getNowTimeStr(),private:isPrivate}; delete list[idx]._isTempNew; }
+    if(idx>-1){ list[idx]={...list[idx],title:t,type:finalType,tags,tagColors,content,date:now,private:isPrivate}; delete list[idx]._isTempNew; }
   }else{
-    const newNote = {id:Date.now(),title:t,type:finalType,tags:tags,tagColors:tagColors,content:content,date:getNowTimeStr(),private:isPrivate,_isTempNew:true};
+    const newNote = {id:Date.now(),title:t,type:finalType,tags:tags,tagColors:tagColors,content:content,date:now,private:isPrivate,_isTempNew:true};
     list.push(newNote);
     targetNote = newNote;
   }
   saveLocalCache(); localStorage.setItem("notes",JSON.stringify(list)); window.NOTE_DATA=list;
-  return true;
 }
 
 //========== 查找替换 ==========
@@ -848,9 +839,10 @@ mdBox.addEventListener('keydown',function(e){
   }
 });
 
-// ========== 全屏拖曳覆盖层 ==========
-const dragOverlay = document.getElementById('dragOverlay');
-let dragActive = false, dragStartX = 0, dragStartY = 0, dyAccum = 0;
+
+// ========== 全屏拖曳覆盖层（使用您已添加的静态HTML） ==========
+const dragOverlay = document.getElementById('dragOverlay');  // 引用静态元素
+let dragActive = false, dragStartX = 0, dragStartY = 0;
 
 document.getElementById('dragModeToggle').addEventListener('click', function(){
   dragActive = !dragActive;
@@ -862,6 +854,9 @@ document.getElementById('dragModeToggle').addEventListener('click', function(){
     dragOverlay.style.display = 'none';
   }
 });
+
+// 覆盖层触摸事件
+let dyAccum = 0;
 
 dragOverlay.addEventListener('touchstart', function(e){
   if(!dragActive) return;
@@ -891,6 +886,7 @@ dragOverlay.addEventListener('touchmove', function(e){
   dragStartX = touch.clientX;
   dragStartY = touch.clientY;
   
+  // 水平移动
   const stepX = Math.round(dx * 0.3);
   
   if(currentEditMode === 'rich'){
@@ -906,12 +902,14 @@ dragOverlay.addEventListener('touchmove', function(e){
         sel.removeAllRanges();
         sel.addRange(range);
       }
+      // 垂直移动（累积dy，每20px触发一次行移动）
       dyAccum += dy;
       if(Math.abs(dyAccum) >= 20){
         const dir = dyAccum > 0 ? 'down' : 'up';
         try {
           sel.modify('move', dir, 'line');
         } catch(e) {
+          // 降级：模拟键盘方向键
           const evt = new KeyboardEvent('keydown', { key: dir === 'down' ? 'ArrowDown' : 'ArrowUp', bubbles: true });
           richBox.dispatchEvent(evt);
         }
@@ -919,15 +917,18 @@ dragOverlay.addEventListener('touchmove', function(e){
       }
     }
   } else {
+    // Markdown模式：水平移动
     let pos = mdBox.selectionStart + stepX;
     pos = Math.max(0, Math.min(mdBox.value.length, pos));
     mdBox.selectionStart = mdBox.selectionEnd = pos;
     
+    // 垂直移动（基于行数，使用累积方式避免抖动）
     dyAccum += dy;
     if(Math.abs(dyAccum) >= 20){
       const dir = dyAccum > 0 ? 1 : -1;
       const text = mdBox.value;
       const lines = text.split('\n');
+      // 计算当前行
       let cum = 0, currentLine = 0;
       for(let i=0; i<lines.length; i++){
         if(cum + lines[i].length >= pos){
@@ -936,7 +937,9 @@ dragOverlay.addEventListener('touchmove', function(e){
         }
         cum += lines[i].length + 1;
       }
+      // 目标行
       const targetLine = Math.max(0, Math.min(lines.length - 1, currentLine + dir));
+      // 计算目标位置（保持列位置不变）
       let targetPos = 0;
       for(let i=0; i<targetLine; i++){
         targetPos += lines[i].length + 1;
@@ -953,7 +956,6 @@ dragOverlay.addEventListener('touchmove', function(e){
 dragOverlay.addEventListener('touchend', function(){
   // 不退出模式
 });
-
 //========== 快捷键 ==========
 window.addEventListener('keydown',function(e){
   if(e.ctrlKey&&e.key==='s'){ e.preventDefault(); document.getElementById('copyJsonBtn').click(); }
