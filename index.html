@@ -56,7 +56,7 @@ h1#secretTrigger{
 #fullPageBtn path{
   fill:none;
   stroke:#9ca3af;
-  stroke-width:1.5;
+  stroke-width:2;
   stroke-linecap:round;
   stroke-linejoin:round;
 }
@@ -149,7 +149,6 @@ h1#secretTrigger{
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  border: 1px solid #3950cc;
 }
 .tag-private {
   font-size: 10px;
@@ -174,22 +173,6 @@ h1#secretTrigger{
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-.card-preview table {
-  border-collapse: collapse !important;
-  width: 100% !important;
-  margin: 4px 0 !important;
-  font-size: inherit !important;
-}
-.card-preview table td,
-.card-preview table th {
-  border: 1px solid #d1d5db !important;
-  padding: 4px 6px !important;
-  vertical-align: middle !important;
-}
-.card-preview table th {
-  background-color: #f9fafb !important;
-}
-
 .filter-collapse{
   border:1px solid #dbeafe;
   border-radius:12px;
@@ -320,6 +303,7 @@ function openAdminPage(){
   }
 }
 
+// ========== 新增：长按筛选栏快速登录（不跳转，停留当前页） ==========
 function quickLoginStay() {
   if (isAdminLoggedIn()) {
     alert('您已登录');
@@ -328,7 +312,7 @@ function quickLoginStay() {
   const pwd = prompt('请输入管理员密码：');
   if (pwd === ADMIN_PWD) {
     saveLoginState();
-    location.reload();
+    location.reload(); // 刷新当前目录页，显示退出按钮
   } else if (pwd !== null) {
     alert('密码错误');
   }
@@ -413,7 +397,7 @@ bindLongPress(
   () => {}
 );
 
-/* ========== 筛选栏 ========== */
+/* ========== 筛选栏（长按改为停留当前页） ========== */
 filterHeader.addEventListener('click', () => {
   if (filterJustLongPressed) {
     filterJustLongPressed = false;
@@ -428,7 +412,7 @@ filterHeader.addEventListener('touchstart', () => {
   filterPressTimer = setTimeout(() => {
     filterPressTimer = null;
     filterJustLongPressed = true;
-    quickLoginStay();
+    quickLoginStay();  // 改为停留当前页
   }, LONG_PRESS_TIME);
 }, { passive: true });
 filterHeader.addEventListener('touchend', () => {
@@ -454,7 +438,7 @@ filterHeader.addEventListener('mousedown', () => {
   filterPressTimer = setTimeout(() => {
     filterPressTimer = null;
     filterJustLongPressed = true;
-    quickLoginStay();
+    quickLoginStay();  // 改为停留当前页
   }, LONG_PRESS_TIME);
 });
 filterHeader.addEventListener('mouseup', () => {
@@ -475,7 +459,7 @@ filterHeader.addEventListener('mouseleave', () => {
 });
 filterHeader.addEventListener('contextmenu', e => {
   e.preventDefault();
-  quickLoginStay();
+  quickLoginStay();  // 改为停留当前页
 });
 filterBody.addEventListener('click', (e) => {
   if (e.target.classList.contains('filter-btn')) {
@@ -511,17 +495,18 @@ function loadNoteData(){
       if (!Array.isArray(item.tags) && item.type) {
         item.tags = [item.type];
       }
-      item._preview = getPureTextPreview(item.content);
     });
     localStorage.setItem(LOCAL_NOTE_KEY, JSON.stringify(dataList));
   }else{
     dataList = JSON.parse(localStorage.getItem(LOCAL_NOTE_KEY) || '[]');
   }
   if(isAdminLoggedIn()) logoutBtn.style.display = 'inline-block';
+  if(dataList.length === 0){
+    wrap.innerHTML = '<div class="empty-tip">暂无笔记</div>';
+    return;
+  }
   renderFilter();
-  requestAnimationFrame(() => {
-    renderNotes();
-  });
+  renderNotes();
 }
 
 window.addEventListener('load', async () => {
@@ -529,7 +514,7 @@ window.addEventListener('load', async () => {
   loadNoteData();
 });
 
-/* ========== 标签颜色 ========== */
+/* ========== 标签颜色从笔记对象获取 ========== */
 function getTagStyle(tagName, colorMap) {
   const color = (colorMap && colorMap[tagName]) || '';
   if (color) {
@@ -538,7 +523,7 @@ function getTagStyle(tagName, colorMap) {
     const b = parseInt(color.slice(5,7), 16) / 255;
     const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
     const textColor = brightness > 0.5 ? '#222' : '#fff';
-    return `background-color:${color};color:${textColor};border:1px solid ${color};`;
+    return `background-color:${color};color:${textColor};`;
   }
   return '';
 }
@@ -567,13 +552,11 @@ function getFirstImgFromHtml(html){
 }
 
 function getPureTextPreview(html){
-  return String(html)
-    .replace(/<img[^>]*>/g,'')
-    .replace(/\s+/g,' ');
+  return String(html).replace(/<img[^>]*>/g,'');
 }
 
 function escapeHtml(s){
-  return String(s ?? '')
+  return String(s)
     .replace(/&/g,'&amp;')
     .replace(/</g,'&lt;')
     .replace(/>/g,'&gt;')
@@ -583,43 +566,26 @@ function escapeHtml(s){
 
 function renderNotes(){
   let list = dataList.filter(i=>isAdminLoggedIn() || !i.private);
-  // 仅剔除临时草稿
-  list = list.filter(item => item._isTempNew !== true);
-
-  // 可选宽松兜底，按需打开
-  /*
-  list = list.filter(item => {
-    const title = (item.title ?? '').trim();
-    const content = (item.content ?? '').trim();
-    const cover = item.cover ?? '';
-    return title || content || cover;
-  });
-  */
-
   if(currentFilterTag){
     list = list.filter(item => (item.tags || []).includes(currentFilterTag));
   }
   list.sort((a,b)=>new Date(b.date)-new Date(a.date));
-
   if(list.length===0){
     wrap.innerHTML = '<div class="empty-tip">暂无笔记</div>';
     return;
   }
-  const fragment = document.createDocumentFragment();
-  list.forEach(item => {
+  wrap.innerHTML = list.map(item=>{
     const img = item.cover || getFirstImgFromHtml(item.content);
-    const imgHtml = img ? `<div class="card-img-box"><img src="${escapeHtml(img)}"></div>` : '';
-    const previewContent = item._preview ?? '';
+    const imgHtml = img ? `<div class="card-img-box"><img src="${img}"></div>` : '';
+    const previewContent = getPureTextPreview(item.content);
     const tagHtml = (item.tags || []).map(tag =>
       `<span class="tag-multi" data-tag="${escapeHtml(tag)}" style="${getTagStyle(tag, item.tagColors)}">${escapeHtml(tag)}</span>`
     ).join('');
     const privateHtml = item.private
       ? `<span class="tag-private">🔒 私密</span>`
       : '';
-    const div = document.createElement('div');
-    div.className = 'note-card';
-    div.dataset.id = item.id;
-    div.innerHTML = `
+    return `
+    <div class="note-card" data-id="${escapeHtml(item.id)}">
       ${imgHtml}
       <div class="card-right-wrap">
         <div class="card-head">
@@ -628,11 +594,9 @@ function renderNotes(){
         </div>
         <div class="card-date">${escapeHtml(item.date)}</div>
         <div class="card-preview">${previewContent}</div>
-      </div>`;
-    fragment.appendChild(div);
-  });
-  wrap.innerHTML = '';
-  wrap.appendChild(fragment);
+      </div>
+    </div>`;
+  }).join('');
   document.querySelectorAll('.note-card').forEach(card=>{
     bindLongPress(
       card,
