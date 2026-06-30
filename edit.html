@@ -25,7 +25,7 @@ body.keyboard-opened{padding-bottom:60px!important;}
 .tag-chip-remove::before{content:"×";font-weight:bold;}
 .tag-chip-input{flex:1;min-width:65px;border:none;outline:none;background:transparent;font-size:13px;padding:3px 2px;}
 .tags-hint{font-size:10px;color:#9ca3af;margin:-6px 0 6px 4px;}
-.edit-toolbar-wrap{position:fixed;bottom:0;left:0;width:100%;background:#fff;border-top:1px solid #e0e3f0;z-index:999;border-radius:12px 12px 0 0;box-shadow:0 -4px 15px rgba(0,0,0,.05);transition:bottom 0.2s;padding-bottom:0;}
+.edit-toolbar-wrap{position:fixed;bottom:0;left:0;width:100%;background:#fff;border-top:1px solid #e0e3f0;z-index:100000;border-radius:12px 12px 0 0;box-shadow:0 -4px 15px rgba(0,0,0,.05);transition:bottom 0.2s;padding-bottom:0;}
 body.keyboard-opened .edit-toolbar-wrap{position:fixed;bottom:var(--keyboard-height,0);}
 .toolbar-main{display:flex;flex-wrap:wrap;gap:2px;padding:4px 4px;align-items:center;}
 .icon-btn{border:1px solid #ddd;background:#fff;border-radius:4px;width:26px;height:26px;font-size:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;}
@@ -92,7 +92,7 @@ body.keyboard-opened .edit-toolbar-wrap{position:fixed;bottom:var(--keyboard-hei
   <button class="tool-btn" onclick="logoutAdmin()">退出登录</button>
 </div>
 <div class="tip-green" id="wordCountTip">纯文字数：0 | 总字符：0</div>
-<<div class="tool-box">
+<div class="tool-box">
   <button class="tool-btn" id="copyJsonBtn">一键复制data.js</button>
   <button class="tool-btn" id="showTemplateBtn">生成推送命令</button>
   <button class="tool-btn" id="downloadDataBtn">下载data.js</button>
