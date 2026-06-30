@@ -808,40 +808,6 @@ mdBox.addEventListener('keydown',function(e){
   }
 });
 
-//========== 光标拖曳（上下左右全方向） ==========
-let isDragging=false, dragStartX=0, dragStartY=0, longPressTimer=null;
-const LONG_PRESS_DELAY=600;
-function showDragger(){
-  if(currentEditMode!=='md')return; const ta=mdBox; if(ta.style.display==='none')return;
-  dragger.classList.add('show');
-  const rect=ta.getBoundingClientRect(), lineHeight=parseInt(getComputedStyle(ta).lineHeight)||20;
-  const lines=ta.value.substr(0,ta.selectionStart).split('\n').length;
-  const top=rect.top+(lines*lineHeight)-15;
-  dragger.style.top=Math.min(Math.max(top,rect.top+10),rect.bottom-40)+'px';
-}
-function hideDragger(){ dragger.classList.remove('show'); isDragging=false; }
-mdBox.addEventListener('touchstart',function(e){
-  if(e.touches.length!==1)return;
-  longPressTimer=setTimeout(()=>{showDragger(); const t=e.touches[0]; dragStartX=t.clientX; dragStartY=t.clientY; isDragging=true;},LONG_PRESS_DELAY);
-});
-mdBox.addEventListener('touchmove',function(e){
-  if(longPressTimer)clearTimeout(longPressTimer);
-  if(!isDragging)return; e.preventDefault();
-  const touch=e.touches[0], dx=touch.clientX-dragStartX, dy=touch.clientY-dragStartY;
-  dragStartX=touch.clientX; dragStartY=touch.clientY;
-  const len=mdBox.value.length;
-  // 水平移动步长0.5字符/px，垂直移动步长1行/10px
-  const stepX=Math.round(dx*0.5); const stepY=Math.round(dy*0.1)* (mdBox.value.split('\n')[0].length+1 || 20);
-  let newPos=mdBox.selectionStart+stepX+stepY;
-  newPos=Math.max(0,Math.min(len,newPos));
-  mdBox.selectionStart=mdBox.selectionEnd=newPos; mdBox.focus();
-  const rect=mdBox.getBoundingClientRect(), lineHeight=parseInt(getComputedStyle(mdBox).lineHeight)||20;
-  const lines=mdBox.value.substr(0,newPos).split('\n').length;
-  const top=rect.top+(lines*lineHeight)-15;
-  dragger.style.top=Math.min(Math.max(top,rect.top+10),rect.bottom-40)+'px';
-});
-mdBox.addEventListener('touchend',function(){ if(longPressTimer)clearTimeout(longPressTimer); if(isDragging){setTimeout(hideDragger,200);isDragging=false;} });
-document.addEventListener('touchstart',function(e){if(!dragger.contains(e.target)&&e.target!==mdBox)hideDragger();});
 
 // ========== 全屏拖曳覆盖层（使用您已添加的静态HTML） ==========
 const dragOverlay = document.getElementById('dragOverlay');  // 引用静态元素
