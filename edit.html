@@ -856,14 +856,14 @@ document.getElementById('dragModeToggle').addEventListener('click', function(){
 });
 
 // 覆盖层触摸事件
-let dyAccum = 0; // 垂直累积位移（用于富文本行移动）
+let dyAccum = 0;
 
 dragOverlay.addEventListener('touchstart', function(e){
   if(!dragActive) return;
   const touch = e.touches[0];
   dragStartX = touch.clientX;
   dragStartY = touch.clientY;
-  dyAccum = 0; // 重置累积
+  dyAccum = 0;
   if(currentEditMode === 'rich'){
     const sel = window.getSelection();
     if(sel.rangeCount){
@@ -886,6 +886,7 @@ dragOverlay.addEventListener('touchmove', function(e){
   dragStartX = touch.clientX;
   dragStartY = touch.clientY;
   
+  // 水平移动
   const stepX = Math.round(dx * 0.3);
   
   if(currentEditMode === 'rich'){
@@ -893,7 +894,7 @@ dragOverlay.addEventListener('touchmove', function(e){
     if(sel.rangeCount){
       const range = sel.getRangeAt(0);
       let node = range.startContainer;
-      let offset = range.startOffset + stepX; // 仅水平移动
+      let offset = range.startOffset + stepX;
       if(node.nodeType === Node.TEXT_NODE){
         offset = Math.max(0, Math.min(node.textContent.length, offset));
         range.setStart(node, offset);
@@ -901,13 +902,17 @@ dragOverlay.addEventListener('touchmove', function(e){
         sel.removeAllRanges();
         sel.addRange(range);
       }
-      // 垂直移动：累积dy，每20px触发sel.modify
+      // 垂直移动（累积dy，每20px触发一次行移动）
       dyAccum += dy;
       if(Math.abs(dyAccum) >= 20){
         const dir = dyAccum > 0 ? 'down' : 'up';
         try {
           sel.modify('move', dir, 'line');
-        } catch(e) { /* 忽略 */ }
+        } catch(e) {
+          // 降级：模拟键盘方向键
+          const evt = new KeyboardEvent('keydown', { key: dir === 'down' ? 'ArrowDown' : 'ArrowUp', bubbles: true });
+          richBox.dispatchEvent(evt);
+        }
         dyAccum = 0;
       }
     }
@@ -917,12 +922,14 @@ dragOverlay.addEventListener('touchmove', function(e){
     pos = Math.max(0, Math.min(mdBox.value.length, pos));
     mdBox.selectionStart = mdBox.selectionEnd = pos;
     
-    // 垂直移动（基于行数精确计算）
-    if(Math.abs(dy) > 5){
-      const lines = mdBox.value.split('\n');
-      // 计算当前行号
-      let cum = 0;
-      let currentLine = 0;
+    // 垂直移动（基于行数，使用累积方式避免抖动）
+    dyAccum += dy;
+    if(Math.abs(dyAccum) >= 20){
+      const dir = dyAccum > 0 ? 1 : -1;
+      const text = mdBox.value;
+      const lines = text.split('\n');
+      // 计算当前行
+      let cum = 0, currentLine = 0;
       for(let i=0; i<lines.length; i++){
         if(cum + lines[i].length >= pos){
           currentLine = i;
@@ -930,28 +937,25 @@ dragOverlay.addEventListener('touchmove', function(e){
         }
         cum += lines[i].length + 1;
       }
-      // 目标行（每20像素移动一行）
-      const lineMove = Math.round(dy / 20);
-      const targetLine = Math.max(0, Math.min(lines.length - 1, currentLine + lineMove));
-      
-      // 计算目标行相同列的位置
+      // 目标行
+      const targetLine = Math.max(0, Math.min(lines.length - 1, currentLine + dir));
+      // 计算目标位置（保持列位置不变）
       let targetPos = 0;
       for(let i=0; i<targetLine; i++){
         targetPos += lines[i].length + 1;
       }
-      const col = pos - cum; // 当前列
+      const col = pos - cum;
       targetPos = Math.min(targetPos + col, targetPos + lines[targetLine].length);
-      
       mdBox.selectionStart = mdBox.selectionEnd = targetPos;
       mdBox.focus();
+      dyAccum = 0;
     }
   }
 });
 
 dragOverlay.addEventListener('touchend', function(){
-  // 不退出模式，只停止移动
+  // 不退出模式
 });
-
 //========== 快捷键 ==========
 window.addEventListener('keydown',function(e){
   if(e.ctrlKey&&e.key==='s'){ e.preventDefault(); document.getElementById('copyJsonBtn').click(); }
