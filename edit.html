@@ -667,7 +667,7 @@ netImgBtn.onclick = function(){
 document.getElementById('showTemplateBtn').onclick = async function(){
   syncFormToNoteList();
 
-  const allNotes = list.filter(i => i && i.id && i.content);
+  const allNotes = list.filter(i => i && i.id);
   const jsContent = "window.NOTE_DATA = " + JSON.stringify(allNotes, null, 2);
   const now = getNowTimeStr();
 
@@ -766,15 +766,34 @@ function syncFormToNoteList(){
   const content=currentEditMode==='rich'?richBox.innerHTML.trim():mdToHtml(mdBox.value);
   const now=getNowTimeStr();
   const tagColors={}; tags.forEach(t=>{ const k=t.toLowerCase().trim(); if(tagColorMap[k]) tagColors[k]=tagColorMap[k]; });
+  
   if(targetNote){
     const idx=list.findIndex(i=>i.id===targetNote.id);
-    if(idx>-1){ list[idx]={...list[idx],title:t,type:finalType,tags,tagColors,content,date:now,private:isPrivate}; delete list[idx]._isTempNew; }
+    if(idx>-1){ 
+      list[idx]={...list[idx], title:t, type:finalType, tags, tagColors, content, date:now, private:isPrivate}; 
+      delete list[idx]._isTempNew; 
+    }
   }else{
-    const ex=list.find(i=>i._isTempNew);
-    if(ex){ Object.assign(ex,{title:t,type:finalType,tags,tagColors,content,date:now,private:isPrivate}); }
-    else list.push({id:Date.now(),title:t,type:finalType,tags,tagColors,content,date:now,private:isPrivate,_isTempNew:true});
+    // 不再查找已有草稿，始终创建新草稿，避免覆盖任何已有笔记
+    const newNote = {
+      id: Date.now(),
+      title: t,
+      type: finalType,
+      tags: tags,
+      tagColors: tagColors,
+      content: content,
+      date: now,
+      private: isPrivate,
+      _isTempNew: true
+    };
+    list.push(newNote);
+    // 将 targetNote 指向新草稿，以便后续编辑可继续更新它
+    targetNote = newNote;
   }
-  saveLocalCache(); localStorage.setItem("notes",JSON.stringify(list)); window.NOTE_DATA=list;
+  
+  saveLocalCache(); 
+  localStorage.setItem("notes", JSON.stringify(list)); 
+  window.NOTE_DATA = list;
 }
 
 // ========== 下载 data.js ==========
