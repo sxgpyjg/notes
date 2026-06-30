@@ -56,7 +56,7 @@ h1#secretTrigger{
 #fullPageBtn path{
   fill:none;
   stroke:#9ca3af;
-  stroke-width:1.5; /*调细全屏线条*/
+  stroke-width:1.5;
   stroke-linecap:round;
   stroke-linejoin:round;
 }
@@ -174,7 +174,6 @@ h1#secretTrigger{
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-/* 强化表格样式，提升优先级确保边框渲染 */
 .card-preview table {
   border-collapse: collapse !important;
   width: 100% !important;
@@ -497,7 +496,7 @@ fullBtn.addEventListener('click', () => {
   }
 });
 
-/* ========== 数据加载（优化版） ========== */
+/* ========== 数据加载 ========== */
 async function waitNoteData(){
   for(let i=0;i<20;i++){
     if(window.NOTE_DATA && Array.isArray(window.NOTE_DATA)) return;
@@ -530,7 +529,7 @@ window.addEventListener('load', async () => {
   loadNoteData();
 });
 
-/* ========== 标签颜色从笔记对象获取 ========== */
+/* ========== 标签颜色 ========== */
 function getTagStyle(tagName, colorMap) {
   const color = (colorMap && colorMap[tagName]) || '';
   if (color) {
@@ -574,7 +573,7 @@ function getPureTextPreview(html){
 }
 
 function escapeHtml(s){
-  return String(s)
+  return String(s ?? '')
     .replace(/&/g,'&amp;')
     .replace(/</g,'&lt;')
     .replace(/>/g,'&gt;')
@@ -583,22 +582,23 @@ function escapeHtml(s){
 }
 
 function renderNotes(){
-  // 基础权限过滤
   let list = dataList.filter(i=>isAdminLoggedIn() || !i.private);
-  // 【关键】过滤临时草稿、空标题+空内容无效笔记
+  // 仅剔除临时草稿
+  list = list.filter(item => item._isTempNew !== true);
+
+  // 可选宽松兜底，按需打开
+  /*
   list = list.filter(item => {
-    // 剔除临时新建草稿
-    if(item._isTempNew === true) return false;
-    // 标题不为空 或 预览内容不为空才保留
-    const title = (item.title || '').trim();
-    const preview = (item._preview || '').trim();
-    return title !== '' || preview !== '';
+    const title = (item.title ?? '').trim();
+    const content = (item.content ?? '').trim();
+    const cover = item.cover ?? '';
+    return title || content || cover;
   });
-  // 标签筛选
+  */
+
   if(currentFilterTag){
     list = list.filter(item => (item.tags || []).includes(currentFilterTag));
   }
-  // 按日期倒序
   list.sort((a,b)=>new Date(b.date)-new Date(a.date));
 
   if(list.length===0){
@@ -608,9 +608,8 @@ function renderNotes(){
   const fragment = document.createDocumentFragment();
   list.forEach(item => {
     const img = item.cover || getFirstImgFromHtml(item.content);
-    // 图片src做转义防注入
     const imgHtml = img ? `<div class="card-img-box"><img src="${escapeHtml(img)}"></div>` : '';
-    const previewContent = item._preview;
+    const previewContent = item._preview ?? '';
     const tagHtml = (item.tags || []).map(tag =>
       `<span class="tag-multi" data-tag="${escapeHtml(tag)}" style="${getTagStyle(tag, item.tagColors)}">${escapeHtml(tag)}</span>`
     ).join('');
