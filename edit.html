@@ -330,39 +330,52 @@ if(tagChipInput){
 
 // ========== 数据持久化 ==========
 function loadLocalCache() {
-  // 优先从 localStorage 获取完整的笔记列表（管理列表删除后已更新）
-  const storageNotes = localStorage.getItem("notes");
-  if (storageNotes) {
-    try {
-      list = JSON.parse(storageNotes);
-      // 确保每个笔记都有 tags 数组（兼容旧数据）
-      list.forEach(item => {
-        if (!Array.isArray(item.tags) && item.type) {
-          item.tags = [item.type];
-        }
-      });
-    } catch(e) {
+  // 优先从 localStorage 获取完整的笔记列表
+  try {
+    const storageNotes = localStorage.getItem("notes");
+    if (storageNotes) {
+      const parsed = JSON.parse(storageNotes);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        list = parsed;
+        // 确保每个笔记都有 tags 数组
+        list.forEach(item => {
+          if (!Array.isArray(item.tags) && item.type) {
+            item.tags = [item.type];
+          }
+        });
+        console.log("✅ 从 localStorage 加载了", list.length, "条笔记");
+      } else {
+        throw new Error("localStorage 数据无效");
+      }
+    } else {
+      throw new Error("localStorage 无数据");
+    }
+  } catch(e) {
+    // 回退到 window.NOTE_DATA
+    console.warn("⚠️ 回退到 data.js 数据:", e.message);
+    if (window.NOTE_DATA && Array.isArray(window.NOTE_DATA)) {
+      list = JSON.parse(JSON.stringify(window.NOTE_DATA));
+    } else {
       list = [];
     }
-  } else if (window.NOTE_DATA && Array.isArray(window.NOTE_DATA)) {
-    // 如果 localStorage 为空，则使用 data.js 的数据
-    list = JSON.parse(JSON.stringify(window.NOTE_DATA));
-  } else {
-    list = [];
   }
 
-  // 合并临时草稿（如果有的话）
-  const cacheStr = localStorage.getItem(CACHE_KEY);
-  if (cacheStr) {
-    try {
+  // 合并临时草稿
+  try {
+    const cacheStr = localStorage.getItem(CACHE_KEY);
+    if (cacheStr) {
       const tempCache = JSON.parse(cacheStr);
       const tempDraft = tempCache.list?.find(item => item._isTempNew === true);
       if (tempDraft && !list.some(n => n.id === tempDraft.id)) {
         list.push(tempDraft);
+        console.log("✅ 合并了临时草稿");
       }
-    } catch(e) {}
+    }
+  } catch(e) {
+    console.warn("⚠️ 合并草稿失败:", e.message);
   }
 }
+
 
 // ========== 登录 ==========
 function checkPwd(){
