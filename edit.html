@@ -856,11 +856,14 @@ document.getElementById('dragModeToggle').addEventListener('click', function(){
 });
 
 // 覆盖层触摸事件
+let dyAccum = 0; // 垂直累积位移（用于富文本行移动）
+
 dragOverlay.addEventListener('touchstart', function(e){
   if(!dragActive) return;
   const touch = e.touches[0];
   dragStartX = touch.clientX;
   dragStartY = touch.clientY;
+  dyAccum = 0; // 重置累积
   if(currentEditMode === 'rich'){
     const sel = window.getSelection();
     if(sel.rangeCount){
@@ -884,14 +887,13 @@ dragOverlay.addEventListener('touchmove', function(e){
   dragStartY = touch.clientY;
   
   const stepX = Math.round(dx * 0.3);
-  const stepY = Math.round(dy * 0.1) * 30;
   
   if(currentEditMode === 'rich'){
     const sel = window.getSelection();
     if(sel.rangeCount){
       const range = sel.getRangeAt(0);
       let node = range.startContainer;
-      let offset = range.startOffset + stepX + stepY;
+      let offset = range.startOffset + stepX; // 仅水平移动
       if(node.nodeType === Node.TEXT_NODE){
         offset = Math.max(0, Math.min(node.textContent.length, offset));
         range.setStart(node, offset);
@@ -899,12 +901,50 @@ dragOverlay.addEventListener('touchmove', function(e){
         sel.removeAllRanges();
         sel.addRange(range);
       }
+      // 垂直移动：累积dy，每20px触发sel.modify
+      dyAccum += dy;
+      if(Math.abs(dyAccum) >= 20){
+        const dir = dyAccum > 0 ? 'down' : 'up';
+        try {
+          sel.modify('move', dir, 'line');
+        } catch(e) { /* 忽略 */ }
+        dyAccum = 0;
+      }
     }
   } else {
-    let pos = mdBox.selectionStart + stepX + stepY;
+    // Markdown模式：水平移动
+    let pos = mdBox.selectionStart + stepX;
     pos = Math.max(0, Math.min(mdBox.value.length, pos));
     mdBox.selectionStart = mdBox.selectionEnd = pos;
-    mdBox.focus();
+    
+    // 垂直移动（基于行数精确计算）
+    if(Math.abs(dy) > 5){
+      const lines = mdBox.value.split('\n');
+      // 计算当前行号
+      let cum = 0;
+      let currentLine = 0;
+      for(let i=0; i<lines.length; i++){
+        if(cum + lines[i].length >= pos){
+          currentLine = i;
+          break;
+        }
+        cum += lines[i].length + 1;
+      }
+      // 目标行（每20像素移动一行）
+      const lineMove = Math.round(dy / 20);
+      const targetLine = Math.max(0, Math.min(lines.length - 1, currentLine + lineMove));
+      
+      // 计算目标行相同列的位置
+      let targetPos = 0;
+      for(let i=0; i<targetLine; i++){
+        targetPos += lines[i].length + 1;
+      }
+      const col = pos - cum; // 当前列
+      targetPos = Math.min(targetPos + col, targetPos + lines[targetLine].length);
+      
+      mdBox.selectionStart = mdBox.selectionEnd = targetPos;
+      mdBox.focus();
+    }
   }
 });
 
