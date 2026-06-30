@@ -383,16 +383,21 @@ window.delNote = function(id){
   if(!confirm("确认永久删除这条笔记？删除后无法恢复")){
     return;
   }
-  // 直接使用 window.NOTE_DATA（它已经从 localStorage 同步）
+  // 将 id 转换为数字（因为 item.id 是数字类型）
+  const delId = Number(id);
+  if (isNaN(delId)) {
+    alert("无效的笔记ID，删除失败");
+    return;
+  }
   let list = window.NOTE_DATA || [];
-  list = list.filter(item => item.id !== id);
+  list = list.filter(item => item.id !== delId);
   saveAllNotes(list);
-  // 同步更新 remoteNoteData，避免后续 loadAllNotes 返回旧数据
   remoteNoteData = list;
   sessionStorage.setItem('cleanNoteSnapshot', JSON.stringify(list));
-  alert("已删除并更新纯净快照；复制纯净data.js后替换仓库文件并git push才能全局生效");
+  alert("已删除并更新纯净快照");
   render();
 }
+
 
 function render(){
   const wrap = document.getElementById('listWrap');
