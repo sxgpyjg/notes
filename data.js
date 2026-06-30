@@ -82,5 +82,27 @@ window.NOTE_DATA = [
     "content": "<pre style=\"background: rgb(245, 245, 245); padding: 8px; border-radius: 6px;\"><code style=\"\"><span style=\"white-space: pre-wrap;\">[\n    [\n        {key: \"ESC\",   popup: {macro: \"CTRL f d\", display: \"tmux exit\"}},\n        {key: '~', popup: '-'},\n        {key: LEFT,  popup: HOME},\n        {key: DOWN,  popup: PGDN},\n        {key: KEYBOARD, popup: {macro: \"CTRL d\", display: \"exit\"}},\n        {macro: \"ALT j\", display: \"A-j\", popup: {macro: \"ALT g\", display: \"%g\"}},\n        {key: HOME,  display: \"🏠\" , popup: {macro: \"CTRL d b\", display: \" \"}},\n        {key: UP,    popup: PGUP},\n        {key: END,   popup: HOME},\n        {key: \"bc\\n\", popup: {macro: \"CTRL x ENTER\", display: \"bc执行\"}}\n    ],\n    [\n        {key: ' -a', popup: ' -A'},\n        {key: '(', popup: '&lt;'},\n        {key: ')', popup: '&gt;'},\n        {key: dd, popup: \"cd ~/gitdemo/_posts\\n\", display: \" 📲\"},\n        {key: '[', popup: '{'},\n        {key: ']', popup: '}'},\n        {key: LEFT,  popup: HOME},\n        {key: ENTER, display: \"✌\" , popup: {macro: \"CTRL u\", display: \"撤销\"}},\n        {key: RIGHT, popup: \"&gt;&gt;\"},\n        {key: BKSP, display: \"🔙\" , popup: \"yjg \", display: \"📝\"}\n    ],\n    [\n        \"TAB\",\n        {key: CTRL, popup: {macro: \"CTRL o ENTER CTRL x ENTER\", display: \"✋\"}},\n        {key: ALT,  popup: \"&amp;\"},\n        {key: \"i\", popup: \"|\"},\n        {key: \"'\",  popup: '\"'},\n        {key: '/', popup: \"history  -c\\n\", display: \"🗑️\"},\n        {key: PGUP, display: \"⇞ⓥ\" , popup: {macro: \"CTRL y\", display: \"页首\"}},\n        {key: DOWN,  popup: PGDN},\n        {key: PGDN, display: \"ⓥ⇟\" , popup: {macro: \"CTRL v\", display: \"页尾\"}},\n        {key: DEL, display: \"🔍\", popup: {macro: \"CTRL w\", display: \"查找\"}}\n    ]\n]\n\n</span></code></pre><br>",
     "date": "2026-06-30 10:31:10",
     "private": false
+  },
+  {
+    "id": 1782798653516,
+    "title": "",
+    "type": "",
+    "tags": [],
+    "tagColors": {},
+    "content": "",
+    "date": "2026-06-30 13:50:53",
+    "private": false,
+    "_isTempNew": true
+  },
+  {
+    "id": 1782798793212,
+    "title": "表格",
+    "type": "",
+    "tags": [],
+    "tagColors": {},
+    "content": "<table><tbody><tr><th>标题</th><th>标题</th><th>标题</th><th>标题</th><th>标题</th><th>标题</th></tr><tr><td>内容</td><td>内容</td><td>内容</td><td>内容</td><td>内容</td><td>内容</td></tr><tr><td>内容</td><td>内容</td><td>内容</td><td>内容</td><td>内容</td><td>内容</td></tr><tr><td>内容</td><td>内容</td><td>内容</td><td>内容</td><td>内容</td><td>内容</td></tr><tr><td>内容</td><td>内容</td><td>内容</td><td>内容</td><td>内容</td><td>内容</td></tr></tbody></table>",
+    "date": "2026-06-30 13:53:13",
+    "private": true,
+    "_isTempNew": true
   }
 ]
