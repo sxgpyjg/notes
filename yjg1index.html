@@ -174,23 +174,6 @@ h1#secretTrigger{
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-/* 新增：预览内表格边框样式 */
-.card-preview table {
-  border-collapse: collapse;
-  width: 100%;
-  margin: 4px 0;
-  font-size: inherit;
-}
-.card-preview table td,
-.card-preview table th {
-  border: 1px solid #d1d5db;
-  padding: 4px 6px;
-  vertical-align: middle;
-}
-.card-preview table th {
-  background-color: #f9fafb;
-}
-
 .filter-collapse{
   border:1px solid #dbeafe;
   border-radius:12px;
@@ -512,7 +495,7 @@ function loadNoteData(){
       if (!Array.isArray(item.tags) && item.type) {
         item.tags = [item.type];
       }
-      // 缓存预览文本，仅移除图片标签，保留表格结构
+      // 缓存预览文本，避免重复正则替换
       item._preview = getPureTextPreview(item.content);
     });
     localStorage.setItem(LOCAL_NOTE_KEY, JSON.stringify(dataList));
@@ -573,11 +556,8 @@ function getFirstImgFromHtml(html){
   return m ? m[1] : '';
 }
 
-// 修改：仅移除图片标签，保留table/tr/td/th等结构标签，让边框样式生效
 function getPureTextPreview(html){
-  return String(html)
-    .replace(/<img[^>]*>/g,'')
-    .replace(/\s+/g,' ');
+  return String(html).replace(/<img[^>]*>/g,'');
 }
 
 function escapeHtml(s){
