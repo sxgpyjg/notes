@@ -739,16 +739,23 @@ function toggleImgPanel() {
 }
 
 // 【修复】一键复制 data.js，确保包含所有笔记
-document.getElementById('copyJsonBtn').onclick=async function(){
-  syncFormToNoteList();
-  // 放宽过滤：只要 id 和 content 存在即可（不对标题做要求）
-  const valid = list.filter(i => i && i.id && i.content && i.content.trim());
-  const json = "window.NOTE_DATA = "+JSON.stringify(valid,null,2);
-  await navigator.clipboard.writeText(json).catch(()=>{
-    const t=document.createElement('textarea'); t.value=json; document.body.appendChild(t); t.select(); document.execCommand('copy'); document.body.removeChild(t);
+document.getElementById('copyJsonBtn').onclick = async function(){
+  // 暂时跳过 syncFormToNoteList，直接使用当前 list
+  // syncFormToNoteList();  // 先注释掉这一行
+  const valid = list.filter(i => i && i.id);
+  console.log('valid length:', valid.length);
+  const json = "window.NOTE_DATA = " + JSON.stringify(valid, null, 2);
+  await navigator.clipboard.writeText(json).catch(() => {
+    const t = document.createElement('textarea');
+    t.value = json;
+    document.body.appendChild(t);
+    t.select();
+    document.execCommand('copy');
+    document.body.removeChild(t);
   });
   alert(`复制完成，共 ${valid.length} 条`);
 };
+
 
 // ========== 同步表单 ==========
 function syncFormToNoteList(){
