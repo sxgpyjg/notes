@@ -891,7 +891,8 @@ dragOverlay.addEventListener('touchmove', function(e){
   dragStartX = touch.clientX;
   dragStartY = touch.clientY;
   
-  const stepX = Math.round(dx * 0.3);
+  // ===== 水平移动（左右滑动，更灵敏） =====
+  const stepX = Math.round(dx * 0.8); // 0.8 提升灵敏度
   
   if(currentEditMode === 'rich'){
     const sel = window.getSelection();
@@ -906,54 +907,21 @@ dragOverlay.addEventListener('touchmove', function(e){
         sel.removeAllRanges();
         sel.addRange(range);
       }
-      dyAccum += dy;
-      if(Math.abs(dyAccum) >= 20){
-        const dir = dyAccum > 0 ? 'down' : 'up';
-        try {
-          sel.modify('move', dir, 'line');
-        } catch(e) {
-          const evt = new KeyboardEvent('keydown', { key: dir === 'down' ? 'ArrowDown' : 'ArrowUp', bubbles: true });
-          richBox.dispatchEvent(evt);
-        }
-        dyAccum = 0;
-      }
     }
   } else {
     let pos = mdBox.selectionStart + stepX;
     pos = Math.max(0, Math.min(mdBox.value.length, pos));
     mdBox.selectionStart = mdBox.selectionEnd = pos;
-    
-    dyAccum += dy;
-    if(Math.abs(dyAccum) >= 20){
-      const dir = dyAccum > 0 ? 1 : -1;
-      const text = mdBox.value;
-      const lines = text.split('\n');
-      let cum = 0, currentLine = 0;
-      for(let i=0; i<lines.length; i++){
-        if(cum + lines[i].length >= pos){
-          currentLine = i;
-          break;
-        }
-        cum += lines[i].length + 1;
-      }
-      const targetLine = Math.max(0, Math.min(lines.length - 1, currentLine + dir));
-      let targetPos = 0;
-      for(let i=0; i<targetLine; i++){
-        targetPos += lines[i].length + 1;
-      }
-      const col = pos - cum;
-      targetPos = Math.min(targetPos + col, targetPos + lines[targetLine].length);
-      mdBox.selectionStart = mdBox.selectionEnd = targetPos;
-      mdBox.focus();
-      dyAccum = 0;
-    }
   }
+  
+  // ===== 垂直移动（改为滚动页面，不移动光标） =====
+  // 让手指上下滑动时页面跟随滚动，方便查看多行内容
+  window.scrollBy(0, -dy * 1.2);
 });
 
 dragOverlay.addEventListener('touchend', function(){
   // 不退出模式
 });
-
 //========== 快捷键 ==========
 window.addEventListener('keydown',function(e){
   if(e.ctrlKey&&e.key==='s'){ e.preventDefault(); document.getElementById('copyJsonBtn').click(); }
