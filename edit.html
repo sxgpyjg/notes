@@ -329,6 +329,18 @@ if(tagChipInput){
 }
 
 // ========== 数据持久化 ==========
+function saveLocalCache() {
+  localStorage.setItem(
+    CACHE_KEY,
+    JSON.stringify({
+      list,
+      targetId: targetNote ? targetNote.id : null,
+      imgUploadList,
+      serial: globalImgSerial
+    })
+  );
+}
+
 function loadLocalCache() {
   // 优先从 localStorage 获取完整的笔记列表
   let raw = null;
@@ -343,7 +355,6 @@ function loadLocalCache() {
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
         list = parsed;
-        // 确保 tags 数组存在
         list.forEach(item => {
           if (!Array.isArray(item.tags) && item.type) {
             item.tags = [item.type];
@@ -377,7 +388,6 @@ function loadLocalCache() {
     console.warn("⚠️ 合并草稿失败", e);
   }
 
-  // 最后强制检查（如果 list 仍为空，则设置为空数组）
   if (!list || !Array.isArray(list)) {
     console.error("❌ list 未能正确初始化，强制设为空数组");
     list = [];
@@ -394,7 +404,6 @@ function fallbackToWindowData() {
     console.warn("⚠️ window.NOTE_DATA 也不存在，list 为空");
   }
 }
-
 
 // ========== 登录 ==========
 function checkPwd(){
