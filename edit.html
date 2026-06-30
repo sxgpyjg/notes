@@ -331,33 +331,35 @@ if(tagChipInput){
 // ========== 数据持久化 ==========
 function loadLocalCache() {
   // 优先从 localStorage 获取完整的笔记列表
+  let raw = null;
   try {
-    const storageNotes = localStorage.getItem("notes");
-    if (storageNotes) {
-      const parsed = JSON.parse(storageNotes);
+    raw = localStorage.getItem("notes");
+  } catch(e) {
+    console.warn("读取 localStorage 失败", e);
+  }
+
+  if (raw) {
+    try {
+      const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
         list = parsed;
-        // 确保每个笔记都有 tags 数组
+        // 确保 tags 数组存在
         list.forEach(item => {
           if (!Array.isArray(item.tags) && item.type) {
             item.tags = [item.type];
           }
         });
-        console.log("✅ 从 localStorage 加载了", list.length, "条笔记");
+        console.log("✅ loadLocalCache: 从 localStorage 加载了", list.length, "条笔记");
       } else {
-        throw new Error("localStorage 数据无效");
+        throw new Error("localStorage 数据为空或无效");
       }
-    } else {
-      throw new Error("localStorage 无数据");
+    } catch(e) {
+      console.warn("⚠️ parse localStorage 失败，回退到 window.NOTE_DATA", e);
+      fallbackToWindowData();
     }
-  } catch(e) {
-    // 回退到 window.NOTE_DATA
-    console.warn("⚠️ 回退到 data.js 数据:", e.message);
-    if (window.NOTE_DATA && Array.isArray(window.NOTE_DATA)) {
-      list = JSON.parse(JSON.stringify(window.NOTE_DATA));
-    } else {
-      list = [];
-    }
+  } else {
+    console.warn("⚠️ localStorage 无数据，回退到 window.NOTE_DATA");
+    fallbackToWindowData();
   }
 
   // 合并临时草稿
@@ -372,7 +374,24 @@ function loadLocalCache() {
       }
     }
   } catch(e) {
-    console.warn("⚠️ 合并草稿失败:", e.message);
+    console.warn("⚠️ 合并草稿失败", e);
+  }
+
+  // 最后强制检查（如果 list 仍为空，则设置为空数组）
+  if (!list || !Array.isArray(list)) {
+    console.error("❌ list 未能正确初始化，强制设为空数组");
+    list = [];
+  }
+  console.log("✅ 最终 list 长度:", list.length);
+}
+
+function fallbackToWindowData() {
+  if (window.NOTE_DATA && Array.isArray(window.NOTE_DATA)) {
+    list = JSON.parse(JSON.stringify(window.NOTE_DATA));
+    console.log("✅ 从 window.NOTE_DATA 加载了", list.length, "条笔记");
+  } else {
+    list = [];
+    console.warn("⚠️ window.NOTE_DATA 也不存在，list 为空");
   }
 }
 
