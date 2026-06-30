@@ -56,7 +56,7 @@ h1#secretTrigger{
 #fullPageBtn path{
   fill:none;
   stroke:#9ca3af;
-  stroke-width:1.5; /* 调细全屏图标线条 */
+  stroke-width:2;
   stroke-linecap:round;
   stroke-linejoin:round;
 }
@@ -149,7 +149,7 @@ h1#secretTrigger{
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  border: 1px solid #3950cc;
+  border: 1px solid #3950cc;  /* 添加边框 */
 }
 .tag-private {
   font-size: 10px;
@@ -174,21 +174,21 @@ h1#secretTrigger{
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-/* 强化表格样式，提升优先级保证边框显示 */
+/* 新增：预览内表格边框样式 */
 .card-preview table {
-  border-collapse: collapse !important;
-  width: 100% !important;
-  margin: 2px 0 !important;
-  font-size: inherit !important;
+  border-collapse: collapse;
+  width: 100%;
+  margin: 4px 0;
+  font-size: inherit;
 }
 .card-preview table td,
 .card-preview table th {
-  border: 1px solid #333 !important;
-  padding: 2px 4px !important;
-  vertical-align: middle !important;
+  border: 1px solid #d1d5db;
+  padding: 4px 6px;
+  vertical-align: middle;
 }
 .card-preview table th {
-  background-color: #f3f4f6 !important;
+  background-color: #f9fafb;
 }
 
 .filter-collapse{
@@ -512,7 +512,7 @@ function loadNoteData(){
       if (!Array.isArray(item.tags) && item.type) {
         item.tags = [item.type];
       }
-      // 缓存预览：仅移除图片标签、压缩多余空白，保留表格结构标签
+      // 缓存预览文本，仅移除图片标签，保留表格结构
       item._preview = getPureTextPreview(item.content);
     });
     localStorage.setItem(LOCAL_NOTE_KEY, JSON.stringify(dataList));
@@ -525,6 +525,7 @@ function loadNoteData(){
     return;
   }
   renderFilter();
+  // 使用 requestAnimationFrame 延迟渲染，不阻塞主线程
   requestAnimationFrame(() => {
     renderNotes();
   });
@@ -544,7 +545,7 @@ function getTagStyle(tagName, colorMap) {
     const b = parseInt(color.slice(5,7), 16) / 255;
     const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
     const textColor = brightness > 0.5 ? '#222' : '#fff';
-    return `background-color:${color};color:${textColor};border:1px solid ${color};`;
+    return `background-color:${color};color:${textColor};border:1px solid ${color};`; // 添加边框
   }
   return '';
 }
@@ -572,14 +573,13 @@ function getFirstImgFromHtml(html){
   return m ? m[1] : '';
 }
 
-// 仅删图片、压缩空格，保留table/tr/td/th结构
+// 修改：仅移除图片标签，保留table/tr/td/th等结构标签，让边框样式生效
 function getPureTextPreview(html){
   return String(html)
     .replace(/<img[^>]*>/g,'')
     .replace(/\s+/g,' ');
 }
 
-// 纯文本转义函数，只用于标题/标签/日期/图片src，**不整体套预览内容**
 function escapeHtml(s){
   return String(s)
     .replace(/&/g,'&amp;')
@@ -599,17 +599,12 @@ function renderNotes(){
     wrap.innerHTML = '<div class="empty-tip">暂无笔记</div>';
     return;
   }
+  // 使用文档片段构建 DOM，减少重排
   const fragment = document.createDocumentFragment();
   list.forEach(item => {
     const img = item.cover || getFirstImgFromHtml(item.content);
-    const imgHtml = img ? `<div class="card-img-box"><img src="${escapeHtml(img)}"></div>` : '';
-    const previewRaw = item._preview;
-
-    // 简单防护：仅把非表格结构的<>转义，保留table/tr/td/th标签正常渲染
-    const previewSafe = previewRaw
-      .replace(/(?!<(table|tr|td|th|tbody)\b)(<)/g,'&lt;')
-      .replace(/(?<!<\/(table|tr|td|th|tbody)>)(>)/g,'&gt;');
-
+    const imgHtml = img ? `<div class="card-img-box"><img src="${img}"></div>` : '';
+    const previewContent = item._preview; // 使用缓存
     const tagHtml = (item.tags || []).map(tag =>
       `<span class="tag-multi" data-tag="${escapeHtml(tag)}" style="${getTagStyle(tag, item.tagColors)}">${escapeHtml(tag)}</span>`
     ).join('');
@@ -627,12 +622,13 @@ function renderNotes(){
           <div class="tag-group">${tagHtml}${privateHtml}</div>
         </div>
         <div class="card-date">${escapeHtml(item.date)}</div>
-        <div class="card-preview">${previewSafe}</div>
+        <div class="card-preview">${previewContent}</div>
       </div>`;
     fragment.appendChild(div);
   });
   wrap.innerHTML = '';
   wrap.appendChild(fragment);
+  // 绑定长按事件
   document.querySelectorAll('.note-card').forEach(card=>{
     bindLongPress(
       card,

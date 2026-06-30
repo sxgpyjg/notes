@@ -56,7 +56,7 @@ h1#secretTrigger{
 #fullPageBtn path{
   fill:none;
   stroke:#9ca3af;
-  stroke-width:1.5; /*调细全屏线条*/
+  stroke-width:1.5; /* 调细全屏图标线条 */
   stroke-linecap:round;
   stroke-linejoin:round;
 }
@@ -174,21 +174,21 @@ h1#secretTrigger{
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-/* 强化表格样式，提升优先级确保边框渲染 */
+/* 强化表格样式，提升优先级保证边框显示 */
 .card-preview table {
   border-collapse: collapse !important;
   width: 100% !important;
-  margin: 4px 0 !important;
+  margin: 2px 0 !important;
   font-size: inherit !important;
 }
 .card-preview table td,
 .card-preview table th {
-  border: 1px solid #d1d5db !important;
-  padding: 4px 6px !important;
+  border: 1px solid #333 !important;
+  padding: 2px 4px !important;
   vertical-align: middle !important;
 }
 .card-preview table th {
-  background-color: #f9fafb !important;
+  background-color: #f3f4f6 !important;
 }
 
 .filter-collapse{
@@ -512,6 +512,7 @@ function loadNoteData(){
       if (!Array.isArray(item.tags) && item.type) {
         item.tags = [item.type];
       }
+      // 缓存预览：仅移除图片标签、压缩多余空白，保留表格结构标签
       item._preview = getPureTextPreview(item.content);
     });
     localStorage.setItem(LOCAL_NOTE_KEY, JSON.stringify(dataList));
@@ -519,6 +520,10 @@ function loadNoteData(){
     dataList = JSON.parse(localStorage.getItem(LOCAL_NOTE_KEY) || '[]');
   }
   if(isAdminLoggedIn()) logoutBtn.style.display = 'inline-block';
+  if(dataList.length === 0){
+    wrap.innerHTML = '<div class="empty-tip">暂无笔记</div>';
+    return;
+  }
   renderFilter();
   requestAnimationFrame(() => {
     renderNotes();
@@ -567,12 +572,14 @@ function getFirstImgFromHtml(html){
   return m ? m[1] : '';
 }
 
+// 仅删图片、压缩空格，保留table/tr/td/th结构
 function getPureTextPreview(html){
   return String(html)
     .replace(/<img[^>]*>/g,'')
     .replace(/\s+/g,' ');
 }
 
+// 纯文本转义函数，只用于标题/标签/日期/图片src，**不整体套预览内容**
 function escapeHtml(s){
   return String(s)
     .replace(/&/g,'&amp;')
@@ -583,24 +590,11 @@ function escapeHtml(s){
 }
 
 function renderNotes(){
-  // 基础权限过滤
   let list = dataList.filter(i=>isAdminLoggedIn() || !i.private);
-  // 【关键】过滤临时草稿、空标题+空内容无效笔记
-  list = list.filter(item => {
-    // 剔除临时新建草稿
-    if(item._isTempNew === true) return false;
-    // 标题不为空 或 预览内容不为空才保留
-    const title = (item.title || '').trim();
-    const preview = (item._preview || '').trim();
-    return title !== '' || preview !== '';
-  });
-  // 标签筛选
   if(currentFilterTag){
     list = list.filter(item => (item.tags || []).includes(currentFilterTag));
   }
-  // 按日期倒序
   list.sort((a,b)=>new Date(b.date)-new Date(a.date));
-
   if(list.length===0){
     wrap.innerHTML = '<div class="empty-tip">暂无笔记</div>';
     return;
@@ -608,9 +602,14 @@ function renderNotes(){
   const fragment = document.createDocumentFragment();
   list.forEach(item => {
     const img = item.cover || getFirstImgFromHtml(item.content);
-    // 图片src做转义防注入
     const imgHtml = img ? `<div class="card-img-box"><img src="${escapeHtml(img)}"></div>` : '';
-    const previewContent = item._preview;
+    const previewRaw = item._preview;
+
+    // 简单防护：仅把非表格结构的<>转义，保留table/tr/td/th标签正常渲染
+    const previewSafe = previewRaw
+      .replace(/(?!<(table|tr|td|th|tbody)\b)(<)/g,'&lt;')
+      .replace(/(?<!<\/(table|tr|td|th|tbody)>)(>)/g,'&gt;');
+
     const tagHtml = (item.tags || []).map(tag =>
       `<span class="tag-multi" data-tag="${escapeHtml(tag)}" style="${getTagStyle(tag, item.tagColors)}">${escapeHtml(tag)}</span>`
     ).join('');
@@ -628,7 +627,7 @@ function renderNotes(){
           <div class="tag-group">${tagHtml}${privateHtml}</div>
         </div>
         <div class="card-date">${escapeHtml(item.date)}</div>
-        <div class="card-preview">${previewContent}</div>
+        <div class="card-preview">${previewSafe}</div>
       </div>`;
     fragment.appendChild(div);
   });
