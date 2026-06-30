@@ -92,13 +92,15 @@ body.keyboard-opened .edit-toolbar-wrap{position:fixed;bottom:var(--keyboard-hei
   <button class="tool-btn" onclick="logoutAdmin()">退出登录</button>
 </div>
 <div class="tip-green" id="wordCountTip">纯文字数：0 | 总字符：0</div>
-<div class="tool-box">
+<<div class="tool-box">
   <button class="tool-btn" id="copyJsonBtn">一键复制data.js</button>
   <button class="tool-btn" id="showTemplateBtn">生成推送命令</button>
   <button class="tool-btn" id="downloadDataBtn">下载data.js</button>
   <button class="tool-btn" id="batchImgBtn">批量图床链接</button>
 </div>
+<input type="file" id="imgFileInput" multiple style="display:none;">   <!-- 添加这一行 -->
 <input class="title-input" placeholder="填写笔记标题">
+
 <div class="tags-input-wrap" id="tagsInputWrap">
   <input type="text" class="tag-chip-input" id="tagChipInput" placeholder="添加标签（回车确认）">
 </div>
@@ -639,7 +641,6 @@ document.getElementById('showTemplateBtn').onclick = async function(){
   
   alert(`📄 data_temp.js 已开始下载\n📋 推送命令已复制到剪贴板\n\n请先等待下载完成，然后在 Termux 中粘贴执行命令。`);
 };
-
 
 // 批量图床链接
 document.getElementById('batchImgBtn').onclick = function(){
