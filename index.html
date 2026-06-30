@@ -56,7 +56,7 @@ h1#secretTrigger{
 #fullPageBtn path{
   fill:none;
   stroke:#9ca3af;
-  stroke-width:2;
+  stroke-width:1.5; /*调细全屏线条*/
   stroke-linecap:round;
   stroke-linejoin:round;
 }
@@ -149,7 +149,7 @@ h1#secretTrigger{
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  border: 1px solid #3950cc;  /* 添加边框 */
+  border: 1px solid #3950cc;
 }
 .tag-private {
   font-size: 10px;
@@ -174,21 +174,21 @@ h1#secretTrigger{
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-/* 新增：预览内表格边框样式 */
+/* 强化表格样式，提升优先级确保边框渲染 */
 .card-preview table {
-  border-collapse: collapse;
-  width: 100%;
-  margin: 4px 0;
-  font-size: inherit;
+  border-collapse: collapse !important;
+  width: 100% !important;
+  margin: 4px 0 !important;
+  font-size: inherit !important;
 }
 .card-preview table td,
 .card-preview table th {
-  border: 1px solid #d1d5db;
-  padding: 4px 6px;
-  vertical-align: middle;
+  border: 1px solid #d1d5db !important;
+  padding: 4px 6px !important;
+  vertical-align: middle !important;
 }
 .card-preview table th {
-  background-color: #f9fafb;
+  background-color: #f9fafb !important;
 }
 
 .filter-collapse{
@@ -512,7 +512,6 @@ function loadNoteData(){
       if (!Array.isArray(item.tags) && item.type) {
         item.tags = [item.type];
       }
-      // 缓存预览文本，仅移除图片标签，保留表格结构
       item._preview = getPureTextPreview(item.content);
     });
     localStorage.setItem(LOCAL_NOTE_KEY, JSON.stringify(dataList));
@@ -520,12 +519,7 @@ function loadNoteData(){
     dataList = JSON.parse(localStorage.getItem(LOCAL_NOTE_KEY) || '[]');
   }
   if(isAdminLoggedIn()) logoutBtn.style.display = 'inline-block';
-  if(dataList.length === 0){
-    wrap.innerHTML = '<div class="empty-tip">暂无笔记</div>';
-    return;
-  }
   renderFilter();
-  // 使用 requestAnimationFrame 延迟渲染，不阻塞主线程
   requestAnimationFrame(() => {
     renderNotes();
   });
@@ -545,7 +539,7 @@ function getTagStyle(tagName, colorMap) {
     const b = parseInt(color.slice(5,7), 16) / 255;
     const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
     const textColor = brightness > 0.5 ? '#222' : '#fff';
-    return `background-color:${color};color:${textColor};border:1px solid ${color};`; // 添加边框
+    return `background-color:${color};color:${textColor};border:1px solid ${color};`;
   }
   return '';
 }
@@ -573,7 +567,6 @@ function getFirstImgFromHtml(html){
   return m ? m[1] : '';
 }
 
-// 修改：仅移除图片标签，保留table/tr/td/th等结构标签，让边框样式生效
 function getPureTextPreview(html){
   return String(html)
     .replace(/<img[^>]*>/g,'')
@@ -590,21 +583,34 @@ function escapeHtml(s){
 }
 
 function renderNotes(){
+  // 基础权限过滤
   let list = dataList.filter(i=>isAdminLoggedIn() || !i.private);
+  // 【关键】过滤临时草稿、空标题+空内容无效笔记
+  list = list.filter(item => {
+    // 剔除临时新建草稿
+    if(item._isTempNew === true) return false;
+    // 标题不为空 或 预览内容不为空才保留
+    const title = (item.title || '').trim();
+    const preview = (item._preview || '').trim();
+    return title !== '' || preview !== '';
+  });
+  // 标签筛选
   if(currentFilterTag){
     list = list.filter(item => (item.tags || []).includes(currentFilterTag));
   }
+  // 按日期倒序
   list.sort((a,b)=>new Date(b.date)-new Date(a.date));
+
   if(list.length===0){
     wrap.innerHTML = '<div class="empty-tip">暂无笔记</div>';
     return;
   }
-  // 使用文档片段构建 DOM，减少重排
   const fragment = document.createDocumentFragment();
   list.forEach(item => {
     const img = item.cover || getFirstImgFromHtml(item.content);
-    const imgHtml = img ? `<div class="card-img-box"><img src="${img}"></div>` : '';
-    const previewContent = item._preview; // 使用缓存
+    // 图片src做转义防注入
+    const imgHtml = img ? `<div class="card-img-box"><img src="${escapeHtml(img)}"></div>` : '';
+    const previewContent = item._preview;
     const tagHtml = (item.tags || []).map(tag =>
       `<span class="tag-multi" data-tag="${escapeHtml(tag)}" style="${getTagStyle(tag, item.tagColors)}">${escapeHtml(tag)}</span>`
     ).join('');
@@ -628,7 +634,6 @@ function renderNotes(){
   });
   wrap.innerHTML = '';
   wrap.appendChild(fragment);
-  // 绑定长按事件
   document.querySelectorAll('.note-card').forEach(card=>{
     bindLongPress(
       card,
