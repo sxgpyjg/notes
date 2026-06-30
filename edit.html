@@ -936,7 +936,7 @@ window.addEventListener('keydown',function(e){
 //========== 移动端键盘适配 ==========
 (function(){
   let initVh=window.visualViewport?window.visualViewport.height:window.innerHeight;
-  const TOOLBAR_OFFSET = -12; // 负值：让工具栏下移（解决顶部被遮挡）
+  const TOOLBAR_OFFSET = -18; // 负值：让工具栏下移（解决顶部被遮挡）
   function handleResize(){
     const curH=window.visualViewport?window.visualViewport.height:window.innerHeight;
     const keyboardHeight=initVh-curH; const opened=keyboardHeight>100;
