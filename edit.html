@@ -742,7 +742,7 @@ function toggleImgPanel() {
 document.getElementById('copyJsonBtn').onclick = async function(){
   // 暂时跳过 syncFormToNoteList，直接使用当前 list
   // syncFormToNoteList();  // 先注释掉这一行
-  const valid = list.filter(i => i && i.id);
+  const valid = list.filter(i => i && i.id && i.title && i.title.trim() && i.content && i.content.trim());
   console.log('valid length:', valid.length);
   const json = "window.NOTE_DATA = " + JSON.stringify(valid, null, 2);
   await navigator.clipboard.writeText(json).catch(() => {
