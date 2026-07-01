@@ -572,8 +572,33 @@ netImgBtn.onclick = function(){
     const url = document.getElementById('imgLinkInput').value.trim();
     const alt = document.getElementById('imgDescInput').value.trim() || '配图';
     if(!url) return alert('请输入链接');
-    if(currentEditMode==='rich'){ document.execCommand('insertHTML',false,`<img loading="lazy" src="${url}" alt="${alt}" style="max-width:100%;margin:6px 0;"><br>`); }
-    else { mdBox.value += `![${alt}](${url})\n\n`; saveMdRecord(); renderMdPreview(); calcWordCount(); }
+    if(currentEditMode==='rich'){
+      // 使用更可靠的 range.insertNode 方式插入图片
+      richBox.focus();
+      const sel = window.getSelection();
+      if(sel.rangeCount){
+        const range = sel.getRangeAt(0);
+        const img = document.createElement('img');
+        img.loading = 'lazy';
+        img.src = url;
+        img.alt = alt;
+        img.style.cssText = 'max-width:100%;margin:6px 0;display:block;';
+        range.deleteContents();
+        range.insertNode(img);
+        const br = document.createElement('br');
+        range.setStartAfter(img);
+        range.insertNode(br);
+        range.setStartAfter(br);
+        sel.removeAllRanges();
+        sel.addRange(range);
+        calcWordCount();
+      }
+    } else {
+      mdBox.value += `![${alt}](${url})\n\n`;
+      saveMdRecord();
+      renderMdPreview();
+      calcWordCount();
+    }
     mask.remove();
   };
   setTimeout(()=>document.getElementById('imgLinkInput').focus(),100);
