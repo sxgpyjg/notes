@@ -970,19 +970,17 @@ window.addEventListener('keydown',function(e){
 //========== 移动端键盘适配 ==========
 (function(){
   let initVh=window.visualViewport?window.visualViewport.height:window.innerHeight;
-  const TOOLBAR_OFFSET = -20; // 负值：让工具栏下移（解决顶部被遮挡）
   function handleResize(){
     const curH=window.visualViewport?window.visualViewport.height:window.innerHeight;
     const keyboardHeight=initVh-curH; const opened=keyboardHeight>100;
     document.body.classList.toggle('keyboard-opened',opened);
     if(opened){
-      document.documentElement.style.setProperty('--keyboard-height', (keyboardHeight + TOOLBAR_OFFSET) + 'px');
+      document.documentElement.style.setProperty('--keyboard-height',keyboardHeight+'px');
       setTimeout(()=>{const a=document.activeElement; if(a&&(a.id==='richEditor'||a.id==='mdEditor')) a.scrollIntoView({behavior:'smooth',block:'end'});},200);
     } else { document.documentElement.style.setProperty('--keyboard-height','0px'); }
   }
   if(window.visualViewport) window.visualViewport.addEventListener('resize',handleResize); else window.addEventListener('resize',handleResize);
 })();
-
 
 //========== 初始化 ==========
 window.addEventListener("DOMContentLoaded",()=>{ renderMdPreview(); calcWordCount(); });
