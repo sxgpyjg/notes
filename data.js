@@ -115,6 +115,22 @@ window.NOTE_DATA = [
     },
     "content": "<img loading=\"lazy\" src=\"https://origin.picgo.net/2026/06/22/IMG_20251002_204855aa6b3a226afdacd5.jpg\" alt=\"配图\"><br>",
     "date": "2026-07-01 07:16:54",
-    "private": false
+    "private": false,
+    "_preview": "<br>"
+  },
+  {
+    "id": 1782867031156,
+    "title": "黑神话",
+    "type": "脚色",
+    "tags": [
+      "脚色"
+    ],
+    "tagColors": {
+      "脚色": "#00ffff"
+    },
+    "content": "<img loading=\"lazy\" src=\"https://origin.picgo.net/2026/06/21/IMG_20250330_20480116ba74e3492bd956.jpg\" alt=\"黑神话悟空\" style=\"max-width: 100%; margin: 6px 0px; display: block;\"><br>",
+    "date": "2026-07-01 08:50:31",
+    "private": true,
+    "_isTempNew": true
   }
 ]
