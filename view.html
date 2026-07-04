@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>笔记详情</title>
+<script src="./data.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{padding:20px;background:#f5f7fa;max-width:700px;margin:0 auto}
+.back{display:inline-block;padding:10px 14px;background:#ddd;border-radius:8px;text-decoration:none;color:#333;margin-bottom:20px}
+.title{font-size:22px;font-weight:bold;margin-bottom:10px}
+.meta{color:#777;margin-bottom:20px}
+.content{font-size:16px;line-height:1.8;background:#fff;padding:20px;border-radius:12px}
+.empty{text-align:center;padding:60px 0;color:#999;font-size:16px}
+</style>
+</head>
+<body>
+<a class="back" href="list-view.html">← 返回列表</a>
+<div id="viewBox"></div>
+<script>
+const id = new URLSearchParams(location.search).get("id");
+const viewBox = document.getElementById("viewBox");
+const list = window.NOTE_DATA || [];
+const target = list.find(i=>i.id==Number(id));
+if(!target){
+  viewBox.innerHTML="<div class='empty'>笔记不存在</div>";
+}else{
+  const type = target.type==="note"?"开发笔记":"实操教程";
+  viewBox.innerHTML = `
+  <div class="title">${target.title}</div>
+  <div class="meta">分类：${type}｜日期：${target.date}</div>
+  <div class="content">${target.content}</div>
+  `;
+}
+</script>
+</body>
+</html>
