@@ -6,7 +6,6 @@
 <title>笔记管理列表</title>
 <script src="./data.js?v=1"></script>
 <style>
-/* 样式保留您的原始内容，此处只展示关键改动 */
 *{
   margin:0;padding:0;box-sizing:border-box;
   font-family: system-ui, sans-serif;
@@ -270,7 +269,7 @@ function getTagClassByName(name) {
   }
 }
 
-// ========== 标签颜色：从笔记对象 item.tagColors 获取（修改点） ==========
+// ========== 标签颜色：从笔记对象 item.tagColors 获取 ==========
 function getTagStyle(tagName, colorMap) {
   const color = (colorMap && colorMap[tagName]) || '';
   if (color) {
@@ -302,27 +301,30 @@ window.addEventListener("load", ()=>{
       saveAllNotes(remoteNoteData);
     }
     render();
-    // 不再需要 refreshAllTagStyles，颜色已在 render 中直接写入
   }, 300);
 });
 
+// ===== 修改点：加载时过滤空白笔记 =====
 function loadAllNotes(){
-  if(remoteNoteData.length > 0) return remoteNoteData;
+  if(remoteNoteData.length > 0) return remoteNoteData.filter(item => item && item.content && item.content.trim() !== '');
   const raw = localStorage.getItem("notes");
   try{
     const list = raw ? JSON.parse(raw) : [];
-    list.forEach(item => {
-      if (!Array.isArray(item.tags) && item.type) {
-        item.tags = [item.type];
-      }
-    });
-    return list;
+    return list.filter(item => item && item.content && item.content.trim() !== '')
+               .map(item => {
+                 if (!Array.isArray(item.tags) && item.type) {
+                   item.tags = [item.type];
+                 }
+                 return item;
+               });
   }catch(e){
     return [];
   }
 }
 
+// ===== 修改点：保存时自动剔除空白笔记 =====
 function saveAllNotes(list){
+  list = list.filter(item => item && item.content && item.content.trim() !== '');
   localStorage.setItem("notes", JSON.stringify(list));
   window.NOTE_DATA = list;
 }
@@ -383,7 +385,6 @@ window.delNote = function(id){
   if(!confirm("确认永久删除这条笔记？删除后无法恢复")){
     return;
   }
-  // 将 id 转换为数字（因为 item.id 是数字类型）
   const delId = Number(id);
   if (isNaN(delId)) {
     alert("无效的笔记ID，删除失败");
@@ -398,10 +399,10 @@ window.delNote = function(id){
   render();
 }
 
-
+// ===== 修改点：渲染时双重过滤空白笔记 =====
 function render(){
   const wrap = document.getElementById('listWrap');
-  let list = window.NOTE_DATA || loadAllNotes();
+  let list = (window.NOTE_DATA || loadAllNotes()).filter(item => item && item.content && item.content.trim() !== '');
   if(!Array.isArray(list)) list = [];
   const realList = [...list];
   if(realList.length === 0){
@@ -412,7 +413,6 @@ function render(){
   realList.sort((a,b)=>new Date(b.date) - new Date(a.date)).forEach(item=>{
     const title = escapeHtml(item.title);
     const date = escapeHtml(item.date);
-    // 多标签渲染 + 颜色同步（直接从 item.tagColors 传入）
     const tagHtml = (item.tags || []).map(tag => {
       const cls = getTagClassByName(tag);
       return `<span class="tag ${cls}" data-tag="${escapeHtml(tag)}" style="${getTagStyle(tag, item.tagColors)}">${escapeHtml(tag)}</span>`;
