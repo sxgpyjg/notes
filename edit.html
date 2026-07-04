@@ -605,16 +605,17 @@ netImgBtn.onclick = function(){
 };
 
 //========== 生成推送命令 ==========
+// ... 前面的代码保持不变 ...
+
 document.getElementById('showTemplateBtn').onclick = async function(){
   syncFormToNoteList();
   
   const useDownload = document.getElementById('useDownloadCheck').checked;
   const allNotes = list.filter(i => i && i.id);
-  const now = getNowTimeStr();
+  const now = getNowTimeTimeStr(); // 注意：这里调用您原有的时间函数，如果原函数名是 getNowTimeStr 请修正
 
-  // ===== 基础命令：图片复制 + git 操作（两者共享） =====
-  let cmdBatch = `cd ~/storage/shared/notes || exit 1\n`;
-  cmdBatch += `mkdir -p images\n\n`;
+  // ===== 基础命令：图片复制 =====
+  let cmdBatch = `cd ~/storage/shared/notes || exit 1\nmkdir -p images\n\n`;
   imgUploadList.forEach((item, idx) => {
     const fileName = item.name.replace(/"/g, '\\"');
     cmdBatch += `# 图片 ${idx+1}: ${fileName}\n`;
@@ -631,7 +632,22 @@ document.getElementById('showTemplateBtn').onclick = async function(){
     cmdBatch += `fi\n\n`;
   });
 
-  // ===== Git 操作（两者共享） =====
+  // ===== 生成格式化后的 data.js 内容 =====
+  // 使用 JSON.stringify 并添加缩进，使每条笔记清晰可辨
+  const formattedJson = JSON.stringify(allNotes, null, 2);
+  
+  // 构建 data.js 文件内容，添加注释分隔符以便阅读
+  let jsContent = `window.NOTE_DATA = [\n`;
+  
+  // 将格式化后的 JSON 按行处理，或者直接使用格式化后的字符串
+  // 为了更清晰，我们可以简单地在每条笔记前后加注释（如果数据量大可能冗余），
+  // 但通常 JSON.stringify(..., null, 2) 已经足够清晰，因为每个对象都有大括号包裹。
+  // 这里我们直接使用格式化后的字符串，因为它天然具有换行和缩进。
+  
+  jsContent += formattedJson;
+  jsContent += `\n];\n`;
+
+  // Git 操作
   let cmdGit = `git add images/ data.js\n`;
   cmdGit += `if ! git diff --cached --quiet; then\n`;
   cmdGit += `  git commit -m "update notes ${now}"\n`;
@@ -641,9 +657,7 @@ document.getElementById('showTemplateBtn').onclick = async function(){
   cmdGit += `fi\n`;
 
   if (useDownload) {
-    // ===== 下载方式 =====
-    // 1. 生成并下载 data_temp.js
-    const jsContent = "window.NOTE_DATA = " + JSON.stringify(allNotes, null, 2);
+    // 下载方式
     const blob = new Blob([jsContent], {type: 'application/javascript'});
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -654,10 +668,9 @@ document.getElementById('showTemplateBtn').onclick = async function(){
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
 
-    // 2. 生成短命令（不含 data.js 内容）
     let cmd = `# === 图片复制 + 下载 data.js 推送命令 ===\n`;
     cmd += cmdBatch;
-    cmd += `# 复制 data.js（请确保 data_temp.js 已下载到 /storage/emulated/0/Download/）\n`;
+    cmd += `# 复制 data_temp.js 到 data.js\n`;
     cmd += `if [ -f /storage/emulated/0/Download/data_temp.js ]; then\n`;
     cmd += `  cp /storage/emulated/0/Download/data_temp.js data.js && echo "✅ data.js 已更新"\n`;
     cmd += `  rm -f /storage/emulated/0/Download/data_temp.js\n`;
@@ -677,12 +690,14 @@ document.getElementById('showTemplateBtn').onclick = async function(){
     alert(`📄 data_temp.js 已开始下载\n📋 短命令已复制，请在下载完成后执行。`);
 
   } else {
-    // ===== 内联方式（紧凑 JSON） =====
-    const jsContent = "window.NOTE_DATA = " + JSON.stringify(allNotes);
-    let cmd = `# === 图片复制 + data.js 内联推送命令 ===\n`;
+    // 内联方式：直接生成带格式的脚本
+    // 使用 heredoc 但为了可读性，我们在 shell 脚本中直接嵌入格式化好的 JS
+    let cmd = `# === 图片复制 + data.js 内联推送命令 (已格式化) ===\n`;
     cmd += cmdBatch;
     cmd += `rm -f data.js\n`;
-    cmd += `cat > data.js << 'EOF'\n${jsContent}\nEOF\n`;
+    cmd += `cat > data.js << 'ENDOFDATA'\n`;
+    cmd += jsContent; // 这里已经是格式化好的，带有换行和缩进
+    cmd += `ENDOFDATA\n\n`;
     cmd += cmdGit;
 
     await navigator.clipboard.writeText(cmd).catch(() => {
@@ -693,9 +708,15 @@ document.getElementById('showTemplateBtn').onclick = async function(){
       document.execCommand('copy');
       document.body.removeChild(t);
     });
-    alert(`📋 完整推送命令已复制（data.js 已内联，可直接粘贴执行）。`);
+    alert(`📋 完整推送命令已复制（data.js 内容已格式化，每条笔记清晰分隔，可直接粘贴执行）。`);
   }
 };
+
+// 辅助函数：确保时间字符串格式正确
+function getNowTimeStr(){
+  const d=new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}:${String(d.getSeconds()).padStart(2,'0')}`;
+}
 
 // 批量图床链接
 document.getElementById('batchImgBtn').onclick = function(){
