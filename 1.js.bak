@@ -929,9 +929,10 @@ mdBox.addEventListener('keydown',function(e){
   }
 });
 
-// ========== 全屏拖曳覆盖层（使用您已添加的静态HTML） ==========
-const dragOverlay = document.getElementById('dragOverlay');  // 引用静态元素
+// ========== 全屏拖曳覆盖层 ==========
+const dragOverlay = document.getElementById('dragOverlay');
 let dragActive = false, dragStartX = 0, dragStartY = 0;
+let dyAccum = 0;
 
 document.getElementById('dragModeToggle').addEventListener('click', function(){
   dragActive = !dragActive;
@@ -943,9 +944,6 @@ document.getElementById('dragModeToggle').addEventListener('click', function(){
     dragOverlay.style.display = 'none';
   }
 });
-
-// 覆盖层触摸事件
-let dyAccum = 0;
 
 dragOverlay.addEventListener('touchstart', function(e){
   if(!dragActive) return;
@@ -975,7 +973,6 @@ dragOverlay.addEventListener('touchmove', function(e){
   dragStartX = touch.clientX;
   dragStartY = touch.clientY;
   
-  // 水平移动
   const stepX = Math.round(dx * 0.3);
   
   if(currentEditMode === 'rich'){
@@ -986,95 +983,3 @@ dragOverlay.addEventListener('touchmove', function(e){
       let offset = range.startOffset + stepX;
       if(node.nodeType === Node.TEXT_NODE){
         offset = Math.max(0, Math.min(node.textContent.length, offset));
-        range.setStart(node, offset);
-        range.setEnd(node, offset);
-        sel.removeAllRanges();
-        sel.addRange(range);
-      }
-      // 垂直移动（累积dy，每20px触发一次行移动）
-      dyAccum += dy;
-      if(Math.abs(dyAccum) >= 20){
-        const dir = dyAccum > 0 ? 'down' : 'up';
-        try {
-          sel.modify('move', dir, 'line');
-        } catch(e) {
-          // 降级：模拟键盘方向键
-          const evt = new KeyboardEvent('keydown', { key: dir === 'down' ? 'ArrowDown' : 'ArrowUp', bubbles: true });
-          richBox.dispatchEvent(evt);
-        }
-        dyAccum = 0;
-      }
-    }
-  } else {
-    // Markdown模式：水平移动
-    let pos = mdBox.selectionStart + stepX;
-    pos = Math.max(0, Math.min(mdBox.value.length, pos));
-    mdBox.selectionStart = mdBox.selectionEnd = pos;
-    
-    // 垂直移动（基于行数，使用累积方式避免抖动）
-    dyAccum += dy;
-    if(Math.abs(dyAccum) >= 20){
-      const dir = dyAccum > 0 ? 1 : -1;
-      const text = mdBox.value;
-      const lines = text.split('\n');
-      // 计算当前行
-      let cum = 0, currentLine = 0;
-      for(let i=0; i<lines.length; i++){
-        if(cum + lines[i].length >= pos){
-          currentLine = i;
-          break;
-        }
-        cum += lines[i].length + 1;
-      }
-      // 目标行
-      const targetLine = Math.max(0, Math.min(lines.length - 1, currentLine + dir));
-      // 计算目标位置（保持列位置不变）
-      let targetPos = 0;
-      for(let i=0; i<targetLine; i++){
-        targetPos += lines[i].length + 1;
-      }
-      const col = pos - cum;
-      targetPos = Math.min(targetPos + col, targetPos + lines[targetLine].length);
-      mdBox.selectionStart = mdBox.selectionEnd = targetPos;
-      mdBox.focus();
-      dyAccum = 0;
-    }
-  }
-});
-
-dragOverlay.addEventListener('touchend', function(){
-  // 不退出模式
-});
-//========== 快捷键 ==========
-window.addEventListener('keydown',function(e){
-  if(e.ctrlKey&&e.key==='s'){ e.preventDefault(); document.getElementById('copyJsonBtn').click(); }
-  if(e.ctrlKey&&(e.key==='z'||e.key==='Z')){ e.preventDefault(); globalUndo(); }
-  if(e.ctrlKey&&(e.key==='y'||e.key==='Y')){ e.preventDefault(); globalRedo(); }
-  if(e.ctrlKey&&e.key==='f'){ e.preventDefault(); findReplaceBtn.click(); }
-  if(e.ctrlKey&&e.key==='b'){ e.preventDefault(); formatBold(); }
-  if(e.ctrlKey&&e.key==='i'){ e.preventDefault(); formatItalic(); }
-  if(e.ctrlKey&&e.key==='u'){ e.preventDefault(); insertUnderline(); }
-});
-
-//========== 移动端键盘适配 ==========
-(function(){
-  let initVh=window.visualViewport?window.visualViewport.height:window.innerHeight;
-  const TOOLBAR_OFFSET = -20; // 负值：让工具栏下移（解决顶部被遮挡）
-  function handleResize(){
-    const curH=window.visualViewport?window.visualViewport.height:window.innerHeight;
-    const keyboardHeight=initVh-curH; const opened=keyboardHeight>100;
-    document.body.classList.toggle('keyboard-opened',opened);
-    if(opened){
-      document.documentElement.style.setProperty('--keyboard-height', (keyboardHeight + TOOLBAR_OFFSET) + 'px');
-      setTimeout(()=>{const a=document.activeElement; if(a&&(a.id==='richEditor'||a.id==='mdEditor')) a.scrollIntoView({behavior:'smooth',block:'end'});},200);
-    } else { document.documentElement.style.setProperty('--keyboard-height','0px'); }
-  }
-  if(window.visualViewport) window.visualViewport.addEventListener('resize',handleResize); else window.addEventListener('resize',handleResize);
-})();
-
-
-//========== 初始化 ==========
-window.addEventListener("DOMContentLoaded",()=>{ renderMdPreview(); calcWordCount(); });
-</script>
-</body>
-</html>
