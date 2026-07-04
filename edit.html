@@ -25,7 +25,7 @@ body.keyboard-opened{padding-bottom:60px!important;}
 .tag-chip-remove::before{content:"×";font-weight:bold;}
 .tag-chip-input{flex:1;min-width:65px;border:none;outline:none;background:transparent;font-size:13px;padding:3px 2px;}
 .tags-hint{font-size:10px;color:#9ca3af;margin:-6px 0 6px 4px;}
-.edit-toolbar-wrap{position:fixed;bottom:0;left:0;width:100%;background:#fff;border-top:1px solid #e0e3f0;z-index:999;border-radius:12px 12px 0 0;box-shadow:0 -4px 15px rgba(0,0,0,.05);transition:bottom 0.2s;padding-bottom:0;}
+.edit-toolbar-wrap{position:fixed;bottom:0;left:0;width:100%;background:#fff;border-top:1px solid #e0e3f0;z-index:100000;border-radius:12px 12px 0 0;box-shadow:0 -4px 15px rgba(0,0,0,.05);transition:bottom 0.2s;padding-bottom:0;}
 body.keyboard-opened .edit-toolbar-wrap{position:fixed;bottom:var(--keyboard-height,0);}
 .toolbar-main{display:flex;flex-wrap:wrap;gap:2px;padding:4px 4px;align-items:center;}
 .icon-btn{border:1px solid #ddd;background:#fff;border-radius:4px;width:26px;height:26px;font-size:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;}
@@ -98,16 +98,28 @@ body.keyboard-opened .edit-toolbar-wrap{position:fixed;bottom:var(--keyboard-hei
   <button class="tool-btn" id="downloadDataBtn">下载data.js</button>
   <button class="tool-btn" id="batchImgBtn">批量图床链接</button>
 </div>
+<input type="file" id="imgFileInput" multiple style="display:none;">   <!-- 添加这一行 -->
 <input class="title-input" placeholder="填写笔记标题">
+
 <div class="tags-input-wrap" id="tagsInputWrap">
   <input type="text" class="tag-chip-input" id="tagChipInput" placeholder="添加标签（回车确认）">
 </div>
 <div class="tags-hint">回车添加，点击色块换颜色，× 删除</div>
-<div class="private-switch-group">
-  <label class="switch"><input type="checkbox" id="privateCheck"><span class="slider"></span></label>
-  <span class="switch-label private">设为私密</span>
-  <span style="font-size:11px;color:#94a3b8;">（仅管理员可见）</span>
+<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px;">
+  <div class="private-switch-group" style="margin-bottom:0;padding:4px 8px;">
+    <label class="switch"><input type="checkbox" id="privateCheck"><span class="slider"></span></label>
+    <span class="switch-label private">设为私密</span>
+  </div>
+  <div class="switch-wrap" style="margin-bottom:0;">
+    <label class="switch">
+      <input type="checkbox" id="useDownloadCheck">
+      <span class="slider"></span>
+    </label>
+    <span class="switch-label" style="font-size:13px;">下载方式</span>
+  </div>
+  <span style="font-size:11px;color:#94a3b8;">（仅管理员可见 | 关闭则内联data.js）</span>
 </div>
+
 <div class="mode-switch">
   <button id="modeRich" class="active" onclick="switchMode('rich')">富文本</button>
   <button id="modeMd" onclick="switchMode('md')">Markdown</button>
@@ -178,6 +190,10 @@ body.keyboard-opened .edit-toolbar-wrap{position:fixed;bottom:var(--keyboard-hei
 </div>
 <div class="cursor-dragger" id="cursorDragger">
   <div class="thumb"></div>
+</div>
+<!-- 全屏拖曳覆盖层 -->
+<div id="dragOverlay" style="display:none;position:fixed;inset:0;z-index:99999;background:rgba(99,102,241,0.05);touch-action:none;">
+  <div style="position:absolute;bottom:100px;left:50%;transform:translateX(-50%);background:#6366F1;color:#fff;padding:6px 12px;border-radius:20px;font-size:12px;pointer-events:none;">拖曳模式 - 点击按钮或按返回退出</div>
 </div>
 
 <script>
@@ -566,21 +582,94 @@ netImgBtn.onclick = function(){
 //========== 生成推送命令 ==========
 document.getElementById('showTemplateBtn').onclick = async function(){
   syncFormToNoteList();
+  
+  const useDownload = document.getElementById('useDownloadCheck').checked;
   const allNotes = list.filter(i => i && i.id);
-  const jsContent = "window.NOTE_DATA = " + JSON.stringify(allNotes, null, 2);
   const now = getNowTimeStr();
-  let cmd = `# === 图片自动定位 + 复制 + 推送命令 ===\ncd ~/storage/shared/notes || exit 1\nmkdir -p images\n\n`;
+
+  // ===== 基础命令：图片复制 + git 操作（两者共享） =====
+  let cmdBatch = `cd ~/storage/shared/notes || exit 1\n`;
+  cmdBatch += `mkdir -p images\n\n`;
   imgUploadList.forEach((item, idx) => {
     const fileName = item.name.replace(/"/g, '\\"');
-    cmd += `# 图片 ${idx+1}: ${fileName}\nSRC=$(find ~/storage/shared/DCIM ~/storage/shared/Download ~/storage/shared/Pictures ~/storage/shared/tencent -name "${fileName}" 2>/dev/null | head -1)\n`;
-    cmd += `if [ -n "$SRC" ]; then\n  cp "$SRC" images/"${fileName}" && echo "✅ 已复制: ${fileName}"\nelse\n  SRC=$(find ~/storage/shared -name "${fileName}" 2>/dev/null | head -1)\n  if [ -n "$SRC" ]; then\n    cp "$SRC" images/"${fileName}" && echo "✅ 已复制(全盘): ${fileName}"\n  else\n    echo "❌ 未找到文件: ${fileName}"\n    echo "   cp /真实路径/${fileName} images/"\n  fi\nfi\n\n`;
+    cmdBatch += `# 图片 ${idx+1}: ${fileName}\n`;
+    cmdBatch += `SRC=$(find /storage/emulated/0/DCIM /storage/emulated/0/Download /storage/emulated/0/Pictures /storage/emulated/0/tencent -name "${fileName}" 2>/dev/null | head -1)\n`;
+    cmdBatch += `if [ -n "$SRC" ]; then\n`;
+    cmdBatch += `  cp "$SRC" images/"${fileName}" && echo "✅ 已复制: ${fileName}"\n`;
+    cmdBatch += `else\n`;
+    cmdBatch += `  SRC=$(find /storage/emulated/0 -name "${fileName}" 2>/dev/null | head -1)\n`;
+    cmdBatch += `  if [ -n "$SRC" ]; then\n`;
+    cmdBatch += `    cp "$SRC" images/"${fileName}" && echo "✅ 已复制(全盘): ${fileName}"\n`;
+    cmdBatch += `  else\n`;
+    cmdBatch += `    echo "❌ 未找到文件: ${fileName}"\n`;
+    cmdBatch += `  fi\n`;
+    cmdBatch += `fi\n\n`;
   });
-  cmd += `rm -f data.js\ncat > data.js << 'EOF'\n${jsContent}\nEOF\ngit add images/ data.js\n`;
-  cmd += `if ! git diff --cached --quiet; then\n  git commit -m "update notes ${now}"\n  git push origin main && echo "✅ 推送成功"\nelse\n  echo "⚠️ 无变化，跳过提交"\nfi\n`;
-  await navigator.clipboard.writeText(cmd).catch(() => {
-    const t = document.createElement('textarea'); t.value = cmd; document.body.appendChild(t); t.select(); document.execCommand('copy'); document.body.removeChild(t);
-  });
-  alert(`命令已复制。笔记数量：${allNotes.length} 条`);
+
+  // ===== Git 操作（两者共享） =====
+  let cmdGit = `git add images/ data.js\n`;
+  cmdGit += `if ! git diff --cached --quiet; then\n`;
+  cmdGit += `  git commit -m "update notes ${now}"\n`;
+  cmdGit += `  git push origin main && echo "✅ 推送成功"\n`;
+  cmdGit += `else\n`;
+  cmdGit += `  echo "无变化，跳过提交"\n`;
+  cmdGit += `fi\n`;
+
+  if (useDownload) {
+    // ===== 下载方式 =====
+    // 1. 生成并下载 data_temp.js
+    const jsContent = "window.NOTE_DATA = " + JSON.stringify(allNotes, null, 2);
+    const blob = new Blob([jsContent], {type: 'application/javascript'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'data_temp.js';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    // 2. 生成短命令（不含 data.js 内容）
+    let cmd = `# === 图片复制 + 下载 data.js 推送命令 ===\n`;
+    cmd += cmdBatch;
+    cmd += `# 复制 data.js（请确保 data_temp.js 已下载到 /storage/emulated/0/Download/）\n`;
+    cmd += `if [ -f /storage/emulated/0/Download/data_temp.js ]; then\n`;
+    cmd += `  cp /storage/emulated/0/Download/data_temp.js data.js && echo "✅ data.js 已更新"\n`;
+    cmd += `  rm -f /storage/emulated/0/Download/data_temp.js\n`;
+    cmd += `else\n`;
+    cmd += `  echo "❌ 未找到 data_temp.js，请手动复制"\n`;
+    cmd += `fi\n\n`;
+    cmd += cmdGit;
+
+    await navigator.clipboard.writeText(cmd).catch(() => {
+      const t = document.createElement('textarea');
+      t.value = cmd;
+      document.body.appendChild(t);
+      t.select();
+      document.execCommand('copy');
+      document.body.removeChild(t);
+    });
+    alert(`📄 data_temp.js 已开始下载\n📋 短命令已复制，请在下载完成后执行。`);
+
+  } else {
+    // ===== 内联方式（紧凑 JSON） =====
+    const jsContent = "window.NOTE_DATA = " + JSON.stringify(allNotes);
+    let cmd = `# === 图片复制 + data.js 内联推送命令 ===\n`;
+    cmd += cmdBatch;
+    cmd += `rm -f data.js\n`;
+    cmd += `cat > data.js << 'EOF'\n${jsContent}\nEOF\n`;
+    cmd += cmdGit;
+
+    await navigator.clipboard.writeText(cmd).catch(() => {
+      const t = document.createElement('textarea');
+      t.value = cmd;
+      document.body.appendChild(t);
+      t.select();
+      document.execCommand('copy');
+      document.body.removeChild(t);
+    });
+    alert(`📋 完整推送命令已复制（data.js 已内联，可直接粘贴执行）。`);
+  }
 };
 
 // 批量图床链接
@@ -750,97 +839,123 @@ mdBox.addEventListener('keydown',function(e){
   }
 });
 
-//========== 光标拖曳（上下左右全方向） ==========
-let isDragging=false, dragStartX=0, dragStartY=0, longPressTimer=null;
-const LONG_PRESS_DELAY=600;
-function showDragger(){
-  if(currentEditMode!=='md')return; const ta=mdBox; if(ta.style.display==='none')return;
-  dragger.classList.add('show');
-  const rect=ta.getBoundingClientRect(), lineHeight=parseInt(getComputedStyle(ta).lineHeight)||20;
-  const lines=ta.value.substr(0,ta.selectionStart).split('\n').length;
-  const top=rect.top+(lines*lineHeight)-15;
-  dragger.style.top=Math.min(Math.max(top,rect.top+10),rect.bottom-40)+'px';
-}
-function hideDragger(){ dragger.classList.remove('show'); isDragging=false; }
-mdBox.addEventListener('touchstart',function(e){
-  if(e.touches.length!==1)return;
-  longPressTimer=setTimeout(()=>{showDragger(); const t=e.touches[0]; dragStartX=t.clientX; dragStartY=t.clientY; isDragging=true;},LONG_PRESS_DELAY);
-});
-mdBox.addEventListener('touchmove',function(e){
-  if(longPressTimer)clearTimeout(longPressTimer);
-  if(!isDragging)return; e.preventDefault();
-  const touch=e.touches[0], dx=touch.clientX-dragStartX, dy=touch.clientY-dragStartY;
-  dragStartX=touch.clientX; dragStartY=touch.clientY;
-  const len=mdBox.value.length;
-  // 水平移动步长0.5字符/px，垂直移动步长1行/10px
-  const stepX=Math.round(dx*0.5); const stepY=Math.round(dy*0.1)* (mdBox.value.split('\n')[0].length+1 || 20);
-  let newPos=mdBox.selectionStart+stepX+stepY;
-  newPos=Math.max(0,Math.min(len,newPos));
-  mdBox.selectionStart=mdBox.selectionEnd=newPos; mdBox.focus();
-  const rect=mdBox.getBoundingClientRect(), lineHeight=parseInt(getComputedStyle(mdBox).lineHeight)||20;
-  const lines=mdBox.value.substr(0,newPos).split('\n').length;
-  const top=rect.top+(lines*lineHeight)-15;
-  dragger.style.top=Math.min(Math.max(top,rect.top+10),rect.bottom-40)+'px';
-});
-mdBox.addEventListener('touchend',function(){ if(longPressTimer)clearTimeout(longPressTimer); if(isDragging){setTimeout(hideDragger,200);isDragging=false;} });
-document.addEventListener('touchstart',function(e){if(!dragger.contains(e.target)&&e.target!==mdBox)hideDragger();});
 
-// 拖曳光标模式切换按钮
+// ========== 全屏拖曳覆盖层（使用您已添加的静态HTML） ==========
+const dragOverlay = document.getElementById('dragOverlay');  // 引用静态元素
+let dragActive = false, dragStartX = 0, dragStartY = 0;
+
 document.getElementById('dragModeToggle').addEventListener('click', function(){
-  dragMode = !dragMode;
-  this.style.background = dragMode ? '#6366F1' : '';
-  this.style.color = dragMode ? '#fff' : '';
-  alert(dragMode ? '拖曳光标模式已开启，触摸编辑器任意位置可拖动光标' : '拖曳光标模式已关闭');
+  dragActive = !dragActive;
+  this.style.background = dragActive ? '#6366F1' : '';
+  this.style.color = dragActive ? '#fff' : '';
+  if(dragActive){
+    dragOverlay.style.display = 'block';
+  } else {
+    dragOverlay.style.display = 'none';
+  }
 });
-// 全屏拖曳模式（不在mdbox上，而是在编辑器区域整体拖动）
-richBox.addEventListener('touchstart', function(e){
-  if(!dragMode || currentEditMode!=='rich') return;
-  e.preventDefault();
+
+// 覆盖层触摸事件
+let dyAccum = 0;
+
+dragOverlay.addEventListener('touchstart', function(e){
+  if(!dragActive) return;
   const touch = e.touches[0];
   dragStartX = touch.clientX;
   dragStartY = touch.clientY;
-  isDragging = true;
-  // 保存当前位置
-  const sel = window.getSelection();
-  if(sel.rangeCount){
-    const range = sel.getRangeAt(0);
-    const rect = range.getBoundingClientRect();
-    dragStartX = rect.left + rect.width/2;
-    dragStartY = rect.top + rect.height/2;
+  dyAccum = 0;
+  if(currentEditMode === 'rich'){
+    const sel = window.getSelection();
+    if(sel.rangeCount){
+      const range = sel.getRangeAt(0);
+      const rect = range.getBoundingClientRect();
+      dragStartX = rect.left + rect.width/2;
+      dragStartY = rect.top + rect.height/2;
+    }
+  } else {
+    dragStartX = mdBox.selectionStart;
   }
 });
-richBox.addEventListener('touchmove', function(e){
-  if(!dragMode || !isDragging) return;
+
+dragOverlay.addEventListener('touchmove', function(e){
+  if(!dragActive) return;
   e.preventDefault();
   const touch = e.touches[0];
   const dx = touch.clientX - dragStartX;
   const dy = touch.clientY - dragStartY;
   dragStartX = touch.clientX;
   dragStartY = touch.clientY;
-  // 简单模拟方向：向左移动减少一个字符，向右增加一个字符，向上减少行，向下增加行
-  const stepX = Math.round(dx * 0.2);
-  const stepY = Math.round(dy * 0.1) * 30; // 近似行宽
-  const sel = window.getSelection();
-  if(sel.rangeCount){
-    const r = sel.getRangeAt(0);
-    let node = r.startContainer;
-    let offset = r.startOffset + stepX + stepY;
-    // 如果node是元素节点，则找到文本节点
-    if(node.nodeType === 1){
-      // 简单处理：忽略
-    } else if(node.nodeType === 3){
-      offset = Math.max(0, Math.min(node.textContent.length, offset));
-      r.setStart(node, offset);
-      r.setEnd(node, offset);
-      sel.removeAllRanges();
-      sel.addRange(r);
+  
+  // 水平移动
+  const stepX = Math.round(dx * 0.3);
+  
+  if(currentEditMode === 'rich'){
+    const sel = window.getSelection();
+    if(sel.rangeCount){
+      const range = sel.getRangeAt(0);
+      let node = range.startContainer;
+      let offset = range.startOffset + stepX;
+      if(node.nodeType === Node.TEXT_NODE){
+        offset = Math.max(0, Math.min(node.textContent.length, offset));
+        range.setStart(node, offset);
+        range.setEnd(node, offset);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+      // 垂直移动（累积dy，每20px触发一次行移动）
+      dyAccum += dy;
+      if(Math.abs(dyAccum) >= 20){
+        const dir = dyAccum > 0 ? 'down' : 'up';
+        try {
+          sel.modify('move', dir, 'line');
+        } catch(e) {
+          // 降级：模拟键盘方向键
+          const evt = new KeyboardEvent('keydown', { key: dir === 'down' ? 'ArrowDown' : 'ArrowUp', bubbles: true });
+          richBox.dispatchEvent(evt);
+        }
+        dyAccum = 0;
+      }
+    }
+  } else {
+    // Markdown模式：水平移动
+    let pos = mdBox.selectionStart + stepX;
+    pos = Math.max(0, Math.min(mdBox.value.length, pos));
+    mdBox.selectionStart = mdBox.selectionEnd = pos;
+    
+    // 垂直移动（基于行数，使用累积方式避免抖动）
+    dyAccum += dy;
+    if(Math.abs(dyAccum) >= 20){
+      const dir = dyAccum > 0 ? 1 : -1;
+      const text = mdBox.value;
+      const lines = text.split('\n');
+      // 计算当前行
+      let cum = 0, currentLine = 0;
+      for(let i=0; i<lines.length; i++){
+        if(cum + lines[i].length >= pos){
+          currentLine = i;
+          break;
+        }
+        cum += lines[i].length + 1;
+      }
+      // 目标行
+      const targetLine = Math.max(0, Math.min(lines.length - 1, currentLine + dir));
+      // 计算目标位置（保持列位置不变）
+      let targetPos = 0;
+      for(let i=0; i<targetLine; i++){
+        targetPos += lines[i].length + 1;
+      }
+      const col = pos - cum;
+      targetPos = Math.min(targetPos + col, targetPos + lines[targetLine].length);
+      mdBox.selectionStart = mdBox.selectionEnd = targetPos;
+      mdBox.focus();
+      dyAccum = 0;
     }
   }
 });
-richBox.addEventListener('touchend', function(){
-  if(dragMode) isDragging = false;
-});
 
+dragOverlay.addEventListener('touchend', function(){
+  // 不退出模式
+});
 //========== 快捷键 ==========
 window.addEventListener('keydown',function(e){
   if(e.ctrlKey&&e.key==='s'){ e.preventDefault(); document.getElementById('copyJsonBtn').click(); }
