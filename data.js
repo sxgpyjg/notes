@@ -3,13 +3,17 @@ window.NOTE_DATA = [
     "id": 1782518114416,
     "title": "红楼梦剧照",
     "type": "女星",
-    "content": "<img loading=\"lazy\" src=\"https://origin.picgo.net/2026/06/27/Screenshot_2026_0625_123600bc27a5939876102a.png\" alt=\"配图\"><img loading=\"lazy\" src=\"https://s21.ax1x.com/2025/02/07/pEmehjI.png\" alt=\"配图\"><br><br><img loading=\"lazy\" src=\"https://s21.ax1x.com/2025/02/07/pEmefgA.jpg\" alt=\"配图\"><br><br>",
-    "date": "2026-06-29 15:44:15",
+    "content": "<img loading=\"lazy\" src=\"https://origin.picgo.net/2026/06/27/Screenshot_2026_0625_123600bc27a5939876102a.png\" alt=\"配图\"><div><img loading=\"lazy\" src=\"https://origin.picgo.net/2026/07/04/bilibili_2026_0704_141325dd46ac601aec5025.png\" alt=\"配图\"><br><img loading=\"lazy\" src=\"https://origin.picgo.net/2026/07/04/bilibili_2026_0704_1414179aec630d8e014843.png\" alt=\"配图\"><br><img loading=\"lazy\" src=\"https://origin.picgo.net/2026/07/04/bilibili_2026_0704_1417166e42346037330d9e.png\" alt=\"配图\"><br><img loading=\"lazy\" src=\"https://origin.picgo.net/2026/07/04/bilibili_2026_0704_142128651965e349a6c79b.png\" alt=\"配图\"><br><img loading=\"lazy\" src=\"https://origin.picgo.net/2026/07/04/bilibili_2026_0704_1418505f5e7a5a7f36fda5.png\" alt=\"配图\"><br><img loading=\"lazy\" src=\"https://origin.picgo.net/2026/07/04/bilibili_2026_0704_1413481ab2b508b213a28d.png\" alt=\"配图\"><br><img loading=\"lazy\" src=\"https://origin.picgo.net/2026/07/04/bilibili_2026_0704_14190564fc132f109c2646.png\" alt=\"配图\"><br><img loading=\"lazy\" src=\"https://origin.picgo.net/2026/07/04/bilibili_2026_0704_141608800efb9e25aa73eb.png\" alt=\"配图\"><br><img loading=\"lazy\" src=\"https://origin.picgo.net/2026/07/04/bilibili_2026_0704_1420529fde5466b381191b.png\" alt=\"配图\"><br><img loading=\"lazy\" src=\"https://origin.picgo.net/2026/07/04/bilibili_2026_0704_142023add84ffa16d89750.png\" alt=\"配图\"><br><img loading=\"lazy\" src=\"https://s21.ax1x.com/2025/02/07/pEmehjI.png\" alt=\"配图\"><br><br><img loading=\"lazy\" src=\"https://s21.ax1x.com/2025/02/07/pEmefgA.jpg\" alt=\"配图\"><br><br></div>",
+    "date": "2026-07-04 16:39:23",
     "private": true,
     "tags": [
       "女星",
       "美女"
-    ]
+    ],
+    "tagColors": {
+      "女星": "#6366F1",
+      "美女": "#EC4899"
+    }
   },
   {
     "id": 1782137355711,
