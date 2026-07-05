@@ -1,5 +1,19 @@
 window.NOTE_DATA = [
   {
+    "id": 1783234231328,
+    "title": "图片",
+    "type": "zhangyaning",
+    "tags": [
+      "zhangyaning"
+    ],
+    "tagColors": {
+      "zhangyaning": "#000000"
+    },
+    "content": "<img loading=\"lazy\" src=\"\" alt=\"图片加载失败\" onerror=\"this.src='';this.alt='图片加载失败';\"><br>",
+    "date": "2026-07-05 14:52:15",
+    "private": false
+  },
+  {
     "id": 1782518114416,
     "title": "红楼梦剧照",
     "type": "女星",
@@ -121,4 +135,4 @@ window.NOTE_DATA = [
     "_isTempNew": true,
     "_preview": "<br>"
   }
-]
+];
