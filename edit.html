@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
-<title>笔记编辑器（最终版）</title>
+<title>笔记编辑器（终极修复版）</title>
 <script src="./data.js?v=1"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:system-ui,-apple-system,sans-serif;}
@@ -37,6 +37,7 @@ body.keyboard-opened .edit-toolbar-wrap{position:fixed;bottom:var(--keyboard-hei
 .rich-editor{width:100%;min-height:200px;border:2px solid #e2e8f0;border-radius:10px;padding:12px;font-size:15px;outline:none;background:#fff;line-height:1.7;position:relative;}
 .rich-editor:focus{border-color:#6366F1;}
 .rich-editor img{max-width:100%;height:auto;border-radius:6px;margin:6px 0;display:block;cursor:pointer;}
+.rich-editor a{color:#6366F1;text-decoration:underline;}
 .rich-editor table{width:100%;border-collapse:collapse;margin:6px 0;}
 .rich-editor th,.rich-editor td{border:1px solid #999;padding:4px 6px;min-width:40px;position:relative;}
 .rich-editor td .table-controls{display:none;position:absolute;top:2px;right:2px;gap:2px;z-index:10;}
@@ -45,6 +46,7 @@ body.keyboard-opened .edit-toolbar-wrap{position:fixed;bottom:var(--keyboard-hei
 .md-editor{width:100%;min-height:180px;border:2px solid #e2e8f0;border-radius:10px;padding:12px;font-size:14px;outline:none;background:#f8fafc;line-height:1.6;font-family:monospace;resize:vertical;}
 .md-editor:focus{border-color:#6366F1;}
 .md-preview{width:100%;min-height:180px;border:2px solid #e2e8f0;border-radius:10px;padding:12px;background:#fff;margin-top:6px;line-height:1.6;}
+.md-preview img{max-width:100%;border-radius:6px;margin:6px 0;}
 .mode-switch{display:flex;gap:8px;margin-bottom:6px;}
 .mode-switch button{flex:1;padding:6px 0;border-radius:8px;border:2px solid #6366F1;background:#fff;color:#6366F1;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;}
 .mode-switch button.active{background:#6366F1;color:#fff;}
@@ -211,6 +213,7 @@ body.keyboard-opened .edit-toolbar-wrap{position:fixed;bottom:var(--keyboard-hei
 const ADMIN_PASSWORD = "admin123";
 const CACHE_KEY = "note_temp_data";
 const RICH_RECORD_MAX = 30;
+// 默认标签颜色池
 const TAG_COLOR_PRESETS = ['#6366F1','#EC4899','#10B981','#F59E0B','#3B82F6','#EF4444','#8B5CF6','#14B8A6','#F97316','#84CC16'];
 let list = [], targetNote = null;
 const editId = new URLSearchParams(location.search).get("id");
@@ -258,7 +261,13 @@ function getTagColor(t){
   const idx=currentTags.findIndex(x=>x.toLowerCase()===k);
   return tagColorMap[k]=TAG_COLOR_PRESETS[idx%TAG_COLOR_PRESETS.length];
 }
-function setTagColor(t,c){ const k=t.toLowerCase().trim(); if(!c||c==='#000000')return; tagColorMap[k]=c; renderTagsChips(); }
+// 修复：移除黑色限制，允许任何颜色
+function setTagColor(t,c){ 
+  const k=t.toLowerCase().trim(); 
+  if(!c) return; 
+  tagColorMap[k]=c; 
+  renderTagsChips(); 
+}
 function pickTagColorAtIndex(idx){
   const t=currentTags[idx]; if(!t)return;
   const ci=document.createElement('input'); ci.type='color'; ci.value=getTagColor(t); ci.style.cssText='position:fixed;opacity:0;pointer-events:none;';
@@ -271,15 +280,23 @@ function renderTagsChips(){
   Array.from(tagsInputWrap.querySelectorAll('.tag-chip')).forEach(n=>n.remove());
   currentTags.forEach((t,i)=>{
     const c=getTagColor(t);
+    // 如果颜色是黑色或深色，文字变白，背景变深灰
+    let textColor = c;
+    let bgColor = c + '22'; // 22 is low opacity
+    if(c === '#000000' || c === '#000'){
+      textColor = '#fff';
+      bgColor = '#333333';
+    }
+    
     const chip=document.createElement('span');
     chip.className='tag-chip';
-    chip.style.cssText=`background:${c}22;border-left:3px solid ${c};color:${c};`;
+    chip.style.cssText=`background:${bgColor};border-left:3px solid ${c};color:${textColor};`;
     const dot=document.createElement('span');
     dot.style.cssText=`display:inline-block;width:10px;height:10px;border-radius:50%;background:${c};margin-right:3px;cursor:pointer;flex-shrink:0;`;
     dot.title='点击换色';
     dot.addEventListener('click',e=>{ e.stopPropagation(); e.preventDefault(); pickTagColorAtIndex(i); });
     const txt=document.createElement('span'); txt.className='tag-chip-text'; txt.textContent=t;
-    const rm=document.createElement('span'); rm.className='tag-chip-remove'; rm.style.cssText=`color:${c};background:${c}18;`;
+    const rm=document.createElement('span'); rm.className='tag-chip-remove'; rm.style.cssText=`color:${textColor};background:${bgColor};`;
     rm.addEventListener('click',e=>{ e.stopPropagation(); removeTagAt(i); });
     chip.append(dot,txt,rm);
     tagsInputWrap.insertBefore(chip, tagChipInput);
@@ -453,7 +470,7 @@ function mdToHtml(s){
   html=html.replace(/^### (.+)$/gm,'<h3>$1</h3>').replace(/^## (.+)$/gm,'<h2>$1</h2>').replace(/^# (.+)$/gm,'<h1>$1</h1>')
     .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g,'<em>$1</em>')
     .replace(/~~(.+?)~~/g,'<s>$1</s>').replace(/^\- (.+)$/gm,'<li>$1</li>')
-    .replace(/!\[(.*?)\]\((https?:\/\/[^\s)]+)\)/g,'<img src="$2" alt="$1" style="max-width:100%;margin:6px 0;">');
+    .replace(/!\[(.*?)\]\((https?:\/\/[^\s)]+)\)/g,'<img src="$2" alt="$1" style="max-width:100%;margin:6px 0;display:block;">');
   return html.replace(/\n/g,'<br>');
 }
 function htmlToMd(s){
@@ -518,8 +535,25 @@ function insertInlineCode(){
   else setCaretInMd('``');
 }
 function insertLink(){
-  if(currentEditMode==='rich'){ document.execCommand('insertHTML',false,'<a href="">文字</a>'); const r=window.getSelection().getRangeAt(0); r.setStart(r.startContainer,r.startOffset-4); r.collapse(true); richBox.focus(); calcWordCount(); }
-  else{ const t='[文字](链接地址)'; const p=mdBox.value.length; mdBox.value+=t; saveMdRecord(); renderMdPreview(); calcWordCount(); mdBox.selectionStart=p+1; mdBox.selectionEnd=p+3; mdBox.focus(); }
+  if(currentEditMode==='rich'){
+    richBox.focus();
+    const sel = window.getSelection();
+    if(sel.rangeCount && !sel.isCollapsed) {
+      // 如果有选中文字，包裹成链接
+      document.execCommand('createLink', false, 'https://example.com');
+      // 调整光标到最后
+      const range = sel.getRangeAt(0);
+      range.collapse(false);
+      sel.removeAllRanges();
+      sel.addRange(range);
+    } else {
+      // 否则插入一个默认链接
+      document.execCommand('insertHTML', false, '<a href="https://example.com" target="_blank">链接</a>');
+    }
+    calcWordCount();
+  } else {
+    const t='[文字](链接地址)'; const p=mdBox.value.length; mdBox.value+=t; saveMdRecord(); renderMdPreview(); calcWordCount(); mdBox.selectionStart=p+1; mdBox.selectionEnd=p+3; mdBox.focus();
+  }
 }
 function insertCenter(){
   if(currentEditMode==='rich'){
@@ -556,13 +590,13 @@ function insertTable(){
     tableHtml += '<tr>';
     for (let c = 0; c < cols; c++) {
       const tag = r === 0 ? 'th' : 'td';
-      tableHtml += `<${tag} style="border:1px solid #999;padding:4px 6px;">${r===0?'标题':'内容'}</${tag}>`;
+      tableHtml += `<$${tag} style="border:1px solid #999;padding:4px 6px;">$${r===0?'标题':'内容'}</${tag}>`;
     }
     tableHtml += '</tr>';
   }
   tableHtml += '</table>';
   if(currentEditMode==='rich'){ richBox.focus(); document.execCommand('insertHTML',false,tableHtml); calcWordCount(); }
-  else{ mdBox.value+=`\n|${' 标题 |'.repeat(cols).slice(0,-2)}\n|${' --- |'.repeat(cols).slice(0,-2)}\n`; for(let r=1;r<rows;r++){mdBox.value+=`|${' 内容 |'.repeat(cols).slice(0,-2)}\n`;} saveMdRecord(); renderMdPreview(); calcWordCount(); }
+  else{ mdBox.value+=`\n|$${' 标题 |'.repeat(cols).slice(0,-2)}\n|$${' --- |'.repeat(cols).slice(0,-2)}\n`; for(let r=1;r<rows;r++){mdBox.value+=`|${' 内容 |'.repeat(cols).slice(0,-2)}\n`;} saveMdRecord(); renderMdPreview(); calcWordCount(); }
 }
 function splitLine1(){ const t='---\n'; if(currentEditMode==='rich'){ document.execCommand('insertText',false,t); calcWordCount(); } else { mdBox.value+=t; saveMdRecord(); renderMdPreview(); calcWordCount(); } }
 function clearAllNotesContent(){ if(!confirm('清空全部内容？'))return; richBox.innerHTML=''; mdBox.value=''; renderMdPreview(); richRecordStack=['']; richRecordIndex=0; mdRecordStack=['']; mdRecordIndex=0; calcWordCount(); }
@@ -570,7 +604,10 @@ function clearAllNotesContent(){ if(!confirm('清空全部内容？'))return; ri
 //========== 图片上传 ==========
 function insertLocalImgTagTerminal(safeName) {
   const url = `https://cdn.jsdelivr.net/gh/sxgpyjg/notes@main/images/${safeName}`;
-  if(currentEditMode==='rich'){ document.execCommand('insertHTML',false,`<img loading="lazy" src="${url}" alt="本地图片" style="max-width:100%;margin:6px 0;"><br>`); richBox.focus(); }
+  if(currentEditMode==='rich'){ 
+    document.execCommand('insertHTML',false,`<img loading="lazy" src="${url}" alt="本地图片" style="max-width:100%;margin:6px 0;display:block;" onerror="this.src='';this.alt='图片加载失败';"><br>`); 
+    richBox.focus(); 
+  }
   else{ mdBox.value+=`![本地图](${url})\n\n`; saveMdRecord(); renderMdPreview(); calcWordCount(); }
 }
 function handleFileSelect(files){
@@ -591,7 +628,7 @@ function handleFileSelect(files){
     } else realPath = realPath.replace(/^\/storage\/emulated\/0\//i,'/storage/emulated/0/');
     const userPath = prompt(`请确认图片源路径（可修改）：\n${safeName}`, realPath);
     const finalPath = (userPath&&userPath.trim()) ? userPath.trim() : realPath;
-    const cpCmd = `cp "${finalPath}" ~/storage/shared/notes/images/"${safeName}"`;
+    const cpCmd = `cp "$${finalPath}" ~/storage/shared/notes/images/"$${safeName}"`;
     imgUploadList.push({name:safeName, originalName:originalName, src:finalPath, copyCmd:cpCmd});
     insertLocalImgTagTerminal(safeName);
   });
@@ -600,15 +637,7 @@ document.getElementById('localImgBtn').onclick=()=>imgFileInput.click();
 imgFileInput.onchange=function(e){ handleFileSelect(e.target.files); this.value=''; };
 
 //========== 网络图床图片弹窗 ==========
-// 修复：
-// 1. 修复 $ 转义 bug（之前用 $$ 多生成一个 $）
-// 2. MD 模式插入到当前光标位置，而非末尾
-// 3. 重打开防抖（同时间只允许一个弹窗）
-// 4. URL 简单校验（必须 http/https 开头）
-// 5. ESC 键关闭 + 点击空白关闭
-// 6. 输入框回车即插入
 function openNetImgModal(){
-  // 防抖：已有弹窗就别再开
   if(document.getElementById('netImgModalMask')) return;
 
   const mask = document.createElement("div");
@@ -639,40 +668,24 @@ function openNetImgModal(){
     document.removeEventListener('keydown', onEsc);
   }
 
-  function insertAtCursor(text){
-    // MD 模式：在当前光标处插入，而非末尾
+  function insertAtCursor(url, alt){
+    // 修复：区分富文本和MD模式
     if(currentEditMode === 'rich'){
       richBox.focus();
-      const sel = window.getSelection();
-      if(sel.rangeCount){
-        const range = sel.getRangeAt(0);
-        const img = document.createElement('img');
-        img.loading = 'lazy';
-        img.src = text.match(/^!\[.*?\]\((.*?)\)$/)?.[1] || text;
-        img.alt = text.match(/^!\[(.*?)\]/)?.[1] || '配图';
-        img.style.cssText = 'max-width:100%;margin:6px 0;display:block;';
-        range.deleteContents();
-        range.insertNode(img);
-        const br = document.createElement('br');
-        range.setStartAfter(img);
-        range.insertNode(br);
-        range.setStartAfter(br);
-        sel.removeAllRanges();
-        sel.addRange(range);
-      } else {
-        richBox.insertAdjacentHTML('beforeend', `<img loading="lazy" src="${text}" alt="配图" style="max-width:100%;margin:6px 0;display:block;"><br>`);
-      }
+      // 富文本模式插入 IMG 标签
+      const html = `<img loading="lazy" src="$${url}" alt="$${alt}" style="max-width:100%;margin:6px 0;display:block;" onerror="this.src='';this.alt='图片加载失败';"><br>`;
+      document.execCommand('insertHTML', false, html);
       calcWordCount();
     } else {
-      // MD：在当前光标处插入
+      // Markdown 模式插入 ![](url)
+      const mdText = `![$${alt}]($${url})\n\n`;
       const start = mdBox.selectionStart || 0;
       const end = mdBox.selectionEnd || 0;
       const before = mdBox.value.slice(0, start);
       const sel = mdBox.value.slice(start, end);
       const after = mdBox.value.slice(end);
-      mdBox.value = before + text + after;
-      // 把光标放到图片 markdown 之后
-      const newPos = before.length + text.length;
+      mdBox.value = before + mdText + after;
+      const newPos = before.length + mdText.length;
       mdBox.selectionStart = mdBox.selectionEnd = newPos;
       mdBox.focus();
       saveMdRecord();
@@ -685,27 +698,20 @@ function openNetImgModal(){
     const url = linkInput.value.trim();
     const alt = descInput.value.trim() || '配图';
     if(!url){ alert('请输入链接'); return; }
-    // URL 简单校验
     if(!/^https?:\/\//i.test(url)){
       alert('链接必须以 http:// 或 https:// 开头');
       linkInput.focus();
       return;
     }
-    // 修复：去掉之前错误的 $$ 转义
-    const mdText = `![${alt}](${url})\n\n`;
-    insertAtCursor(mdText);
+    insertAtCursor(url, alt);
     close();
   }
 
-  // 事件
   cancelBtn.onclick = close;
   confirmBtn.onclick = doConfirm;
-  // 点击背景关闭
   mask.onclick = function(e){ if(e.target === mask) close(); };
-  // ESC 关闭
   function onEsc(e){ if(e.key === 'Escape') close(); }
   document.addEventListener('keydown', onEsc);
-  // 输入框回车触发插入
   linkInput.addEventListener('keydown', e=>{ if(e.key === 'Enter'){ e.preventDefault(); doConfirm(); } });
   descInput.addEventListener('keydown', e=>{ if(e.key === 'Enter'){ e.preventDefault(); doConfirm(); } });
 
@@ -743,7 +749,6 @@ document.getElementById('showTemplateBtn').onclick = async function(){
   const now = getNowTimeStr();
   const useDownload = document.getElementById('useDownloadCheck').checked;
 
-  // 用普通字符串拼接，避免 $$ 转义坑
   let cmdBatch = 'cd ~/storage/shared/notes || exit 1\nmkdir -p images\n\n';
   imgUploadList.forEach((item, idx) => {
     const fileName = item.name.replace(/"/g, '\\"');
@@ -831,7 +836,7 @@ document.getElementById('batchImgBtn').onclick = function(){
   if(!urls) return;
   const arr = urls.split(/\r?\n/).map(u=>u.trim()).filter(u=>u.startsWith('http'));
   arr.forEach(url => {
-    if(currentEditMode==='rich'){ document.execCommand('insertHTML',false,`<img loading="lazy" src="${url}" alt="配图" style="max-width:100%;margin:6px 0;"><br>`); }
+    if(currentEditMode==='rich'){ document.execCommand('insertHTML',false,`<img loading="lazy" src="${url}" alt="配图" style="max-width:100%;margin:6px 0;display:block;" onerror="this.src='';this.alt='图片加载失败';"><br>`); }
     else { mdBox.value += `![配图](${url})\n\n`; }
   });
   if(currentEditMode==='md') { saveMdRecord(); renderMdPreview(); calcWordCount(); }
@@ -943,7 +948,7 @@ document.getElementById('findNextBtn').onclick=()=>{
   const reg=new RegExp(f,matchCase?'g':'gi'); matchList=[]; let m; while((m=reg.exec(text))!==null) matchList.push(m.index);
   if(!matchList.length)return alert('未找到');
   if(searchIndex>=matchList.length) searchIndex=0;
-  alert(`第 ${searchIndex+1}/${matchList.length} 处`);
+  alert(`第 $${searchIndex+1}/$${matchList.length} 处`);
   if(currentEditMode==='rich') selectRichText(matchList[searchIndex],f.length);
   searchIndex++;
 };
@@ -973,12 +978,11 @@ document.getElementById('imgPreviewMask').onclick=function(e){ if(e.target===thi
 fontSizeSelect.onchange=function(){ document.execCommand('fontSize',false,this.value); richBox.focus(); calcWordCount(); };
 fontColorInput.oninput=function(){ document.execCommand('foreColor',false,this.value); richBox.focus(); calcWordCount(); };
 bgColorInput.oninput=function(){
-  richBox.focus(); const sel=window.getSelection(); if(!sel.rangeCount||sel.getRangeAt(0).collapsed) return;
-  try { document.execCommand('hiliteColor', false, this.value); } catch(e) {
-    const range=sel.getRangeAt(0); const span=document.createElement('span'); span.style.backgroundColor=this.value; range.surroundContents(span);
-  }
-  calcWordCount();
-};
+  richBox.focus(); const sel=window.getSelection(); if(!sel.rangeCount||sel.getRangeAt(0).collapsed) return;    try { document.execCommand('hiliteColor', false, this.value); } catch(e) {
+      const range=sel.getRangeAt(0); const span=document.createElement('span'); span.style.backgroundColor=this.value; range.surroundContents(span);
+    }
+    calcWordCount();
+  };
 
 //========== 回车退出格式标记 ==========
 mdBox.addEventListener('keydown',function(e){
@@ -999,18 +1003,11 @@ mdBox.addEventListener('keydown',function(e){
 });
 
 // ========== 光标拖曳模式（重写版）==========
-// 核心改动：
-// 1. 用 caretPositionFromPoint / caretRangeFromPoint 把屏幕坐标转光标位置（Chrome/Safari/Firefox 原生支持）
-// 2. 横竖分离处理，避免互相干扰
-// 3. 覆盖层 pointer-events:none，toolbar 按钮可正常点击退出
 const dragOverlay = document.getElementById('dragOverlay');
 const dragModeToggle = document.getElementById('dragModeToggle');
 
 // 把 (x, y) 屏幕坐标转成当前编辑器内的 Range
 function screenToEditorRange(x, y){
-  // caretPositionFromPoint 是 Chrome 较新版本的标准 API
-  // caretRangeFromPoint 是 WebKit/Firefox 老 API
-  // 优先用 caretPositionFromPoint，因为它对 contenteditable 支持更好
   if(document.caretPositionFromPoint){
     try{
       const cp = document.caretPositionFromPoint(x, y);
@@ -1018,12 +1015,11 @@ function screenToEditorRange(x, y){
         const range = document.createRange();
         range.setStart(cp.offsetNode, cp.offset);
         range.collapse(true);
-        // 校验 range 是否在编辑器内
         if(currentEditMode === 'rich' && !richBox.contains(cp.offsetNode)) return null;
         if(currentEditMode === 'md' && cp.offsetNode !== mdBox) return null;
         return range;
       }
-    }catch(e){ /* 继续尝试 fallback */ }
+    }catch(e){}
   }
   if(document.caretRangeFromPoint){
     try{
@@ -1033,18 +1029,16 @@ function screenToEditorRange(x, y){
         if(currentEditMode === 'md' && range.startContainer !== mdBox) return null;
         return range;
       }
-    }catch(e){ /* 忽略 */ }
+    }catch(e){}
   }
   return null;
 }
 
-// 富文本模式：水平移动
 function moveCaretRichHorizontal(dx){
   const sel = window.getSelection();
   if(!sel.rangeCount) return false;
   const range = sel.getRangeAt(0);
   const node = range.startContainer;
-  // 只在 TEXT_NODE 内部水平移动
   if(node.nodeType !== Node.TEXT_NODE) return false;
   const step = Math.round(dx * 0.5);
   if(step === 0) return false;
@@ -1057,16 +1051,13 @@ function moveCaretRichHorizontal(dx){
   return true;
 }
 
-// 富文本模式：垂直移动（用 caretPositionFromPoint）
 function moveCaretRichVertical(dy, touchX){
   const sel = window.getSelection();
   if(!sel.rangeCount) return false;
   const range = sel.getRangeAt(0);
   const rect = range.getBoundingClientRect();
   if(rect.height === 0) return false;
-  // 目标 y：在当前光标 rect 的上/下一行高度处
   const targetY = rect.top + rect.height / 2 + (dy > 0 ? rect.height + 4 : -rect.height - 4);
-  // 限制 y 不能超出 richBox 范围
   const boxRect = richBox.getBoundingClientRect();
   const clampedY = Math.max(boxRect.top + 4, Math.min(boxRect.bottom - 4, targetY));
   const newRange = screenToEditorRange(touchX, clampedY);
@@ -1078,7 +1069,6 @@ function moveCaretRichVertical(dy, touchX){
   return false;
 }
 
-// MD 模式：水平移动
 function moveCaretMdHorizontal(dx){
   const step = Math.round(dx * 0.5);
   if(step === 0) return false;
@@ -1089,25 +1079,22 @@ function moveCaretMdHorizontal(dx){
   return true;
 }
 
-// MD 模式：垂直移动（按行）
 function moveCaretMdVertical(dy){
   const text = mdBox.value;
   const lines = text.split('\n');
   const pos = mdBox.selectionStart;
-  // 算当前行和列
-  let cum = 0, curLine = 0, curCol = 0;
+  let cumLen = 0, curLine = 0, curCol = 0;
   for(let i=0; i<lines.length; i++){
-    if(cum + lines[i].length >= pos){
+    if(cumLen + lines[i].length >= pos){
       curLine = i;
-      curCol = pos - cum;
+      curCol = pos - cumLen;
       break;
     }
-    cum += lines[i].length + 1;
+    cumLen += lines[i].length + 1;
   }
   const dir = dy > 0 ? 1 : -1;
   const targetLine = Math.max(0, Math.min(lines.length - 1, curLine + dir));
   if(targetLine === curLine) return false;
-  // 算目标位置：保持列位置
   let targetPos = 0;
   for(let i=0; i<targetLine; i++) targetPos += lines[i].length + 1;
   targetPos += Math.min(curCol, lines[targetLine].length);
@@ -1120,7 +1107,6 @@ function setDragMode(on){
   dragModeToggle.style.background = dragActive ? '#6366F1' : '';
   dragModeToggle.style.color = dragActive ? '#fff' : '';
   dragOverlay.classList.toggle('show', dragActive);
-  // 进入拖曳模式时先把编辑器 focus 一下，避免 selection 为空
   if(dragActive){
     if(currentEditMode === 'rich'){ richBox.focus(); }
     else { mdBox.focus(); }
@@ -1135,7 +1121,6 @@ let dragStartX = 0, dragStartY = 0, dragTouchId = null;
 
 dragOverlay.addEventListener('touchstart', function(e){
   if(!dragActive) return;
-  // 只追踪第一个手指
   if(dragTouchId !== null) return;
   const t = e.touches[0];
   dragTouchId = t.identifier;
@@ -1145,7 +1130,6 @@ dragOverlay.addEventListener('touchstart', function(e){
 
 dragOverlay.addEventListener('touchmove', function(e){
   if(!dragActive || dragTouchId === null) return;
-  // 找我们追踪的那个 touch
   let t = null;
   for(let i=0; i<e.changedTouches.length; i++){
     if(e.changedTouches[i].identifier === dragTouchId){ t = e.changedTouches[i]; break; }
@@ -1154,11 +1138,9 @@ dragOverlay.addEventListener('touchmove', function(e){
 
   const dx = t.clientX - dragStartX;
   const dy = t.clientY - dragStartY;
-  // 阈值 4px 才触发，避免抖动
   const TH = 4;
   if(Math.abs(dx) < TH && Math.abs(dy) < TH) return;
 
-  // 横竖分离处理：哪个变化量大走哪个
   if(Math.abs(dx) >= Math.abs(dy)){
     if(Math.abs(dx) >= TH){
       if(currentEditMode === 'rich') moveCaretRichHorizontal(dx);
@@ -1171,7 +1153,6 @@ dragOverlay.addEventListener('touchmove', function(e){
       if(currentEditMode === 'md') mdBox.focus();
     }
   }
-  // 更新起点（增量模式，避免累计漂移）
   dragStartX = t.clientX;
   dragStartY = t.clientY;
 }, {passive: true});
@@ -1188,10 +1169,8 @@ dragOverlay.addEventListener('touchcancel', function(){
   dragTouchId = null;
 });
 
-// 返回键 / ESC 退出拖曳模式
 window.addEventListener('keydown', function(e){
   if(dragActive && (e.key === 'Escape' || e.key === 'Backspace')){
-    // 注意：Backspace 在编辑器 focus 时是用来删除的，所以只有非编辑器 focus 时才退出
     const ae = document.activeElement;
     const editing = ae === richBox || ae === mdBox || ae === titleInput || ae === tagChipInput;
     if(e.key === 'Escape' || !editing){
@@ -1228,9 +1207,9 @@ window.addEventListener('keydown',function(e){
   if(window.visualViewport) window.visualViewport.addEventListener('resize',handleResize); else window.addEventListener('resize',handleResize);
 })();
 
-
 //========== 初始化 ==========
 window.addEventListener("DOMContentLoaded",()=>{ renderMdPreview(); calcWordCount(); });
 </script>
 </body>
 </html>
+
