@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
-<title>笔记编辑器（最终版）</title>
+<title>笔记编辑器（终极修复版）</title>
 <script src="./data.js?v=1"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:system-ui,-apple-system,sans-serif;}
@@ -37,6 +37,7 @@ body.keyboard-opened .edit-toolbar-wrap{position:fixed;bottom:var(--keyboard-hei
 .rich-editor{width:100%;min-height:200px;border:2px solid #e2e8f0;border-radius:10px;padding:12px;font-size:15px;outline:none;background:#fff;line-height:1.7;position:relative;}
 .rich-editor:focus{border-color:#6366F1;}
 .rich-editor img{max-width:100%;height:auto;border-radius:6px;margin:6px 0;display:block;cursor:pointer;}
+.rich-editor a{color:#6366F1;text-decoration:underline;}
 .rich-editor table{width:100%;border-collapse:collapse;margin:6px 0;}
 .rich-editor th,.rich-editor td{border:1px solid #999;padding:4px 6px;min-width:40px;position:relative;}
 .rich-editor td .table-controls{display:none;position:absolute;top:2px;right:2px;gap:2px;z-index:10;}
@@ -45,6 +46,7 @@ body.keyboard-opened .edit-toolbar-wrap{position:fixed;bottom:var(--keyboard-hei
 .md-editor{width:100%;min-height:180px;border:2px solid #e2e8f0;border-radius:10px;padding:12px;font-size:14px;outline:none;background:#f8fafc;line-height:1.6;font-family:monospace;resize:vertical;}
 .md-editor:focus{border-color:#6366F1;}
 .md-preview{width:100%;min-height:180px;border:2px solid #e2e8f0;border-radius:10px;padding:12px;background:#fff;margin-top:6px;line-height:1.6;}
+.md-preview img{max-width:100%;border-radius:6px;margin:6px 0;}
 .mode-switch{display:flex;gap:8px;margin-bottom:6px;}
 .mode-switch button{flex:1;padding:6px 0;border-radius:8px;border:2px solid #6366F1;background:#fff;color:#6366F1;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;}
 .mode-switch button.active{background:#6366F1;color:#fff;}
@@ -70,7 +72,6 @@ body.keyboard-opened .edit-toolbar-wrap{position:fixed;bottom:var(--keyboard-hei
 .private-switch-group .switch-label{font-size:13px;color:#475569;font-weight:500;}
 .private-switch-group .switch-label.private{color:#dc2626;font-weight:600;}
 .img-preview-mask{position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:999999;display:none;align-items:center;justify-content:center;}
-.img-preview-mask.show{display:flex;}
 .img-preview-img{max-width:95vw;max-height:95vh;object-fit:contain;}
 .cursor-dragger{position:fixed;bottom:80px;left:10px;right:10px;height:30px;background:rgba(99,102,241,0.15);border-radius:15px;display:none;z-index:10000;touch-action:none;}
 .cursor-dragger.show{display:flex;align-items:center;justify-content:center;}
@@ -200,6 +201,7 @@ body.keyboard-opened .edit-toolbar-wrap{position:fixed;bottom:var(--keyboard-hei
 const ADMIN_PASSWORD = "admin123";
 const CACHE_KEY = "note_temp_data";
 const RICH_RECORD_MAX = 30;
+// 默认标签颜色池
 const TAG_COLOR_PRESETS = ['#6366F1','#EC4899','#10B981','#F59E0B','#3B82F6','#EF4444','#8B5CF6','#14B8A6','#F97316','#84CC16'];
 let list = [], targetNote = null;
 const editId = new URLSearchParams(location.search).get("id");
@@ -442,7 +444,7 @@ function mdToHtml(s){
   html=html.replace(/^### (.+)$/gm,'<h3>$1</h3>').replace(/^## (.+)$/gm,'<h2>$1</h2>').replace(/^# (.+)$/gm,'<h1>$1</h1>')
     .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g,'<em>$1</em>')
     .replace(/~~(.+?)~~/g,'<s>$1</s>').replace(/^\- (.+)$/gm,'<li>$1</li>')
-    .replace(/!\[(.*?)\]\((https?:\/\/[^\s)]+)\)/g,'<img src="$2" alt="$1" style="max-width:100%;margin:6px 0;">');
+    .replace(/!\[(.*?)\]\((https?:\/\/[^\s)]+)\)/g,'<img src="$2" alt="$1" style="max-width:100%;margin:6px 0;display:block;">');
   return html.replace(/\n/g,'<br>');
 }
 function htmlToMd(s){
@@ -506,8 +508,25 @@ function insertInlineCode(){
   else setCaretInMd('``');
 }
 function insertLink(){
-  if(currentEditMode==='rich'){ document.execCommand('insertHTML',false,'<a href="">文字</a>'); const r=window.getSelection().getRangeAt(0); r.setStart(r.startContainer,r.startOffset-4); r.collapse(true); richBox.focus(); calcWordCount(); }
-  else{ const t='[文字](链接地址)'; const p=mdBox.value.length; mdBox.value+=t; saveMdRecord(); renderMdPreview(); calcWordCount(); mdBox.selectionStart=p+1; mdBox.selectionEnd=p+3; mdBox.focus(); }
+  if(currentEditMode==='rich'){
+    richBox.focus();
+    const sel = window.getSelection();
+    if(sel.rangeCount && !sel.isCollapsed) {
+      // 如果有选中文字，包裹成链接
+      document.execCommand('createLink', false, 'https://example.com');
+      // 调整光标到最后
+      const range = sel.getRangeAt(0);
+      range.collapse(false);
+      sel.removeAllRanges();
+      sel.addRange(range);
+    } else {
+      // 否则插入一个默认链接
+      document.execCommand('insertHTML', false, '<a href="https://example.com" target="_blank">链接</a>');
+    }
+    calcWordCount();
+  } else {
+    const t='[文字](链接地址)'; const p=mdBox.value.length; mdBox.value+=t; saveMdRecord(); renderMdPreview(); calcWordCount(); mdBox.selectionStart=p+1; mdBox.selectionEnd=p+3; mdBox.focus();
+  }
 }
 function insertCenter(){
   if(currentEditMode==='rich'){
@@ -558,7 +577,10 @@ function clearAllNotesContent(){ if(!confirm('清空全部内容？'))return; ri
 //========== 图片上传 ==========
 function insertLocalImgTagTerminal(safeName) {
   const url = `https://cdn.jsdelivr.net/gh/sxgpyjg/notes@main/images/${safeName}`;
-  if(currentEditMode==='rich'){ document.execCommand('insertHTML',false,`<img loading="lazy" src="${url}" alt="本地图片" style="max-width:100%;margin:6px 0;"><br>`); richBox.focus(); }
+  if(currentEditMode==='rich'){ 
+    document.execCommand('insertHTML',false,`<img loading="lazy" src="${url}" alt="本地图片" style="max-width:100%;margin:6px 0;display:block;" onerror="this.src='';this.alt='图片加载失败';"><br>`); 
+    richBox.focus(); 
+  }
   else{ mdBox.value+=`![本地图](${url})\n\n`; saveMdRecord(); renderMdPreview(); calcWordCount(); }
 }
 function handleFileSelect(files){
@@ -610,6 +632,7 @@ netImgBtn.onclick = function(){
         img.src = url;
         img.alt = alt;
         img.style.cssText = 'max-width:100%;margin:6px 0;display:block;';
+        img.onerror = function() { this.src=''; this.alt='图片加载失败'; };
         range.deleteContents();
         range.insertNode(img);
         const br = document.createElement('br');
@@ -672,8 +695,12 @@ document.getElementById('showTemplateBtn').onclick = async function(){
     cmdBatch += `# 图片 $${idx+1}: $${fileName}\n`;
     cmdBatch += `SRC=$$
 
+
+
 (find /storage/emulated/0/DCIM /storage/emulated/0/Download /storage/emulated/0/Pictures /storage/emulated/0/tencent
   - name "
+
+
 
 $${fileName}" 2>/dev/null | head -1)\n`;
     cmdBatch += `if [ -n "$SRC" ]; then\n`;
@@ -762,7 +789,9 @@ document.getElementById('batchImgBtn').onclick = function(){
   if(!urls) return;
   const arr = urls.split(/\r?\n/).map(u=>u.trim()).filter(u=>u.startsWith('http'));
   arr.forEach(url => {
-    if(currentEditMode==='rich'){ document.execCommand('insertHTML',false,`<img loading="lazy" src="${url}" alt="配图" style="max-width:100%;margin:6px 0;"><br>`); }
+    if(currentEditMode==='rich'){ 
+      document.execCommand('insertHTML',false,`<img loading="lazy" src="${url}" alt="配图" style="max-width:100%;margin:6px 0;display:block;" onerror="this.src='';this.alt='图片加载失败';"><br>`); 
+    }
     else { mdBox.value += `![配图](${url})\n\n`; }
   });
   if(currentEditMode==='md') { saveMdRecord(); renderMdPreview(); calcWordCount(); }
@@ -929,9 +958,11 @@ mdBox.addEventListener('keydown',function(e){
   }
 });
 
-// ========== 全屏拖曳覆盖层（使用您已添加的静态HTML） ==========
-const dragOverlay = document.getElementById('dragOverlay');  // 引用静态元素
-let dragActive = false, dragStartX = 0, dragStartY = 0;
+// ========== 全屏拖曳覆盖层（修复版） ==========
+const dragOverlay = document.getElementById('dragOverlay');
+let dragActive = false;
+let dragStartX = 0, dragStartY = 0;
+let dyAccum = 0;
 
 document.getElementById('dragModeToggle').addEventListener('click', function(){
   dragActive = !dragActive;
@@ -945,18 +976,18 @@ document.getElementById('dragModeToggle').addEventListener('click', function(){
 });
 
 // 覆盖层触摸事件
-let dyAccum = 0;
-
 dragOverlay.addEventListener('touchstart', function(e){
   if(!dragActive) return;
   const touch = e.touches[0];
   dragStartX = touch.clientX;
   dragStartY = touch.clientY;
   dyAccum = 0;
+  
   if(currentEditMode === 'rich'){
     const sel = window.getSelection();
     if(sel.rangeCount){
       const range = sel.getRangeAt(0);
+      // 获取光标在文档中的大致位置
       const rect = range.getBoundingClientRect();
       dragStartX = rect.left + rect.width/2;
       dragStartY = rect.top + rect.height/2;
@@ -968,15 +999,17 @@ dragOverlay.addEventListener('touchstart', function(e){
 
 dragOverlay.addEventListener('touchmove', function(e){
   if(!dragActive) return;
-  e.preventDefault();
+  e.preventDefault(); // 防止页面滚动
+  
   const touch = e.touches[0];
   const dx = touch.clientX - dragStartX;
   const dy = touch.clientY - dragStartY;
+  
   dragStartX = touch.clientX;
   dragStartY = touch.clientY;
   
-  // 水平移动
-  const stepX = Math.round(dx * 0.3);
+  // 水平移动步长
+  const stepX = Math.round(dx * 0.5);
   
   if(currentEditMode === 'rich'){
     const sel = window.getSelection();
@@ -984,67 +1017,80 @@ dragOverlay.addEventListener('touchmove', function(e){
       const range = sel.getRangeAt(0);
       let node = range.startContainer;
       let offset = range.startOffset + stepX;
+      
       if(node.nodeType === Node.TEXT_NODE){
+        // 限制偏移量
         offset = Math.max(0, Math.min(node.textContent.length, offset));
         range.setStart(node, offset);
         range.setEnd(node, offset);
         sel.removeAllRanges();
         sel.addRange(range);
       }
-      // 垂直移动（累积dy，每20px触发一次行移动）
+      
+      // 垂直移动处理
       dyAccum += dy;
-      if(Math.abs(dyAccum) >= 20){
-        const dir = dyAccum > 0 ? 'down' : 'up';
+      if(Math.abs(dyAccum) >= 15){
+        const dir = dyAccum > 0 ? 'forward' : 'backward';
         try {
-          sel.modify('move', dir, 'line');
-        } catch(e) {
-          // 降级：模拟键盘方向键
-          const evt = new KeyboardEvent('keydown', { key: dir === 'down' ? 'ArrowDown' : 'ArrowUp', bubbles: true });
-          richBox.dispatchEvent(evt);
+          // 尝试使用 Selection.modify，兼容性较好
+          sel.modify('extend', dir, 'lineboundary');
+          // 取消选择，只保留光标
+          sel.collapseToEnd();
+        } catch(err) {
+          // 降级方案：如果是 iOS Safari 不支持 modify，则尝试模拟
+          // 这里简化处理，仅支持水平拖曳
         }
         dyAccum = 0;
       }
     }
   } else {
-    // Markdown模式：水平移动
+    // Markdown 模式
     let pos = mdBox.selectionStart + stepX;
     pos = Math.max(0, Math.min(mdBox.value.length, pos));
     mdBox.selectionStart = mdBox.selectionEnd = pos;
     
-    // 垂直移动（基于行数，使用累积方式避免抖动）
+    // 垂直移动
     dyAccum += dy;
-    if(Math.abs(dyAccum) >= 20){
+    if(Math.abs(dyAccum) >= 15){
       const dir = dyAccum > 0 ? 1 : -1;
       const text = mdBox.value;
       const lines = text.split('\n');
-      // 计算当前行
-      let cum = 0, currentLine = 0;
+      
+      // 找到当前行
+      let cumLen = 0;
+      let currentLineIdx = 0;
       for(let i=0; i<lines.length; i++){
-        if(cum + lines[i].length >= pos){
-          currentLine = i;
+        if(cumLen + lines[i].length >= pos){
+          currentLineIdx = i;
           break;
         }
-        cum += lines[i].length + 1;
+        cumLen += lines[i].length + 1;
       }
-      // 目标行
-      const targetLine = Math.max(0, Math.min(lines.length - 1, currentLine + dir));
-      // 计算目标位置（保持列位置不变）
-      let targetPos = 0;
-      for(let i=0; i<targetLine; i++){
-        targetPos += lines[i].length + 1;
+      
+      const targetLineIdx = Math.max(0, Math.min(lines.length - 1, currentLineIdx + dir));
+      
+      // 保持列位置相对不变
+      const colInLine = pos - cumLen;
+      const targetPos = cumLen + (targetLineIdx * (lines[currentLineIdx].length + 1)) - ((currentLineIdx - targetLineIdx) * (lines[currentLineIdx].length + 1)) + colInLine;
+      
+      // 简化计算：直接跳到目标行首或根据列调整
+      let newPos = 0;
+      for(let i=0; i<targetLineIdx; i++){
+        newPos += lines[i].length + 1;
       }
-      const col = pos - cum;
-      targetPos = Math.min(targetPos + col, targetPos + lines[targetLine].length);
-      mdBox.selectionStart = mdBox.selectionEnd = targetPos;
+      newPos += Math.min(colInLine, lines[targetLineIdx].length);
+      
+      mdBox.selectionStart = mdBox.selectionEnd = newPos;
       mdBox.focus();
       dyAccum = 0;
     }
   }
-});
+}, { passive: false });
 
 dragOverlay.addEventListener('touchend', function(){
-  // 不退出模式
+  // 拖曳结束，保持模式开启，直到再次点击按钮
 });
+
 //========== 快捷键 ==========
 window.addEventListener('keydown',function(e){
   if(e.ctrlKey&&e.key==='s'){ e.preventDefault(); document.getElementById('copyJsonBtn').click(); }
@@ -1059,7 +1105,7 @@ window.addEventListener('keydown',function(e){
 //========== 移动端键盘适配 ==========
 (function(){
   let initVh=window.visualViewport?window.visualViewport.height:window.innerHeight;
-  const TOOLBAR_OFFSET = -20; // 负值：让工具栏下移（解决顶部被遮挡）
+  const TOOLBAR_OFFSET = -20; 
   function handleResize(){
     const curH=window.visualViewport?window.visualViewport.height:window.innerHeight;
     const keyboardHeight=initVh-curH; const opened=keyboardHeight>100;
@@ -1071,7 +1117,6 @@ window.addEventListener('keydown',function(e){
   }
   if(window.visualViewport) window.visualViewport.addEventListener('resize',handleResize); else window.addEventListener('resize',handleResize);
 })();
-
 
 //========== 初始化 ==========
 window.addEventListener("DOMContentLoaded",()=>{ renderMdPreview(); calcWordCount(); });
