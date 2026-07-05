@@ -672,13 +672,13 @@ function openNetImgModal(){
   function insertAtCursor(url, alt){
     if(currentEditMode === 'rich'){
       richBox.focus();
-      // 富文本模式：插入 HTML 图片标签
-      const html = `<img loading="lazy" src="$${url}" alt="$${alt}" style="max-width:100%;margin:6px 0;display:block;" onerror="this.src='';this.alt='图片加载失败';"><br>`;
+      // 修复插值 ${url} ${alt}，去掉多余$
+      const html = `<img loading="lazy" src="${url}" alt="${alt}" style="max-width:100%;margin:6px 0;display:block;" onerror="this.src='';this.alt='图片加载失败';"><br>`;
       document.execCommand('insertHTML', false, html);
       calcWordCount();
     } else {
-      // Markdown 模式：插入 Markdown 语法
-      const mdText = `![$${alt}]($${url})\n\n`;
+      // Markdown 修复插值
+      const mdText = `![${alt}](${url})\n\n`;
       const start = mdBox.selectionStart || 0;
       const end = mdBox.selectionEnd || 0;
       const before = mdBox.value.slice(0, start);
