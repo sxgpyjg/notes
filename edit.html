@@ -261,7 +261,7 @@ function getTagColor(t){
   const idx=currentTags.findIndex(x=>x.toLowerCase()===k);
   return tagColorMap[k]=TAG_COLOR_PRESETS[idx%TAG_COLOR_PRESETS.length];
 }
-// 修复：移除黑色限制，允许任何颜色
+// 修复：移除黑色限制
 function setTagColor(t,c){ 
   const k=t.toLowerCase().trim(); 
   if(!c) return; 
@@ -668,16 +668,16 @@ function openNetImgModal(){
     document.removeEventListener('keydown', onEsc);
   }
 
+  // 修复：根据当前模式插入正确的格式
   function insertAtCursor(url, alt){
-    // 修复：区分富文本和MD模式
     if(currentEditMode === 'rich'){
       richBox.focus();
-      // 富文本模式插入 IMG 标签
+      // 富文本模式：插入 HTML 图片标签
       const html = `<img loading="lazy" src="$${url}" alt="$${alt}" style="max-width:100%;margin:6px 0;display:block;" onerror="this.src='';this.alt='图片加载失败';"><br>`;
       document.execCommand('insertHTML', false, html);
       calcWordCount();
     } else {
-      // Markdown 模式插入 ![](url)
+      // Markdown 模式：插入 Markdown 语法
       const mdText = `![$${alt}]($${url})\n\n`;
       const start = mdBox.selectionStart || 0;
       const end = mdBox.selectionEnd || 0;
@@ -836,7 +836,10 @@ document.getElementById('batchImgBtn').onclick = function(){
   if(!urls) return;
   const arr = urls.split(/\r?\n/).map(u=>u.trim()).filter(u=>u.startsWith('http'));
   arr.forEach(url => {
-    if(currentEditMode==='rich'){ document.execCommand('insertHTML',false,`<img loading="lazy" src="${url}" alt="配图" style="max-width:100%;margin:6px 0;display:block;" onerror="this.src='';this.alt='图片加载失败';"><br>`); }
+    if(currentEditMode==='rich'){ 
+      // 修复：富文本模式插入 HTML img 标签
+      document.execCommand('insertHTML',false,`<img loading="lazy" src="${url}" alt="配图" style="max-width:100%;margin:6px 0;display:block;" onerror="this.src='';this.alt='图片加载失败';"><br>`); 
+    }
     else { mdBox.value += `![配图](${url})\n\n`; }
   });
   if(currentEditMode==='md') { saveMdRecord(); renderMdPreview(); calcWordCount(); }
