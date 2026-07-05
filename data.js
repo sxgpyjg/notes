@@ -9,9 +9,10 @@ window.NOTE_DATA = [
     "tagColors": {
       "zhangyaning": "#000000"
     },
-    "content": "<img loading=\"lazy\" src=\"\" alt=\"图片加载失败\" onerror=\"this.src='';this.alt='图片加载失败';\"><br>",
-    "date": "2026-07-05 14:52:15",
-    "private": false
+    "content": "<img src=\"https://origin.picgo.net/2026/06/19/IMG_20260516_16460214da5fa640597dfc.jpg\" alt=\"配图\" style=\"max-width:100%;margin:6px 0;display:block;\"><br><br>",
+    "date": "2026-07-05 16:20:03",
+    "private": false,
+    "_preview": "<br>"
   },
   {
     "id": 1782518114416,
