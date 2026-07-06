@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>笔记阅读</title>
 <script src="./data.js"></script>
 <style>
@@ -166,6 +166,8 @@ cursor: pointer;
   overflow-x: auto !important;
   max-width: 100%;
   font-size:14px;
+  -webkit-overflow-scrolling: touch;
+  transition: font-size 0.15s;
 }
 .card-content pre code {
   white-space: inherit !important;
@@ -179,32 +181,51 @@ cursor: pointer;
 .card-content pre span.string   { color: #e5c07b; }
 .card-content pre span.function { color: #c678dd; }
 
-/* 手机适配代码按钮组 */
-.code-size-plus{
-  position:absolute;top:6px;right: 230px;
-  background:#44475a;color:#fff;border:none;border-radius:6px;
-  padding:3px 6px;font-size:11px;cursor:pointer;z-index:9999;
+/* 代码块按钮组 */
+.code-toolbar{
+  position:absolute;
+  top:6px;
+  right:6px;
+  display:flex;
+  gap:4px;
+  z-index:9999;
 }
-.code-size-minus{
-  position:absolute;top:6px;right:185px;
-  background:#44475a;color:#fff;border:none;border-radius:6px;
-  padding:3px 6px;font-size:11px;cursor:pointer;z-index:9999;
+.code-btn{
+  background:#44475a;
+  color:#fff;
+  border:none;
+  border-radius:6px;
+  padding:3px 8px;
+  font-size:11px;
+  cursor:pointer;
+  -webkit-tap-highlight-color:transparent;
+  white-space:nowrap;
 }
-.code-full-btn{
-  position:absolute;top:6px;right: 140px;
-  background:#44475a;color:#fff;border:0;border-radius:6px;
-  padding:3px 6px;font-size:11px;cursor:pointer;z-index:9999;
-}
+.code-btn:active{background:#6366F1;color:#fff;}
 
-.code-size-minus:active,.code-size-plus:active,.code-full-btn:active,.copy-code-btn:active{
-  background:#6366F1;color:#fff;
-}
-pre:fullscreen {
+/* API 全屏(桌面) */
+.card-content pre:fullscreen {
   width:100vw;height:100vh;margin:0;background:#282c34;
   overflow:auto;display:flex;align-items:flex-start;justify-content:center;
-  orientation: landscape;
+  padding:24px !important;
+  font-size:16px !important;
 }
 
+/* CSS 模拟全屏(手机,兼容 iOS Safari) */
+.card-content.pre-mobile-fullscreen{
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100vh !important;
+  height: 100dvh !important;
+  z-index: 99999 !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  padding: 24px 16px !important;
+  overflow: auto !important;
+  background: #282c34 !important;
+  font-size: 16px !important;
+}
 .copy-code-btn{
   position:absolute;top:6px;right:6px;
   background:#44475a;color:#fff;border:0;border-radius:6px;
@@ -246,6 +267,9 @@ const fullBtn = document.getElementById('fullPageBtn');
 const fullSvg = document.getElementById('fullSvg');
 const targetId = localStorage.getItem('readNoteId');
 
+// 是否支持 API 全屏(iOS Safari 为 false)
+const API_FULLSCREEN_SUPPORTED = !!document.fullscreenEnabled;
+
 const savedPwd = localStorage.getItem("admin_save_pwd");
 const expireTs = Number(localStorage.getItem("admin_login_expire")) || 0;
 const now = Date.now();
@@ -270,6 +294,13 @@ fullBtn.onclick = ()=>{
     fullSvg.innerHTML = `<path d="M10 7 H7 V10"/><path d="M14 7 H17 V10"/><path d="M14 17 H17 V14"/><path d="M10 17 H7 V14"/>`;
   }
 };
+document.addEventListener('fullscreenchange', () => {
+  if (document.fullscreenElement) {
+    fullSvg.innerHTML = `<path d="M7 10 H10 V7"/><path d="M17 10 H14 V7"/><path d="M17 14 H14 V17"/><path d="M7 14 H10 V17"/>`;
+  } else {
+    fullSvg.innerHTML = `<path d="M10 7 H7 V10"/><path d="M14 7 H17 V10"/><path d="M14 17 H17 V14"/><path d="M10 17 H7 V14"/>`;
+  }
+});
 
 function toggleCardHead(btn){
   const box = btn.closest('.card-head');
@@ -291,82 +322,133 @@ function parseSlide(raw){
   });
 }
 
-function injectCopyBtn(){
-  const preAll = document.querySelectorAll('.card-content pre');
-  preAll.forEach(pre=>{
-    if(pre.querySelector('.copy-code-btn')) return;
-    let fontSize = 14;
+/* ============ 代码块全屏(兼容手机) ============ */
+function createCodeToolbar(pre){
+  if(pre.querySelector('.code-toolbar')) return;
 
-    //A+ 放大字体
-    const plus = document.createElement('button');
-    plus.className = 'code-size-plus';
-    plus.textContent = 'A+';
-    plus.onclick = ()=>{
-      fontSize +=2;
-      pre.style.fontSize = fontSize+'px';
-    }
-    pre.appendChild(plus);
+  const toolbar = document.createElement('div');
+  toolbar.className = 'code-toolbar';
 
-    //A- 缩小字体
-    const minus = document.createElement('button');
-    minus.className = 'code-size-minus';
-    minus.textContent = 'A-';
-    minus.onclick = ()=>{
-      if(fontSize>8){
-        fontSize -=2;
-        pre.style.fontSize = fontSize+'px';
-      }
-    }
-    pre.appendChild(minus);
+  let fontSize = parseInt(getComputedStyle(pre).fontSize) || 14;
 
-    //代码全屏
-    const codeFullBtn = document.createElement('button');
-    codeFullBtn.className = 'code-full-btn';
-    codeFullBtn.innerText = '全屏';
-    let fullState = false;
+  // A+ 放大
+  const plus = document.createElement('button');
+  plus.className = 'code-btn';
+  plus.textContent = 'A+';
+  plus.onclick = (e)=>{
+    e.stopPropagation();
+    fontSize = Math.min(fontSize + 2, 32);
+    pre.style.fontSize = fontSize + 'px';
+  };
+  toolbar.appendChild(plus);
 
-    codeFullBtn.onclick = async function(){
-      try {
-        if(!fullState){
+  // A- 缩小
+  const minus = document.createElement('button');
+  minus.className = 'code-btn';
+  minus.textContent = 'A-';
+  minus.onclick = (e)=>{
+    e.stopPropagation();
+    fontSize = Math.max(fontSize - 2, 10);
+    pre.style.fontSize = fontSize + 'px';
+  };
+  toolbar.appendChild(minus);
+
+  // 全屏/退出全屏
+  const fullBtnCode = document.createElement('button');
+  fullBtnCode.className = 'code-btn code-full-btn';
+  fullBtnCode.textContent = '全屏';
+
+  function syncBtnText(){
+    const inFs = (document.fullscreenElement === pre)
+              || pre.classList.contains('pre-mobile-fullscreen');
+    fullBtnCode.textContent = inFs ? '退出全屏' : '全屏';
+  }
+
+  fullBtnCode.onclick = async (e)=>{
+    e.stopPropagation();
+    try{
+      const inFs = (document.fullscreenElement === pre)
+                || pre.classList.contains('pre-mobile-fullscreen');
+      if(!inFs){
+        // 进入全屏
+        if(API_FULLSCREEN_SUPPORTED){
           await pre.requestFullscreen();
-          codeFullBtn.innerText = '退出全屏';
-          fullState = true;
         }else{
-          await document.exitFullscreen();
-          codeFullBtn.innerText = '全屏';
-          fullState = false;
+          // 移动端:用 CSS 模拟全屏
+          pre.classList.add('pre-mobile-fullscreen');
+          document.body.style.overflow = 'hidden';
         }
-      }catch(e){}
+      }else{
+        // 退出全屏
+        if(API_FULLSCREEN_SUPPORTED){
+          if(document.fullscreenElement === pre){
+            await document.exitFullscreen();
+          }else{
+            // CSS 全屏状态下退
+            pre.classList.remove('pre-mobile-fullscreen');
+            document.body.style.overflow = '';
+          }
+        }else{
+          pre.classList.remove('pre-mobile-fullscreen');
+          document.body.style.overflow = '';
+        }
+      }
+    }catch(err){
+      // API 全屏失败回落到 CSS 全屏
+      pre.classList.add('pre-mobile-fullscreen');
+      document.body.style.overflow = 'hidden';
     }
-    pre.appendChild(codeFullBtn);
+    syncBtnText();
+  };
 
-    //复制
-    const copyBtn = document.createElement('button');
-    copyBtn.className = 'copy-code-btn';
-    copyBtn.textContent = '复制';
-    copyBtn.dataset.code = pre.innerText;
-    pre.appendChild(copyBtn);
-  })
+  toolbar.appendChild(fullBtnCode);
+
+  // 复制
+  const copyBtn = document.createElement('button');
+  copyBtn.className = 'code-btn copy-code-btn';
+  copyBtn.textContent = '复制';
+  copyBtn.dataset.code = pre.innerText;
+  copyBtn.onclick = (e)=>{
+    e.stopPropagation();
+    const codeText = copyBtn.dataset.code;
+    navigator.clipboard.writeText(codeText).then(()=>{
+      copyBtn.textContent = "已复制";
+      setTimeout(()=> copyBtn.textContent = "复制", 1200);
+    }).catch(()=>{
+      const textarea = document.createElement('textarea');
+      textarea.value = codeText;
+      document.body.appendChild(textarea);
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+      copyBtn.textContent = "已复制";
+      setTimeout(()=> copyBtn.textContent = "复制", 1200);
+    });
+  };
+  toolbar.appendChild(copyBtn);
+
+  pre.appendChild(toolbar);
+
+  // 监听 API 全屏变化(桌面 ESC / 其他入口)
+  document.addEventListener('fullscreenchange', () => {
+    // 如果用户用 ESC 退出了 API 全屏,清理 body 锁
+    if(!document.fullscreenElement && !document.querySelector('.pre-mobile-fullscreen')){
+      document.body.style.overflow = '';
+    }
+    syncBtnText();
+  });
 }
 
+function injectCopyBtn(){
+  document.querySelectorAll('.card-content pre').forEach(createCodeToolbar);
+}
+
+/* ============ 旧的全局复制监听保留兼容(其实现在不需要了) ============ */
 document.body.addEventListener('click', e=>{
   const btn = e.target.closest('.copy-code-btn');
   if(!btn) return;
-  const codeText = btn.dataset.code;
-  navigator.clipboard.writeText(codeText).then(()=>{
-    btn.textContent = "已复制";
-    setTimeout(()=> btn.textContent = "复制",1200);
-  }).catch(()=>{
-    const textarea = document.createElement('textarea');
-    textarea.value = codeText;
-    document.body.appendChild(textarea);
-    textarea.select();
-    document.execCommand('copy');
-    document.body.removeChild(textarea);
-    btn.textContent = "已复制";
-    setTimeout(()=> btn.textContent = "复制",1200);
-  })
-})
+  // 复制逻辑已迁移到 toolbar 内,这里留个空兜底
+});
 
 function initSlide(){
   document.querySelectorAll('.slide-wrap').forEach(w=>{
