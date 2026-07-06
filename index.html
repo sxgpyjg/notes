@@ -603,7 +603,7 @@ function renderNotes(){
   const fragment = document.createDocumentFragment();
   list.forEach(item => {
     const img = item.cover || getFirstImgFromHtml(item.content);
-    const imgHtml = img ? `<div class="card-img-box"><img src="${img}"></div>` : '';
+    const imgHtml = img ? `<div class="card-img-box"><img loading="lazy" src="${img}" alt=""></div>` : '';
     const previewContent = item._preview; // 使用缓存
     const tagHtml = (item.tags || []).map(tag =>
       `<span class="tag-multi" data-tag="${escapeHtml(tag)}" style="${getTagStyle(tag, item.tagColors)}">${escapeHtml(tag)}</span>`

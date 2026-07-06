@@ -139,6 +139,7 @@ cursor: pointer;
   max-width: 100%;
   border-radius: 10px;
   margin: 12px 0;
+  loading: lazy;
 }
 .card-content table {
   border-collapse: collapse;
@@ -155,19 +156,28 @@ cursor: pointer;
 .card-content pre {
   position: relative !important;
   margin:14px 0;
-  padding: 10px 12px !important;
-  white-space: pre-wrap !important;
-  word-wrap: break-word !important;
-  overflow-wrap: break-word !important;
-  word-break: break-all !important;
+  padding: 12px 14px !important;
+  background: #282c34;
+  border-radius: 8px;
+  color: #abb2bf;
+  white-space: pre !important;
+  word-wrap: normal !important;
+  overflow-wrap: normal !important;
+  word-break: normal !important;
+  overflow-x: auto !important;
   max-width: 100%;
-  box-sizing: border-box;
-  overflow-x: hidden;
 }
 .card-content pre code {
   white-space: inherit !important;
   word-break: inherit !important;
+  font-family: Consolas, Menlo, Monaco, monospace;
 }
+
+/* CSDN语法高亮配色 */
+.card-content pre span.comment { color: #5c6370; font-style: italic; }
+.card-content pre span.keyword  { color: #61afef; }
+.card-content pre span.string   { color: #e5c07b; }
+.card-content pre span.function { color: #c678dd; }
 .copy-code-btn{
   position:absolute;
   top:6px;
@@ -250,7 +260,7 @@ function parseSlide(raw){
     const imgs = [];
     const dots = [];
     inner.replace(/!\[(.*?)\]\((.*?)\)/g,(m,a,s)=>{
-      imgs.push(`<div class="slide-item"><img src="${s}" alt="${a}"></div>`);
+      imgs.push(`<div class="slide-item"><img loading="lazy" src="${s}" alt="${a}"></div>`);
       dots.push(`<span class="dot"></span>`);
     });
     if(imgs.length<2) return match;
