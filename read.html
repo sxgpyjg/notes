@@ -155,7 +155,7 @@ cursor: pointer;
 .card-content pre {
   position: relative !important;
   margin:14px 0;
-  padding: 12px 14px !important;
+  padding: 18px 14px !important;
   background: #282c34;
   border-radius: 8px;
   color: #abb2bf;
@@ -179,21 +179,21 @@ cursor: pointer;
 .card-content pre span.string   { color: #e5c07b; }
 .card-content pre span.function { color: #c678dd; }
 
-/* 代码按钮组 */
-.code-size-minus{
-  position:absolute;top:6px;right:130px;
-  background:#44475a;color:#fff;border:none;border-radius:6px;
-  padding:3px 8px;font-size:12px;cursor:pointer;z-index:9999;
-}
+/* 手机适配代码按钮组 */
 .code-size-plus{
-  position:absolute;top:6px;right:170px;
+  position:absolute;top:6px;right: 220px;
   background:#44475a;color:#fff;border:none;border-radius:6px;
-  padding:3px 8px;font-size:12px;cursor:pointer;z-index:9999;
+  padding:3px 6px;font-size:11px;cursor:pointer;z-index:9999;
+}
+.code-size-minus{
+  position:absolute;top:6px;right:175px;
+  background:#44475a;color:#fff;border:none;border-radius:6px;
+  padding:3px 6px;font-size:11px;cursor:pointer;z-index:9999;
 }
 .code-full-btn{
-  position:absolute;top:6px;right: 90px;
+  position:absolute;top:6px;right: 125px;
   background:#44475a;color:#fff;border:0;border-radius:6px;
-  padding:3px 8px;font-size:12px;cursor:pointer;z-index:9999;
+  padding:3px 6px;font-size:11px;cursor:pointer;z-index:9999;
 }
 .code-size-minus:active,.code-size-plus:active,.code-full-btn:active,.copy-code-btn:active{
   background:#6366F1;color:#fff;
@@ -206,7 +206,7 @@ pre:fullscreen {
 .copy-code-btn{
   position:absolute;top:6px;right:6px;
   background:#44475a;color:#fff;border:0;border-radius:6px;
-  padding:3px 8px;font-size:12px;cursor:pointer;z-index:9999;
+  padding:3px 6px;font-size:11px;cursor:pointer;z-index:9999;
 }
 .slide-wrap {
   width:100%;overflow:hidden;
@@ -230,9 +230,9 @@ pre:fullscreen {
   <button id="fullPageBtn">
     <svg viewBox="0 0 24 24" id="fullSvg">
       <path d="M10 7 H7 V10"/>
-      <path d="M14 7 H17 V10"/>
-      <path d="M14 17 H17 V14"/>
-      <path d="M10 17 H7 V14"/>
+      <path d="14 7 H17 V10"/>
+      <path d="14 17 H17 V14"/>
+      <path d="10 17 H7 V14"/>
     </svg>
   </button>
 </header>
@@ -295,7 +295,7 @@ function injectCopyBtn(){
     if(pre.querySelector('.copy-code-btn')) return;
     let fontSize = 14;
 
-    //放大字体
+    //A+ 放大字体
     const plus = document.createElement('button');
     plus.className = 'code-size-plus';
     plus.textContent = 'A+';
@@ -305,7 +305,7 @@ function injectCopyBtn(){
     }
     pre.appendChild(plus);
 
-    //缩小字体
+    //A- 缩小字体
     const minus = document.createElement('button');
     minus.className = 'code-size-minus';
     minus.textContent = 'A-';
@@ -317,7 +317,7 @@ function injectCopyBtn(){
     }
     pre.appendChild(minus);
 
-    //代码全屏
+    //代码全屏放大
     const codeFullBtn = document.createElement('button');
     codeFullBtn.className = 'code-full-btn';
     codeFullBtn.textContent = '全屏';
@@ -330,7 +330,7 @@ function injectCopyBtn(){
     }
     pre.appendChild(codeFullBtn);
 
-    //复制
+    //复制代码
     const copyBtn = document.createElement('button');
     copyBtn.className = 'copy-code-btn';
     copyBtn.textContent = '复制';
