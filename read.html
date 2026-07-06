@@ -329,7 +329,7 @@ function injectCopyBtn(){
       try {
         if(!fullState){
           await pre.requestFullscreen();
-          codeFullBtn.innerText = '退出';
+          codeFullBtn.innerText = '退出全屏';
           fullState = true;
         }else{
           await document.exitFullscreen();
