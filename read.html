@@ -155,7 +155,7 @@ cursor: pointer;
 .card-content pre {
   position: relative !important;
   margin:14px 0;
-  padding: 18px 14px !important;
+  padding: 12px 14px !important;
   background: #282c34;
   border-radius: 8px;
   color: #abb2bf;
@@ -179,36 +179,34 @@ cursor: pointer;
 .card-content pre span.string   { color: #e5c07b; }
 .card-content pre span.function { color: #c678dd; }
 
-/* 手机适配代码按钮组 */
-.code-size-plus{
-  position:absolute;top:6px;right: 230px;
-  background:#44475a;color:#fff;border:none;border-radius:6px;
-  padding:3px 6px;font-size:11px;cursor:pointer;z-index:9999;
-}
+/* 代码按钮组 */
 .code-size-minus{
-  position:absolute;top:6px;right:185px;
+  position:absolute;top:6px;right:130px;
   background:#44475a;color:#fff;border:none;border-radius:6px;
-  padding:3px 6px;font-size:11px;cursor:pointer;z-index:9999;
+  padding:3px 8px;font-size:12px;cursor:pointer;z-index:9999;
+}
+.code-size-plus{
+  position:absolute;top:6px;right:170px;
+  background:#44475a;color:#fff;border:none;border-radius:6px;
+  padding:3px 8px;font-size:12px;cursor:pointer;z-index:9999;
 }
 .code-full-btn{
-  position:absolute;top:6px;right: 140px;
+  position:absolute;top:6px;right: 90px;
   background:#44475a;color:#fff;border:0;border-radius:6px;
-  padding:3px 6px;font-size:11px;cursor:pointer;z-index:9999;
+  padding:3px 8px;font-size:12px;cursor:pointer;z-index:9999;
 }
-
 .code-size-minus:active,.code-size-plus:active,.code-full-btn:active,.copy-code-btn:active{
   background:#6366F1;color:#fff;
 }
 pre:fullscreen {
   width:100vw;height:100vh;margin:0;background:#282c34;
   overflow:auto;display:flex;align-items:flex-start;justify-content:center;
-  orientation: landscape;
 }
 
 .copy-code-btn{
   position:absolute;top:6px;right:6px;
   background:#44475a;color:#fff;border:0;border-radius:6px;
-  padding:3px 6px;font-size:11px;cursor:pointer;z-index:9999;
+  padding:3px 8px;font-size:12px;cursor:pointer;z-index:9999;
 }
 .slide-wrap {
   width:100%;overflow:hidden;
@@ -297,7 +295,7 @@ function injectCopyBtn(){
     if(pre.querySelector('.copy-code-btn')) return;
     let fontSize = 14;
 
-    //A+ 放大字体
+    //放大字体
     const plus = document.createElement('button');
     plus.className = 'code-size-plus';
     plus.textContent = 'A+';
@@ -307,7 +305,7 @@ function injectCopyBtn(){
     }
     pre.appendChild(plus);
 
-    //A- 缩小字体
+    //缩小字体
     const minus = document.createElement('button');
     minus.className = 'code-size-minus';
     minus.textContent = 'A-';
@@ -322,21 +320,13 @@ function injectCopyBtn(){
     //代码全屏
     const codeFullBtn = document.createElement('button');
     codeFullBtn.className = 'code-full-btn';
-    codeFullBtn.innerText = '全屏';
-    let fullState = false;
-
-    codeFullBtn.onclick = async function(){
-      try {
-        if(!fullState){
-          await pre.requestFullscreen();
-          codeFullBtn.innerText = '退出';
-          fullState = true;
-        }else{
-          await document.exitFullscreen();
-          codeFullBtn.innerText = '全屏';
-          fullState = false;
-        }
-      }catch(e){}
+    codeFullBtn.textContent = '全屏';
+    codeFullBtn.onclick = async ()=>{
+      if(!document.fullscreenElement){
+        await pre.requestFullscreen();
+      }else{
+        await document.exitFullscreen();
+      }
     }
     pre.appendChild(codeFullBtn);
 
