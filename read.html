@@ -115,7 +115,7 @@ cursor: pointer;
 .tag-编程{background:#e1f5fe;color:#0277bd;}
 .collapse-head-btn {
   width: 26px;height:26px;
-  border-radius: 50%;border:none;
+  border-radius:50%;border:none;
   background:#e0e7ff;color:#434bc4;
   font-size:16px;cursor:pointer;
   display:flex;align-items:center;justify-content:center;
@@ -181,13 +181,13 @@ cursor: pointer;
 .card-content pre span.string   { color: #e5c07b; }
 .card-content pre span.function { color: #c678dd; }
 
-/* 代码块按钮组 */
+/* 代码块按钮组 横向整齐不重叠 */
 .code-toolbar{
   position:absolute;
   top:6px;
   right:6px;
   display:flex;
-  gap:4px;
+  gap:5px;
   z-index:9999;
 }
 .code-btn{
@@ -195,13 +195,18 @@ cursor: pointer;
   color:#fff;
   border:none;
   border-radius:6px;
-  padding:3px 8px;
+  padding:3px 7px;
   font-size:11px;
   cursor:pointer;
   -webkit-tap-highlight-color:transparent;
   white-space:nowrap;
 }
 .code-btn:active{background:#6366F1;color:#fff;}
+
+/* 隐藏旧重复复制按钮 彻底消除重叠 */
+.copy-code-btn{
+  display: none !important;
+}
 
 /* API 全屏(桌面) */
 .card-content pre:fullscreen {
@@ -228,11 +233,6 @@ cursor: pointer;
   background: #282c34 !important;
   font-size: 16px !important;
   -webkit-overflow-scrolling: touch;
-}
-.copy-code-btn{
-  position:absolute;top:6px;right:6px;
-  background:#44475a;color:#fff;border:0;border-radius:6px;
-  padding:3px 6px;font-size:11px;cursor:pointer;z-index:9999;
 }
 .slide-wrap {
   width:100%;overflow:hidden;
@@ -305,7 +305,6 @@ fullBtn.onclick = async ()=>{
   }catch(err){
     console.warn('页面全屏失败:', err);
   }
-  // 主动同步图标,不依赖事件
   syncPageFullBtn();
 };
 document.addEventListener('fullscreenchange', syncPageFullBtn);
@@ -379,16 +378,13 @@ function createCodeToolbar(pre){
       const inFs = (document.fullscreenElement === pre)
                 || pre.classList.contains('pre-mobile-fullscreen');
       if(!inFs){
-        // 进入全屏
         if(API_FULLSCREEN_SUPPORTED && pre.requestFullscreen){
           await pre.requestFullscreen();
         }else{
-          // 移动端 / API 不可用:用 CSS 模拟全屏
           pre.classList.add('pre-mobile-fullscreen');
           document.body.style.overflow = 'hidden';
         }
       }else{
-        // 退出全屏
         if(API_FULLSCREEN_SUPPORTED && document.fullscreenElement === pre){
           await document.exitFullscreen();
         }else{
@@ -401,17 +397,14 @@ function createCodeToolbar(pre){
       pre.classList.add('pre-mobile-fullscreen');
       document.body.style.overflow = 'hidden';
     }
-    // 不管 API 异步没异步完成,先按本地状态切文字
     syncBtnText();
-    // 再延迟一次保险(等 fullscreenchange 触发完)
     setTimeout(syncBtnText, 200);
   };
-
   toolbar.appendChild(fullBtnCode);
 
-  // 复制
+  // 复制按钮 统一放进工具栏
   const copyBtn = document.createElement('button');
-  copyBtn.className = 'code-btn copy-code-btn';
+  copyBtn.className = 'code-btn';
   copyBtn.textContent = '复制';
   copyBtn.dataset.code = pre.innerText;
   copyBtn.onclick = (e)=>{
@@ -435,9 +428,7 @@ function createCodeToolbar(pre){
 
   pre.appendChild(toolbar);
 
-  // 监听 API 全屏变化(桌面 ESC / 其他入口)
   document.addEventListener('fullscreenchange', () => {
-    // 如果用户用 ESC 退出了 API 全屏,清理 body 锁
     if(!document.fullscreenElement && !document.querySelector('.pre-mobile-fullscreen')){
       document.body.style.overflow = '';
     }
@@ -449,12 +440,8 @@ function injectCopyBtn(){
   document.querySelectorAll('.card-content pre').forEach(createCodeToolbar);
 }
 
-/* ============ 旧的全局复制监听保留兼容(其实现在不需要了) ============ */
-document.body.addEventListener('click', e=>{
-  const btn = e.target.closest('.copy-code-btn');
-  if(!btn) return;
-  // 复制逻辑已迁移到 toolbar 内,这里留个空兜底
-});
+/* ============ 旧监听清空无用 ============ */
+document.body.addEventListener('click', e=>{});
 
 function initSlide(){
   document.querySelectorAll('.slide-wrap').forEach(w=>{
