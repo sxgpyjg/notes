@@ -212,7 +212,7 @@ cursor: pointer;
 }
 
 /* CSS 模拟全屏(手机,兼容 iOS Safari) */
-.card-content.pre-mobile-fullscreen{
+.card-content pre.pre-mobile-fullscreen{
   position: fixed !important;
   inset: 0 !important;
   width: 100vw !important;
@@ -222,9 +222,12 @@ cursor: pointer;
   margin: 0 !important;
   border-radius: 0 !important;
   padding: 24px 16px !important;
+  padding-top: max(24px, env(safe-area-inset-top)) !important;
+  padding-bottom: max(24px, env(safe-area-inset-bottom)) !important;
   overflow: auto !important;
   background: #282c34 !important;
   font-size: 16px !important;
+  -webkit-overflow-scrolling: touch;
 }
 .copy-code-btn{
   position:absolute;top:6px;right:6px;
@@ -285,22 +288,27 @@ if (item && !Array.isArray(item.tags) && item.type) {
   item.tags = [item.type];
 }
 
-fullBtn.onclick = ()=>{
-  if(!document.fullscreenElement){
-    document.documentElement.requestFullscreen();
-    fullSvg.innerHTML = `<path d="M7 10 H10 V7"/><path d="M17 10 H14 V7"/><path d="M17 14 H14 V17"/><path d="M7 14 H10 V17"/>`;
-  }else{
-    document.exitFullscreen();
-    fullSvg.innerHTML = `<path d="M10 7 H7 V10"/><path d="M14 7 H17 V10"/><path d="M14 17 H17 V14"/><path d="M10 17 H7 V14"/>`;
+const SVG_EXPAND = `<path d="M10 7 H7 V10"/><path d="M14 7 H17 V10"/><path d="M14 17 H17 V14"/><path d="M10 17 H7 V14"/>`;
+const SVG_COLLAPSE = `<path d="M7 10 H10 V7"/><path d="M17 10 H14 V7"/><path d="M17 14 H14 V17"/><path d="M7 14 H10 V17"/>`;
+
+function syncPageFullBtn(){
+  fullSvg.innerHTML = document.fullscreenElement ? SVG_COLLAPSE : SVG_EXPAND;
+}
+
+fullBtn.onclick = async ()=>{
+  try{
+    if(!document.fullscreenElement){
+      await document.documentElement.requestFullscreen();
+    }else{
+      await document.exitFullscreen();
+    }
+  }catch(err){
+    console.warn('页面全屏失败:', err);
   }
+  // 主动同步图标,不依赖事件
+  syncPageFullBtn();
 };
-document.addEventListener('fullscreenchange', () => {
-  if (document.fullscreenElement) {
-    fullSvg.innerHTML = `<path d="M7 10 H10 V7"/><path d="M17 10 H14 V7"/><path d="M17 14 H14 V17"/><path d="M7 14 H10 V17"/>`;
-  } else {
-    fullSvg.innerHTML = `<path d="M10 7 H7 V10"/><path d="M14 7 H17 V10"/><path d="M14 17 H17 V14"/><path d="M10 17 H7 V14"/>`;
-  }
-});
+document.addEventListener('fullscreenchange', syncPageFullBtn);
 
 function toggleCardHead(btn){
   const box = btn.closest('.card-head');
@@ -366,39 +374,37 @@ function createCodeToolbar(pre){
 
   fullBtnCode.onclick = async (e)=>{
     e.stopPropagation();
+    e.preventDefault();
     try{
       const inFs = (document.fullscreenElement === pre)
                 || pre.classList.contains('pre-mobile-fullscreen');
       if(!inFs){
         // 进入全屏
-        if(API_FULLSCREEN_SUPPORTED){
+        if(API_FULLSCREEN_SUPPORTED && pre.requestFullscreen){
           await pre.requestFullscreen();
         }else{
-          // 移动端:用 CSS 模拟全屏
+          // 移动端 / API 不可用:用 CSS 模拟全屏
           pre.classList.add('pre-mobile-fullscreen');
           document.body.style.overflow = 'hidden';
         }
       }else{
         // 退出全屏
-        if(API_FULLSCREEN_SUPPORTED){
-          if(document.fullscreenElement === pre){
-            await document.exitFullscreen();
-          }else{
-            // CSS 全屏状态下退
-            pre.classList.remove('pre-mobile-fullscreen');
-            document.body.style.overflow = '';
-          }
+        if(API_FULLSCREEN_SUPPORTED && document.fullscreenElement === pre){
+          await document.exitFullscreen();
         }else{
           pre.classList.remove('pre-mobile-fullscreen');
           document.body.style.overflow = '';
         }
       }
     }catch(err){
-      // API 全屏失败回落到 CSS 全屏
+      console.warn('代码块全屏失败,回落 CSS 全屏:', err);
       pre.classList.add('pre-mobile-fullscreen');
       document.body.style.overflow = 'hidden';
     }
+    // 不管 API 异步没异步完成,先按本地状态切文字
     syncBtnText();
+    // 再延迟一次保险(等 fullscreenchange 触发完)
+    setTimeout(syncBtnText, 200);
   };
 
   toolbar.appendChild(fullBtnCode);
