@@ -470,18 +470,39 @@ function initSlide(){
     const dots = w.querySelectorAll('.dot');
     const total = Number(w.dataset.total);
     let cur = 0, sx=0, mx=0;
+    let timer = null;
+
+    // 切换页面函数
     function render(){
       box.style.transform = `translateX(-${cur*100}%)`;
       dots.forEach((d,i)=>d.classList.toggle('active', i===cur));
     }
-    w.addEventListener('touchstart',e=>sx=e.touches[0].clientX);
-    w.addEventListener('touchmove',e=>mx=e.touches[0].clientX-sx);
+
+    // 自动轮播
+    function autoPlay(){
+      timer = setInterval(()=>{
+        cur = (cur + 1) % total;
+        render();
+      }, 4000) // 4秒切换一张
+    }
+
+    // 触摸时暂停自动播放，松手恢复
+    w.addEventListener('touchstart',()=>{
+      clearInterval(timer);
+      sx = event.touches[0].clientX;
+    });
+    w.addEventListener('touchmove',()=>mx=event.touches[0].clientX-sx);
     w.addEventListener('touchend',()=>{
       if(mx<-60) cur = Math.min(cur+1,total-1);
       if(mx>60) cur = Math.max(cur-1,0);
-      render();mx=0;
+      render();
+      mx=0;
+      autoPlay();
     });
+
+    // 初始化启动自动轮播
     render();
+    autoPlay();
   })
 }
 

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
-<title>笔记编辑器（终极修复版）</title>
+<title>笔记编辑器（含轮播功能）</title>
 <script src="./data.js?v=1"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:system-ui,-apple-system,sans-serif;}
@@ -68,9 +68,13 @@ body.keyboard-opened .edit-toolbar-wrap{position:fixed;bottom:var(--keyboard-hei
 .slider:before{content:"";position:absolute;height:14px;width:14px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s;}
 .switch input:checked+.slider{background:#6366F1;}
 .switch input:checked+.slider:before{transform:translateX(16px);}
-.private-switch-group{display:flex;align-items:center;gap:8px;margin-bottom:8px;padding:4px 8px;background:#f1f5f9;border-radius:8px;}
-.private-switch-group .switch-label{font-size:13px;color:#475569;font-weight:500;}
-.private-switch-group .switch-label.private{color:#dc2626;font-weight:600;}
+/* 新增：统一开关组样式 */
+.settings-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 8px; padding: 8px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; }
+.switch-group { display: flex; align-items: center; gap: 6px; padding: 4px 8px; background: #fff; border-radius: 6px; border: 1px solid #e8ecf4; }
+.switch-label { font-size: 13px; color: #475569; font-weight: 500; }
+.switch-label.private { color: #dc2626; font-weight: 600; }
+.switch-label.carousel { color: #6366F1; font-weight: 600; }
+
 .img-preview-mask{position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:999999;display:none;align-items:center;justify-content:center;}
 .img-preview-mask.show{display:flex;}
 .img-preview-img{max-width:95vw;max-height:95vh;object-fit:contain;}
@@ -90,6 +94,38 @@ body.keyboard-opened .edit-toolbar-wrap{position:fixed;bottom:var(--keyboard-hei
 .net-img-box input:focus{border-bottom-color:#6366F1;}
 .net-img-actions{display:flex;gap:40px;justify-content:flex-end;}
 .net-img-actions button{background:transparent;border:none;color:#009688;font-size:15px;cursor:pointer;padding:4px;}
+
+/* 轮播样式 */
+.carousel-container {
+  width: 100%;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  display: flex;
+  gap: 10px;
+  padding: 5px 0;
+  /* 隐藏滚动条但保留功能 */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+.carousel-container::-webkit-scrollbar { display: none; }
+.carousel-item {
+  flex: 0 0 85%; /* 每个图片占宽度的85%，留一点缝隙显示下一个 */
+  scroll-snap-align: center;
+  position: relative;
+}
+.carousel-item img {
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  display: block;
+}
+.carousel-item figcaption {
+  font-size: 12px;
+  color: #666;
+  text-align: center;
+  margin-top: 4px;
+}
 </style>
 </head>
 <body>
@@ -120,19 +156,35 @@ body.keyboard-opened .edit-toolbar-wrap{position:fixed;bottom:var(--keyboard-hei
   <input type="text" class="tag-chip-input" id="tagChipInput" placeholder="添加标签（回车确认）">
 </div>
 <div class="tags-hint">回车添加，点击色块换颜色，× 删除</div>
-<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px;">
-  <div class="private-switch-group" style="margin-bottom:0;padding:4px 8px;">
-    <label class="switch"><input type="checkbox" id="privateCheck"><span class="slider"></span></label>
+
+<!-- 修改：将开关放在一行 -->
+<div class="settings-row">
+  <!-- 私密开关 -->
+  <div class="switch-group">
+    <label class="switch">
+      <input type="checkbox" id="privateCheck">
+      <span class="slider"></span>
+    </label>
     <span class="switch-label private">设为私密</span>
   </div>
-  <div class="switch-wrap" style="margin-bottom:0;">
+  
+  <!-- 轮播开关 -->
+  <div class="switch-group">
+    <label class="switch">
+      <input type="checkbox" id="carouselCheck">
+      <span class="slider"></span>
+    </label>
+    <span class="switch-label carousel">开启轮播</span>
+  </div>
+
+  <!-- 下载方式开关 -->
+  <div class="switch-group">
     <label class="switch">
       <input type="checkbox" id="useDownloadCheck">
       <span class="slider"></span>
     </label>
-    <span class="switch-label" style="font-size:13px;">下载方式</span>
+    <span class="switch-label">下载方式</span>
   </div>
-  <span style="font-size:11px;color:#94a3b8;">（仅管理员可见 | 关闭则内联data.js）</span>
 </div>
 
 <div class="mode-switch">
@@ -225,6 +277,9 @@ let globalImgSerial = Number(localStorage.getItem("img_serial")||0);
 let searchIndex = 0, matchList = [], matchCase = false;
 let dragActive = false;
 
+// 新增：轮播开关状态
+let isCarouselOn = false;
+
 const titleInput = document.querySelector(".title-input");
 const tagChipInput = document.getElementById("tagChipInput");
 const tagsInputWrap = document.getElementById("tagsInputWrap");
@@ -246,6 +301,7 @@ const matchCaseCheck = document.getElementById("matchCase");
 const cursorDragger = document.getElementById("cursorDragger");
 const netImgBtn = document.getElementById("netImgBtn");
 const editToolbar = document.getElementById("editToolbar");
+const carouselCheck = document.getElementById("carouselCheck");
 
 //========== 工具函数 ==========
 function getNowTimeStr(){
@@ -422,6 +478,8 @@ function initLoadNote(){
   if(!tags.length && targetNote.type) tags = [targetNote.type];
   setCurrentTags(tags, targetNote.tagColors || {});
   document.getElementById("privateCheck").checked = !!targetNote.private;
+  // 初始化轮播开关状态（可选：如果需要记住上次状态，可以加逻辑）
+  isCarouselOn = carouselCheck.checked;
   
   richBox.innerHTML = targetNote.content || "";
   richRecordStack = [richBox.innerHTML]; 
@@ -601,15 +659,44 @@ function insertTable(){
 function splitLine1(){ const t='---\n'; if(currentEditMode==='rich'){ document.execCommand('insertText',false,t); calcWordCount(); } else { mdBox.value+=t; saveMdRecord(); renderMdPreview(); calcWordCount(); } }
 function clearAllNotesContent(){ if(!confirm('清空全部内容？'))return; richBox.innerHTML=''; mdBox.value=''; renderMdPreview(); richRecordStack=['']; richRecordIndex=0; mdRecordStack=['']; mdRecordIndex=0; calcWordCount(); }
 
-//========== 图片上传 ==========
+//========== 图片上传核心逻辑 ==========
+
+// 核心函数：根据开关状态插入图片
+function insertImageToEditor(url, alt) {
+  if (!url) return;
+  
+  // 基础图片 HTML
+  const baseImg = `<img loading="lazy" src="$${url}" alt="$${alt}" style="max-width:100%;margin:6px 0;display:block;" onerror="this.src='';this.alt='图片加载失败';">`;
+  
+  if (currentEditMode === 'rich') {
+    richBox.focus();
+    if (isCarouselOn) {
+      // 轮播模式：包裹在 div 容器中
+      const carouselHtml = `<figure class="carousel-item">$${baseImg}$${alt ? `<figcaption>${alt}</figcaption>` : ''}</figure>`;
+      document.execCommand('insertHTML', false, `<div class="carousel-container">${carouselHtml}<br></div>`);
+    } else {
+      // 普通模式
+      document.execCommand('insertHTML', false, baseImg + '<br>');
+    }
+    calcWordCount();
+  } else {
+    // Markdown 模式：轮播无法原生支持，降级为普通图片，或者提示
+    // 这里选择降级为普通图片，因为 markdown 渲染器通常不支持自定义 div 类名
+    if (isCarouselOn) {
+       console.warn("Markdown模式下轮播不可用，已插入普通图片");
+    }
+    mdBox.value += `![$${alt || '配图'}]($${url})\n\n`;
+    saveMdRecord();
+    renderMdPreview();
+    calcWordCount();
+  }
+}
+
 function insertLocalImgTagTerminal(safeName) {
   const url = `https://cdn.jsdelivr.net/gh/sxgpyjg/notes@main/images/${safeName}`;
-  if(currentEditMode==='rich'){ 
-    document.execCommand('insertHTML',false,`<img loading="lazy" src="${url}" alt="本地图片" style="max-width:100%;margin:6px 0;display:block;" onerror="this.src='';this.alt='图片加载失败';"><br>`); 
-    richBox.focus(); 
-  }
-  else{ mdBox.value+=`![本地图](${url})\n\n`; saveMdRecord(); renderMdPreview(); calcWordCount(); }
+  insertImageToEditor(url, safeName);
 }
+
 function handleFileSelect(files){
   if(!files||!files.length)return;
   Array.from(files).forEach(file=>{
@@ -668,32 +755,7 @@ function openNetImgModal(){
     document.removeEventListener('keydown', onEsc);
   }
 
-  // 修复：根据当前模式插入正确的格式
-  function insertAtCursor(url, alt){
-    if(currentEditMode === 'rich'){
-      richBox.focus();
-      // 修正插值语法，去掉多余$
-      const html = `<img loading="lazy" src="${url}" alt="${alt}" style="max-width:100%;margin:6px 0;display:block;" onerror="this.src='';this.alt='图片加载失败';"><br>`;
-      document.execCommand('insertHTML', false, html);
-      calcWordCount();
-    } else {
-      // Markdown 修复插值，移除多余$
-      const mdText = `![${alt}](${url})\n\n`;
-      const start = mdBox.selectionStart || 0;
-      const end = mdBox.selectionEnd || 0;
-      const before = mdBox.value.slice(0, start);
-      const sel = mdBox.value.slice(start, end);
-      const after = mdBox.value.slice(end);
-      mdBox.value = before + mdText + after;
-      const newPos = before.length + mdText.length;
-      mdBox.selectionStart = mdBox.selectionEnd = newPos;
-      mdBox.focus();
-      saveMdRecord();
-      renderMdPreview();
-      calcWordCount();
-    }
-  }
-
+  // 使用统一插入函数
   function doConfirm(){
     const url = linkInput.value.trim();
     const alt = descInput.value.trim() || '配图';
@@ -703,7 +765,7 @@ function openNetImgModal(){
       linkInput.focus();
       return;
     }
-    insertAtCursor(url, alt);
+    insertImageToEditor(url, alt);
     close();
   }
 
@@ -836,11 +898,7 @@ document.getElementById('batchImgBtn').onclick = function(){
   if(!urls) return;
   const arr = urls.split(/\r?\n/).map(u=>u.trim()).filter(u=>u.startsWith('http'));
   arr.forEach(url => {
-    if(currentEditMode==='rich'){ 
-      // 修复：富文本模式插入 HTML img 标签
-      document.execCommand('insertHTML',false,`<img loading="lazy" src="${url}" alt="配图" style="max-width:100%;margin:6px 0;display:block;" onerror="this.src='';this.alt='图片加载失败';"><br>`); 
-    }
-    else { mdBox.value += `![配图](${url})\n\n`; }
+    insertImageToEditor(url, '配图');
   });
   if(currentEditMode==='md') { saveMdRecord(); renderMdPreview(); calcWordCount(); }
   alert(`插入 ${arr.length} 张图片`);
@@ -1212,6 +1270,13 @@ window.addEventListener('keydown',function(e){
 
 //========== 初始化 ==========
 window.addEventListener("DOMContentLoaded",()=>{ renderMdPreview(); calcWordCount(); });
+
+//========== 轮播开关监听 ==========
+if(carouselCheck){
+  carouselCheck.addEventListener('change', function(){
+    isCarouselOn = this.checked;
+  });
+}
 </script>
 </body>
 </html>
