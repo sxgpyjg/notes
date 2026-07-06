@@ -6,7 +6,6 @@
 <title>笔记阅读</title>
 <script src="./data.js"></script>
 <style>
-/* 样式与原文件完全相同，此处省略以节省空间，请保留您原有的完整样式 */
 *{
   margin: 0;
   padding: 0;
@@ -166,6 +165,7 @@ cursor: pointer;
   word-break: normal !important;
   overflow-x: auto !important;
   max-width: 100%;
+  font-size:14px;
 }
 .card-content pre code {
   white-space: inherit !important;
@@ -178,16 +178,36 @@ cursor: pointer;
 .card-content pre span.keyword  { color: #61afef; }
 .card-content pre span.string   { color: #e5c07b; }
 .card-content pre span.function { color: #c678dd; }
-.copy-code-btn{
-  position:absolute;
-  top:6px;
-  right:6px;
-  background:#44475a;color:#fff;
-  border:0;border-radius:6px;
-  padding:3px 8px;font-size:12px;
-  cursor:pointer;z-index:9999;
+
+/* 代码按钮组 */
+.code-size-minus{
+  position:absolute;top:6px;right:130px;
+  background:#44475a;color:#fff;border:none;border-radius:6px;
+  padding:3px 8px;font-size:12px;cursor:pointer;z-index:9999;
 }
-.copy-code-btn:active{background:#6366F1;color:#fff;}
+.code-size-plus{
+  position:absolute;top:6px;right:170px;
+  background:#44475a;color:#fff;border:none;border-radius:6px;
+  padding:3px 8px;font-size:12px;cursor:pointer;z-index:9999;
+}
+.code-full-btn{
+  position:absolute;top:6px;right: 90px;
+  background:#44475a;color:#fff;border:0;border-radius:6px;
+  padding:3px 8px;font-size:12px;cursor:pointer;z-index:9999;
+}
+.code-size-minus:active,.code-size-plus:active,.code-full-btn:active,.copy-code-btn:active{
+  background:#6366F1;color:#fff;
+}
+pre:fullscreen {
+  width:100vw;height:100vh;margin:0;background:#282c34;
+  overflow:auto;display:flex;align-items:flex-start;justify-content:center;
+}
+
+.copy-code-btn{
+  position:absolute;top:6px;right:6px;
+  background:#44475a;color:#fff;border:0;border-radius:6px;
+  padding:3px 8px;font-size:12px;cursor:pointer;z-index:9999;
+}
 .slide-wrap {
   width:100%;overflow:hidden;
   border-radius:10px;position:relative;
@@ -195,7 +215,7 @@ cursor: pointer;
 }
 .slide-box {display:flex;transition:transform 0.3s ease;touch-action:pan-x;}
 .slide-item {width:100%;flex-shrink:0;display:flex;justify-content:center;align-items:center;}
-.slide-item img {max-width:100%;max-height:65vh;width:auto;height:auto;object-fit:contain;}
+.slide-item img {max-width:100%;max-height:65vh;width:auto;height:auto;object-fit:contain;loading:lazy;}
 .slide-dot {position:absolute;bottom:8px;left:50%;transform: translateX(-50%);display:flex;gap:6px;}
 .dot {width:8px;height:8px;border-radius:50%;background:#ccc;}
 .dot.active {background:#333;}
@@ -273,9 +293,47 @@ function injectCopyBtn(){
   const preAll = document.querySelectorAll('.card-content pre');
   preAll.forEach(pre=>{
     if(pre.querySelector('.copy-code-btn')) return;
+    let fontSize = 14;
+
+    //放大字体
+    const plus = document.createElement('button');
+    plus.className = 'code-size-plus';
+    plus.textContent = 'A+';
+    plus.onclick = ()=>{
+      fontSize +=2;
+      pre.style.fontSize = fontSize+'px';
+    }
+    pre.appendChild(plus);
+
+    //缩小字体
+    const minus = document.createElement('button');
+    minus.className = 'code-size-minus';
+    minus.textContent = 'A-';
+    minus.onclick = ()=>{
+      if(fontSize>8){
+        fontSize -=2;
+        pre.style.fontSize = fontSize+'px';
+      }
+    }
+    pre.appendChild(minus);
+
+    //代码全屏
+    const codeFullBtn = document.createElement('button');
+    codeFullBtn.className = 'code-full-btn';
+    codeFullBtn.textContent = '全屏';
+    codeFullBtn.onclick = async ()=>{
+      if(!document.fullscreenElement){
+        await pre.requestFullscreen();
+      }else{
+        await document.exitFullscreen();
+      }
+    }
+    pre.appendChild(codeFullBtn);
+
+    //复制
     const copyBtn = document.createElement('button');
     copyBtn.className = 'copy-code-btn';
-    copyBtn.textContent = '复制代码';
+    copyBtn.textContent = '复制';
     copyBtn.dataset.code = pre.innerText;
     pre.appendChild(copyBtn);
   })
@@ -287,7 +345,7 @@ document.body.addEventListener('click', e=>{
   const codeText = btn.dataset.code;
   navigator.clipboard.writeText(codeText).then(()=>{
     btn.textContent = "已复制";
-    setTimeout(()=> btn.textContent = "复制代码",1200);
+    setTimeout(()=> btn.textContent = "复制",1200);
   }).catch(()=>{
     const textarea = document.createElement('textarea');
     textarea.value = codeText;
@@ -296,7 +354,7 @@ document.body.addEventListener('click', e=>{
     document.execCommand('copy');
     document.body.removeChild(textarea);
     btn.textContent = "已复制";
-    setTimeout(()=> btn.textContent = "复制代码",1200);
+    setTimeout(()=> btn.textContent = "复制",1200);
   })
 })
 
@@ -330,7 +388,6 @@ function getTagClassByName(name) {
   }
 }
 
-// ========== 标签颜色：从笔记对象 item.tagColors 获取（修改点） ==========
 function getTagStyle(tagName, colorMap) {
   const color = (colorMap && colorMap[tagName]) || '';
   if (color) {
@@ -349,7 +406,6 @@ function render(){
     wrap.innerHTML = `<div style="text-align:center;padding:60px;color:#888;">笔记不存在</div>`;
     return;
   }
-  // 标签渲染：从 item.tagColors 传入颜色
   const tagHtml = (item.tags || []).map(tag => {
     const cls = getTagClassByName(tag);
     return `<span class="tag ${cls}" data-tag="${tag}" style="${getTagStyle(tag, item.tagColors)}">${tag}</span>`;
@@ -371,8 +427,6 @@ function render(){
   initSlide();
 }
 render();
-
-// ========== 删除 refreshAllTagStyles 和相关监听（不再需要） ==========
 </script>
 </body>
 </html>
