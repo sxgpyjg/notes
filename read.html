@@ -202,7 +202,6 @@ cursor: pointer;
 pre:fullscreen {
   width:100vw;height:100vh;margin:0;background:#282c34;
   overflow:auto;display:flex;align-items:flex-start;justify-content:center;
-  orientation: landscape;
 }
 
 .copy-code-btn{
@@ -232,9 +231,9 @@ pre:fullscreen {
   <button id="fullPageBtn">
     <svg viewBox="0 0 24 24" id="fullSvg">
       <path d="M10 7 H7 V10"/>
-      <path d="M14 7 H17 V10"/>
-      <path d="M14 17 H17 V14"/>
-      <path d="M10 17 H7 V14"/>
+      <path d="14 7 H17 V10"/>
+      <path d="14 17 H17 V14"/>
+      <path d="10 17 H7 V14"/>
     </svg>
   </button>
 </header>
@@ -320,27 +319,21 @@ function injectCopyBtn(){
     pre.appendChild(minus);
 
     //代码全屏放大
-    const codeFullBtn = document.createElement('button');
-    codeFullBtn.className = 'code-full-btn';
-    codeFullBtn.innerText = '全屏';
-    let isFull = false;
-
-    codeFullBtn.onclick = async ()=>{
-      try {
-        if(!isFull){
-          await pre.requestFullscreen();
-          codeFullBtn.innerText = '退出全屏';
-          isFull = true;
-        }else{
-          await document.exitFullscreen();
-          codeFullBtn.innerText = '全屏';
-          isFull = false;
-        }
-      } catch (err) {
-        console.log(err)
-      }
+codeFullBtn.onclick = async ()=>{
+  try {
+    if(!document.fullscreenElement){
+      await pre.requestFullscreen();
+      codeFullBtn.innerText = '退出全屏';
+    }else{
+      await document.exitFullscreen();
+      codeFullBtn.innerText = '全屏';
     }
-    pre.appendChild(codeFullBtn);
+  } catch (err) {
+    console.log(err)
+  }
+}
+
+pre.appendChild(codeFullBtn);
 
     //复制代码
     const copyBtn = document.createElement('button');
