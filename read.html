@@ -216,13 +216,16 @@ cursor: pointer;
   font-size:16px !important;
 }
 
-/* CSS 模拟全屏(手机,兼容 iOS Safari) */
+/* CSS 模拟全屏+旋转横屏（全浏览器兼容） */
 .card-content pre.pre-mobile-fullscreen{
   position: fixed !important;
   inset: 0 !important;
-  width: 100vw !important;
-  height: 100vh !important;
-  height: 100dvh !important;
+  width: 100vh !important;
+  height: 100vw !important;
+  left: 0;
+  top: 0;
+  transform: rotate(90deg) translateY(-100%);
+  transform-origin: top left;
   z-index: 99999 !important;
   margin: 0 !important;
   border-radius: 0 !important;
@@ -295,12 +298,17 @@ function syncPageFullBtn(){
   fullSvg.innerHTML = document.fullscreenElement ? SVG_COLLAPSE : SVG_EXPAND;
 }
 
+// 页面全局全屏按钮，增加横屏锁定
 fullBtn.onclick = async ()=>{
   try{
     if(!document.fullscreenElement){
       await document.documentElement.requestFullscreen();
+      if(screen.orientation?.lock){
+        screen.orientation.lock('landscape').catch(e=>console.log('页面横屏锁定失败',e));
+      }
     }else{
       await document.exitFullscreen();
+      if(screen.orientation?.unlock) screen.orientation.unlock();
     }
   }catch(err){
     console.warn('页面全屏失败:', err);
@@ -329,7 +337,7 @@ function parseSlide(raw){
   });
 }
 
-/* ============ 代码块全屏(兼容手机) ============ */
+/* ============ 代码块全屏(兼容手机+横屏) ============ */
 function createCodeToolbar(pre){
   if(pre.querySelector('.code-toolbar')) return;
 
@@ -360,7 +368,7 @@ function createCodeToolbar(pre){
   };
   toolbar.appendChild(minus);
 
-  // 全屏/退出全屏
+  // 全屏/退出全屏（带横竖屏切换）
   const fullBtnCode = document.createElement('button');
   fullBtnCode.className = 'code-btn code-full-btn';
   fullBtnCode.textContent = '全屏';
@@ -378,22 +386,33 @@ function createCodeToolbar(pre){
       const inFs = (document.fullscreenElement === pre)
                 || pre.classList.contains('pre-mobile-fullscreen');
       if(!inFs){
+        // 进入全屏
         if(API_FULLSCREEN_SUPPORTED && pre.requestFullscreen){
           await pre.requestFullscreen();
+          // 锁定横屏
+          if(screen.orientation?.lock){
+            screen.orientation.lock('landscape').catch(err=>{
+              console.log("原生横屏锁定被浏览器限制，自动使用CSS旋转方案",err)
+            });
+          }
         }else{
+          // iOS / 微信QQ内置浏览器：CSS旋转模拟横屏
           pre.classList.add('pre-mobile-fullscreen');
           document.body.style.overflow = 'hidden';
         }
       }else{
+        // 退出全屏，恢复竖屏
         if(API_FULLSCREEN_SUPPORTED && document.fullscreenElement === pre){
           await document.exitFullscreen();
+          if(screen.orientation?.unlock) screen.orientation.unlock();
         }else{
           pre.classList.remove('pre-mobile-fullscreen');
           document.body.style.overflow = '';
+          if(screen.orientation?.unlock) screen.orientation.unlock();
         }
       }
     }catch(err){
-      console.warn('代码块全屏失败,回落 CSS 全屏:', err);
+      console.warn('代码块全屏失败,回落 CSS 横屏方案:', err);
       pre.classList.add('pre-mobile-fullscreen');
       document.body.style.overflow = 'hidden';
     }
@@ -431,6 +450,8 @@ function createCodeToolbar(pre){
   document.addEventListener('fullscreenchange', () => {
     if(!document.fullscreenElement && !document.querySelector('.pre-mobile-fullscreen')){
       document.body.style.overflow = '';
+      // 兜底解锁屏幕方向
+      if(screen.orientation?.unlock) screen.orientation.unlock();
     }
     syncBtnText();
   });
