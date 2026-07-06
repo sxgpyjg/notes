@@ -319,18 +319,20 @@ function injectCopyBtn(){
     pre.appendChild(minus);
 
     //代码全屏放大
-const codeFullBtn = document.createElement('button');
-codeFullBtn.className = 'code-full-btn';
-codeFullBtn.textContent = '全屏';
 codeFullBtn.onclick = async ()=>{
-  if(!document.fullscreenElement){
-    await pre.requestFullscreen();
-    codeFullBtn.textContent = '退出全屏';
-  }else{
-    await document.exitFullscreen();
-    codeFullBtn.textContent = '全屏';
+  try {
+    if(!document.fullscreenElement){
+      await pre.requestFullscreen();
+      codeFullBtn.innerText = '退出全屏';
+    }else{
+      await document.exitFullscreen();
+      codeFullBtn.innerText = '全屏';
+    }
+  } catch (err) {
+    console.log(err)
   }
 }
+
 pre.appendChild(codeFullBtn);
 
     //复制代码
