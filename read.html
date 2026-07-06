@@ -181,20 +181,21 @@ cursor: pointer;
 
 /* 手机适配代码按钮组 */
 .code-size-plus{
-  position:absolute;top:6px;right: 220px;
+  position:absolute;top:6px;right: 230px;
   background:#44475a;color:#fff;border:none;border-radius:6px;
   padding:3px 6px;font-size:11px;cursor:pointer;z-index:9999;
 }
 .code-size-minus{
-  position:absolute;top:6px;right:175px;
+  position:absolute;top:6px;right:185px;
   background:#44475a;color:#fff;border:none;border-radius:6px;
   padding:3px 6px;font-size:11px;cursor:pointer;z-index:9999;
 }
 .code-full-btn{
-  position:absolute;top:6px;right: 125px;
+  position:absolute;top:6px;right: 140px;
   background:#44475a;color:#fff;border:0;border-radius:6px;
   padding:3px 6px;font-size:11px;cursor:pointer;z-index:9999;
 }
+
 .code-size-minus:active,.code-size-plus:active,.code-full-btn:active,.copy-code-btn:active{
   background:#6366F1;color:#fff;
 }
@@ -318,17 +319,19 @@ function injectCopyBtn(){
     pre.appendChild(minus);
 
     //代码全屏放大
-    const codeFullBtn = document.createElement('button');
-    codeFullBtn.className = 'code-full-btn';
+const codeFullBtn = document.createElement('button');
+codeFullBtn.className = 'code-full-btn';
+codeFullBtn.textContent = '全屏';
+codeFullBtn.onclick = async ()=>{
+  if(!document.fullscreenElement){
+    await pre.requestFullscreen();
+    codeFullBtn.textContent = '退出全屏';
+  }else{
+    await document.exitFullscreen();
     codeFullBtn.textContent = '全屏';
-    codeFullBtn.onclick = async ()=>{
-      if(!document.fullscreenElement){
-        await pre.requestFullscreen();
-      }else{
-        await document.exitFullscreen();
-      }
-    }
-    pre.appendChild(codeFullBtn);
+  }
+}
+pre.appendChild(codeFullBtn);
 
     //复制代码
     const copyBtn = document.createElement('button');
