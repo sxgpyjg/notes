@@ -292,6 +292,81 @@ cursor: pointer;
   background:#ffffff;
   transform:scale(1.2);
 }
+
+/* ========== carousel-render 轮播专属样式（对接carousel-renderer.js） ========== */
+.carousel-render {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 10px;
+  user-select: none;
+  margin: 12px 0;
+}
+.carousel-render .track {
+  display: flex;
+  width: 100%;
+  transition: transform 0.4s ease-out;
+}
+.carousel-render .slide {
+  flex: 0 0 100%;
+  width: 100%;
+}
+.carousel-render .slide img {
+  width: 100%;
+  display: block;
+  object-fit: contain;
+  border-radius: 8px;
+  loading: lazy;
+}
+.carousel-render .counter {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(0,0,0,0.55);
+  color: #fff;
+  padding: 3px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  z-index: 2;
+}
+.carousel-render .arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: rgba(0,0,0,0.4);
+  color: #fff;
+  font-size: 20px;
+  cursor: pointer;
+  border-radius: 50%;
+  z-index: 2;
+}
+.carousel-render .arrow.prev { left: 10px; }
+.carousel-render .arrow.next { right: 10px; }
+.carousel-render .arrow:hover { background: rgba(0,0,0,0.7); }
+.carousel-render .dots {
+  position: absolute;
+  bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 6px;
+  z-index: 2;
+}
+.carousel-render .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(255,255,255,0.4);
+  padding: 0;
+  cursor: pointer;
+}
+.carousel-render .dot.active {
+  background: #ffffff;
+}
 </style>
 </head>
 <body>
@@ -310,6 +385,10 @@ cursor: pointer;
   </button>
 </header>
 <div class="content-wrap" id="readWrap"></div>
+
+<!-- 引入轮播渲染脚本，请确认路径正确 -->
+<script src="./notes/carousel-renderer.js"></script>
+
 <script>
 const dataList = window.NOTE_DATA || [];
 const wrap = document.getElementById('readWrap');
@@ -598,6 +677,11 @@ function render(){
   `;
   injectCopyBtn();
   initSlide();
+
+  // 初始化编辑器生成的 carousel-render 轮播
+  if(window.NoteCarouselInit){
+    NoteCarouselInit();
+  }
 }
 render();
 </script>
