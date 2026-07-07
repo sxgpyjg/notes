@@ -1,5 +1,16 @@
 window.NOTE_DATA = [
   {
+    "id": 1783383962256,
+    "title": "轮播图",
+    "type": "",
+    "tags": [],
+    "tagColors": {},
+    "content": "<br><div class=\"carousel-container\"><figure class=\"carousel-item\"><img src=\"https://origin.picgo.net/2026/07/04/bilibili_2026_0704_141325dd46ac601aec5025.png\" alt=\"配图\" loading=\"lazy\"><figcaption>配图</figcaption></figure><br><figure class=\"carousel-item\"><img src=\"https://origin.picgo.net/2026/07/04/bilibili_2026_0704_1414179aec630d8e014843.png\" alt=\"配图\" loading=\"lazy\"><figcaption>配图</figcaption></figure><br><figure class=\"carousel-item\"><img src=\"https://origin.picgo.net/2026/07/04/bilibili_2026_0704_1417166e42346037330d9e.png\" alt=\"配图\" loading=\"lazy\"><figcaption>配图</figcaption></figure><br><figure class=\"carousel-item\"><img src=\"https://origin.picgo.net/2026/07/04/bilibili_2026_0704_142128651965e349a6c79b.png\" alt=\"配图\" loading=\"lazy\"><figcaption>配图</figcaption></figure><br><figure class=\"carousel-item\"><img src=\"https://origin.picgo.net/2026/07/04/bilibili_2026_0704_1418505f5e7a5a7f36fda5.png\" alt=\"配图\" loading=\"lazy\"><figcaption>配图</figcaption></figure><br><figure class=\"carousel-item\"><img src=\"https://origin.picgo.net/2026/07/04/bilibili_2026_0704_1413481ab2b508b213a28d.png\" alt=\"配图\" loading=\"lazy\"><figcaption>配图</figcaption></figure><br><figure class=\"carousel-item\"><img src=\"https://origin.picgo.net/2026/07/04/bilibili_2026_0704_141608800efb9e25aa73eb.png\" alt=\"配图\" loading=\"lazy\"><figcaption>配图</figcaption></figure><br><figure class=\"carousel-item\"><img src=\"https://origin.picgo.net/2026/07/04/bilibili_2026_0704_142023add84ffa16d89750.png\" alt=\"配图\" loading=\"lazy\"><figcaption>配图</figcaption></figure><br><figure class=\"carousel-item\"><img src=\"https://origin.picgo.net/2026/06/27/Screenshot_2026_0625_123600bc27a5939876102a.png\" alt=\"配图\" loading=\"lazy\"><figcaption>配图</figcaption></figure><br><figure class=\"carousel-item\"><img src=\"https://origin.picgo.net/2026/06/24/IMG_20260623_2317138a4f11c02a6d06d8.png\" alt=\"配图\" loading=\"lazy\"><figcaption>配图</figcaption></figure></div><br><br>",
+    "date": "2026-07-07 08:27:15",
+    "private": false,
+    "carousel": true
+  },
+  {
     "id": 1783234231328,
     "title": "图片",
     "type": "zhangyaning",
@@ -12,7 +23,7 @@ window.NOTE_DATA = [
     "content": "<img src=\"https://origin.picgo.net/2026/06/19/IMG_20260516_16460214da5fa640597dfc.jpg\" alt=\"配图\" style=\"max-width:100%;margin:6px 0;display:block;\"><br><br>",
     "date": "2026-07-05 16:20:03",
     "private": false,
-    "_preview": "<br>"
+    "_preview": "<br><br>"
   },
   {
     "id": 1782518114416,
