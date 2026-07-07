@@ -696,12 +696,12 @@ function insertTable(){
 function splitLine1(){ const t='---\n'; if(currentEditMode==='rich'){ document.execCommand('insertText',false,t); calcWordCount(); } else { mdBox.value+=t; saveMdRecord(); renderMdPreview(); calcWordCount(); } }
 function clearAllNotesContent(){ if(!confirm('清空全部内容？'))return; richBox.innerHTML=''; mdBox.value=''; renderMdPreview(); richRecordStack=['']; richRecordIndex=0; mdRecordStack=['']; mdRecordIndex=0; calcWordCount(); }
 
-//========== 图片上传核心逻辑 ==========
+//========== 图片上传核心逻辑（修复轮播打包断裂BUG + 移除默认配图文字） ==========
 
 // 重写图片插入函数，统一使用阅读页兼容的 ::slide 标记
 function insertImageToEditor(url, alt) {
   if (!url) return;
-  const mdImgLine = `![${alt || '配图'}](${url})\n`;
+  const mdImgLine = `![${alt}](${url})\n`;
 
   if (isCarouselOn) {
     // 开启轮播：加入队列，延迟统一拼接轮播块
@@ -713,9 +713,14 @@ function insertImageToEditor(url, alt) {
       const slideBlock = `\n::slide\n${carouselImageQueue.join('')}::end\n\n`;
       
       if (currentEditMode === 'rich') {
-        // 富文本模式：先插入原生标记文本，预览时再渲染轮播样式
+        // ✅ 修复点：富文本改用 insertHTML，不会自动把 \n 转成 <br>，保证标签完整
         richBox.focus();
-        document.execCommand('insertText', false, slideBlock);
+        document.execCommand('insertHTML', false, `<pre style="display:none">${slideBlock}</pre>`);
+        // 同步更新富文本撤销栈
+        richRecordStack.splice(richRecordIndex+1);
+        richRecordStack.push(richBox.innerHTML);
+        if(richRecordStack.length>RICH_RECORD_MAX) richRecordStack.shift();
+        richRecordIndex=richRecordStack.length-1;
       } else {
         // Markdown模式：直接写入标准轮播代码
         mdBox.value += slideBlock;
@@ -734,6 +739,11 @@ function insertImageToEditor(url, alt) {
       const baseImg = `<img loading="lazy" src="${url}" alt="${alt}" style="max-width:100%;margin:6px 0;display:block;" onerror="this.src='';this.alt='图片加载失败';">`;
       richBox.focus();
       document.execCommand('insertHTML', false, baseImg + '<br>');
+      // 更新撤销栈
+      richRecordStack.splice(richRecordIndex+1);
+      richRecordStack.push(richBox.innerHTML);
+      if(richRecordStack.length>RICH_RECORD_MAX) richRecordStack.shift();
+      richRecordIndex=richRecordStack.length-1;
     } else {
       mdBox.value += mdImgLine + '\n';
       saveMdRecord();
@@ -774,7 +784,7 @@ function handleFileSelect(files){
 document.getElementById('localImgBtn').onclick=()=>imgFileInput.click();
 imgFileInput.onchange=function(e){ handleFileSelect(e.target.files); this.value=''; };
 
-//========== 网络图床图片弹窗 ==========
+//========== 网络图床图片弹窗（移除默认配图，留空则alt为空） ==========
 function openNetImgModal(){
   if(document.getElementById('netImgModalMask')) return;
 
@@ -806,10 +816,10 @@ function openNetImgModal(){
     document.removeEventListener('keydown', onEsc);
   }
 
-  // 使用统一插入函数
+  // 使用统一插入函数，不填描述则alt为空
   function doConfirm(){
     const url = linkInput.value.trim();
-    const alt = descInput.value.trim() || '配图';
+    const alt = descInput.value.trim();
     if(!url){ alert('请输入链接'); return; }
     if(!/^https?:\/\//i.test(url)){
       alert('链接必须以 http:// 或 https:// 开头');
@@ -943,13 +953,13 @@ document.getElementById('showTemplateBtn').onclick = async function(){
   }
 };
 
-// 批量图床链接
+// 批量图床链接（默认空alt，不再强制配图）
 document.getElementById('batchImgBtn').onclick = function(){
   const urls = prompt("批量粘贴图床链接，一行一张：");
   if(!urls) return;
   const arr = urls.split(/\r?\n/).map(u=>u.trim()).filter(u=>u.startsWith('http'));
   arr.forEach(url => {
-    insertImageToEditor(url, '配图');
+    insertImageToEditor(url, '');
   });
   if(currentEditMode==='md') { saveMdRecord(); renderMdPreview(); calcWordCount(); }
   alert(`插入 ${arr.length} 张图片`);
@@ -1335,4 +1345,3 @@ if(carouselCheck){
 </script>
 </body>
 </html>
-
