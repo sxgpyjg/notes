@@ -1176,6 +1176,7 @@ document.getElementById('showTemplateBtn').onclick = async function(){
   });
 
   const nowStr = getNowTimeStr();
+  const totalCount = uniqueNotes.length; // 提前定义计数变量，全程复用
   const useDownloadMode = document.getElementById('useDownloadCheck').checked;
 
   let shellBatch = 'cd ~/storage/shared/notes || exit 1\nmkdir -p images\n\n';
@@ -1246,15 +1247,14 @@ document.getElementById('showTemplateBtn').onclick = async function(){
       gitCmd;
 
     await navigator.clipboard.writeText(fullScript);
-    alert(`已下载 data_temp.js 到 Download/，部署脚本已复制剪贴板 (${uniqueNotes.length} 条笔记)\n执行提示：脚本会自动搜寻data_temp.js并重命名为data.js提交推送`);
+    alert(`已下载 data_temp.js 到 Download/，部署脚本已复制剪贴板 (${totalCount} 条笔记)\n执行提示：脚本会自动搜寻data_temp.js并重命名为data.js提交推送`);
   } else {
     // 取消勾选：旧逻辑，直接把完整data.js内容内嵌进shell脚本
     const fullScript = shellBatch + '\n' + 'cat > data.js << \'ENDOFFILE\'\n' + jsContent + '\nENDOFFILE\n\n' + gitCmd;
     await navigator.clipboard.writeText(fullScript);
-    alert(`完整内嵌式推送部署脚本已复制到剪贴板 (${uniqueNotes.length} 条笔记)`);
+    alert(`完整内嵌式推送部署脚本已复制到剪贴板 (${totalCount} 条笔记)`);
   }
 };
-
 
 // 下载完整 data.js
 document.getElementById('downloadDataBtn').onclick = function(){
