@@ -10,9 +10,11 @@ window.NOTE_DATA = [
       "黑神话": "#000000"
     },
     "content": "<div class=\"carousel-render\" data-idx=\"0\"><div class=\"counter\" style=\"display:block\">1 / 2</div><div class=\"track\"><div class=\"slide\"><img src=\"https://origin.picgo.net/2026/07/04/IMG_20250330_203503c3c4324285168508.jpg\" alt=\"\" loading=\"lazy\"></div><div class=\"slide\"><img src=\"https://origin.picgo.net/2026/07/04/IMG_20250330_2048012608b9b36a72fed4.jpg\" alt=\"\" loading=\"lazy\"></div></div><button class=\"arrow prev\" aria-label=\"上一张\">‹</button><button class=\"arrow next\" aria-label=\"下一张\">›</button><div class=\"dots\"><button class=\"dot active\" data-idx=\"0\" aria-label=\"第1张\"></button><button class=\"dot \" data-idx=\"1\" aria-label=\"第2张\"></button></div></div><br>",
-    "date": "2026-07-07 18:24:12",
-    "private": true,
-    "carousel": true
+    "date": "2026-07-07 22:34:06",
+    "private": false,
+    "carousel": true,
+    "_renderHtml": "<div class=\"carousel-render\" data-idx=\"0\"><div class=\"counter\" style=\"display:block\">1 / 2</div><div class=\"track\"><div class=\"slide\"><img src=\"https://origin.picgo.net/2026/07/04/IMG_20250330_203503c3c4324285168508.jpg\" alt=\"\" loading=\"lazy\"></div><div class=\"slide\"><img src=\"https://origin.picgo.net/2026/07/04/IMG_20250330_2048012608b9b36a72fed4.jpg\" alt=\"\" loading=\"lazy\"></div></div><button class=\"arrow prev\" aria-label=\"上一张\">‹</button><button class=\"arrow next\" aria-label=\"下一张\">›</button><div class=\"dots\"><button class=\"dot active\" data-idx=\"0\" aria-label=\"第1张\"></button><button class=\"dot \" data-idx=\"1\" aria-label=\"第2张\"></button></div></div><br>",
+    "_preview": "<div class=\"carousel-render\" data-idx=\"0\"><div class=\"counter\" style=\"display:block\"></div><div class=\"track\"><div class=\"slide\"></div><div class=\"slide\"></div></div><button class=\"arrow prev\" aria-label=\"上一张\"></button><button class=\"arrow next\" aria-label=\"下一张\"></button><div class=\"dots\"><button class=\"dot active\" data-idx=\"0\" aria-label=\"第1张\"></button><button class=\"dot \" data-idx=\"1\" aria-label=\"第2张\"></button></div></div><br>"
   },
   {
     "id": 1783406967020,
