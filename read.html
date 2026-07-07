@@ -615,20 +615,7 @@ function render(){
   // 关键：使用mdToHtml转换内容（解析::slide轮播标记）
   const htmlStr = mdToHtml(cleanContent);
 
-  // ========== 修复：只匹配carousel-render内部的slide，不会干扰独立图片 ==========
-  htmlStr = htmlStr.replace(
-    /(<div class="carousel-render"[\s\S]*?>[\s\S]*?<div class="slide">[\s\S]*?<img [^>]*alt="([^"]*)"[^>]*>)([\s\S]*?)(<\/div>)/g,
-    (match, start, altText, middle, end) => {
-      if(match.includes('<div class="intro"')) return match;
-      if (!altText.trim()) return match;
-      return `${start}
-<div class="intro">
-  <b>${escapeHtml(altText)}</b>
-</div>
-${middle}${end}`;
-    }
-  );
-  // =======================================================================
+  // ===================== 这里清空，删掉所有replace替换代码 =====================
 
   wrap.innerHTML = `
     <div class="card-head">
@@ -646,11 +633,30 @@ ${middle}${end}`;
   // 初始化所有轮播组件
   setTimeout(()=>{
     initAllCarousels(document.body);
+    // 把补全intro的逻辑放到DOM渲染完成后执行，不会破坏字符串解析
+    fillCarouselIntroAfterRender();
   }, 120);
 }
-// 这个render()是启动渲染的入口，一定要留在最后
-render();
 
+// 新增：DOM加载完成后，遍历元素补全intro，最安全不会破坏HTML字符串
+function fillCarouselIntroAfterRender(){
+  document.querySelectorAll('.carousel-render .slide').forEach(slide => {
+    // 如果已经有intro就跳过
+    if(slide.querySelector('.intro')) return;
+    const img = slide.querySelector('img');
+    if(!img) return;
+    const altText = img.getAttribute('alt')?.trim() || '';
+    if(!altText) return;
+    // 插入和编辑器一模一样的intro结构
+    const introDiv = document.createElement('div');
+    introDiv.className = 'intro';
+    introDiv.innerHTML = `<b>${escapeHtml(altText)}</b>`;
+    slide.appendChild(introDiv);
+  });
+}
+
+// 保留末尾执行调用，不能删
+render();
 </script>
 </body>
 </html>
