@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
-<title>笔记编辑器（轮播稳定修复版）</title>
+<title>笔记编辑器（终极修复版）</title>
 <script src="./data.js?v=1"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:system-ui,-apple-system,sans-serif;}
@@ -68,37 +68,20 @@ body.keyboard-opened .edit-toolbar-wrap{position:fixed;bottom:var(--keyboard-hei
 .slider:before{content:"";position:absolute;height:14px;width:14px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s;}
 .switch input:checked+.slider{background:#6366F1;}
 .switch input:checked+.slider:before{transform:translateX(16px);}
-.settings-row { 
-  display: flex; 
-  gap: 6px; 
-  align-items: center; 
-  margin-bottom: 8px; 
-  padding: 8px; 
-  background: #f8fafc; 
-  border-radius: 8px; 
-  border: 1px solid #e2e8f0; 
-}
-.switch-group { 
-  flex: 1; 
-  display: flex; 
-  align-items: center; 
-  gap: 6px; 
-  padding: 4px 4px; 
-  background: #fff; 
-  border-radius: 6px; 
-  border: 1px solid #e8ecf4; 
-  justify-content: center;
-}
-.switch-label { font-size: 13px; color: #475569; font-weight: 500; white-space: nowrap; }
-.switch-label.private { color: #dc2626; font-weight: 600; }
-.switch-label.carousel { color: #6366F1; font-weight: 600; }
-
+.private-switch-group{display:flex;align-items:center;gap:8px;margin-bottom:8px;padding:4px 8px;background:#f1f5f9;border-radius:8px;}
+.private-switch-group .switch-label{font-size:13px;color:#475569;font-weight:500;}
+.private-switch-group .switch-label.private{color:#dc2626;font-weight:600;}
 .img-preview-mask{position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:999999;display:none;align-items:center;justify-content:center;}
 .img-preview-mask.show{display:flex;}
 .img-preview-img{max-width:95vw;max-height:95vh;object-fit:contain;}
+.cursor-dragger{position:fixed;bottom:80px;left:10px;right:10px;height:30px;background:rgba(99,102,241,0.15);border-radius:15px;display:none;z-index:10000;touch-action:none;}
+.cursor-dragger.show{display:flex;align-items:center;justify-content:center;}
+.cursor-dragger .thumb{width:20px;height:20px;background:#6366F1;border-radius:50%;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.2);}
+/* 拖曳覆盖层：pointer-events:none 让 toolbar 按钮仍可点 */
 .drag-overlay{position:fixed;inset:0;z-index:50000;background:rgba(99,102,241,0.05);touch-action:none;display:none;pointer-events:none;}
 .drag-overlay.show{display:block;}
 .drag-overlay .hint{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#6366F1;color:#fff;padding:8px 14px;border-radius:20px;font-size:13px;pointer-events:none;box-shadow:0 4px 12px rgba(0,0,0,.15);}
+/* 网络图片弹窗 */
 .net-img-mask{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99999;display:flex;align-items:center;justify-content:center;padding:10px;animation:fadeIn .15s ease;}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
 .net-img-box{width:100%;max-width:350px;background:#fff;border-radius:12px;padding:18px;box-shadow:0 8px 30px rgba(0,0,0,.2);}
@@ -108,34 +91,37 @@ body.keyboard-opened .edit-toolbar-wrap{position:fixed;bottom:var(--keyboard-hei
 .net-img-actions{display:flex;gap:40px;justify-content:flex-end;}
 .net-img-actions button{background:transparent;border:none;color:#009688;font-size:15px;cursor:pointer;padding:4px;}
 
+/* ========== 新增轮播核心样式 ========== */
 .carousel-container {
   width: 100%;
   overflow-x: auto;
   scroll-snap-type: x mandatory;
   display: flex;
-  gap: 10px;
-  padding: 5px 0;
+  gap: 12px;
+  padding: 8px 0;
+  margin: 8px 0;
   scrollbar-width: none;
   -ms-overflow-style: none;
 }
-.carousel-container::-webkit-scrollbar { display: none; }
+.carousel-container::-webkit-scrollbar {
+  display: none;
+}
 .carousel-item {
   flex: 0 0 85%;
   scroll-snap-align: center;
-  position: relative;
 }
 .carousel-item img {
   width: 100%;
   height: auto;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-  display: block;
+  border-radius: 10px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.08);
 }
 .carousel-item figcaption {
   font-size: 12px;
   color: #666;
   text-align: center;
-  margin-top: 4px;
+  margin-top: 6px;
+  word-break: break-all;
 }
 </style>
 </head>
@@ -167,31 +153,27 @@ body.keyboard-opened .edit-toolbar-wrap{position:fixed;bottom:var(--keyboard-hei
   <input type="text" class="tag-chip-input" id="tagChipInput" placeholder="添加标签（回车确认）">
 </div>
 <div class="tags-hint">回车添加，点击色块换颜色，× 删除</div>
-
-<div class="settings-row">
-  <div class="switch-group">
-    <label class="switch">
-      <input type="checkbox" id="privateCheck">
-      <span class="slider"></span>
-    </label>
+<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px;">
+  <div class="private-switch-group" style="margin-bottom:0;padding:4px 8px;">
+    <label class="switch"><input type="checkbox" id="privateCheck"><span class="slider"></span></label>
     <span class="switch-label private">设为私密</span>
   </div>
-  
-  <div class="switch-group">
-    <label class="switch">
-      <input type="checkbox" id="carouselCheck">
-      <span class="slider"></span>
-    </label>
-    <span class="switch-label carousel">开启轮播</span>
-  </div>
-
-  <div class="switch-group">
+  <div class="switch-wrap" style="margin-bottom:0;">
     <label class="switch">
       <input type="checkbox" id="useDownloadCheck">
       <span class="slider"></span>
     </label>
-    <span class="switch-label">下载方式</span>
+    <span class="switch-label" style="font-size:13px;">下载方式</span>
   </div>
+  <!-- 轮播开关 -->
+  <div class="switch-wrap" style="margin-bottom:0;">
+    <label class="switch">
+      <input type="checkbox" id="carouselCheck">
+      <span class="slider"></span>
+    </label>
+    <span class="switch-label" style="font-size:13px;color:#6366F1;font-weight:500;">开启轮播</span>
+  </div>
+  <span style="font-size:11px;color:#94a3b8;">（仅管理员可见 | 关闭则内联data.js）</span>
 </div>
 
 <div class="mode-switch">
@@ -231,6 +213,7 @@ body.keyboard-opened .edit-toolbar-wrap{position:fixed;bottom:var(--keyboard-hei
     <button class="icon-btn" data-tip="查找" id="findReplaceBtn">🔍</button>
     <button class="icon-btn" data-tip="分割线" onclick="splitLine1()">—</button>
     <button class="icon-btn" data-tip="拖曳光标" id="dragModeToggle">✋</button>
+    <input type="file" id="hiddenImgFile" multiple style="display:none;">
   </div>
 </div>
 <div class="editor-wrap">
@@ -261,15 +244,17 @@ body.keyboard-opened .edit-toolbar-wrap{position:fixed;bottom:var(--keyboard-hei
 <div class="img-preview-mask" id="imgPreviewMask">
   <img class="img-preview-img" id="previewImg">
 </div>
+<!-- 拖曳覆盖层：pointer-events:none 让 toolbar 等按钮仍可点击 -->
 <div class="drag-overlay" id="dragOverlay">
   <div class="hint">拖曳移动光标 · 点 ✋ 按钮或按返回键退出</div>
 </div>
 
 <script>
-//========== 全局基础变量 ==========
+//========== 全局变量（新增轮播队列变量） ==========
 const ADMIN_PASSWORD = "admin123";
 const CACHE_KEY = "note_temp_data";
 const RICH_RECORD_MAX = 30;
+// 默认标签颜色池
 const TAG_COLOR_PRESETS = ['#6366F1','#EC4899','#10B981','#F59E0B','#3B82F6','#EF4444','#8B5CF6','#14B8A6','#F97316','#84CC16'];
 let list = [], targetNote = null;
 const editId = new URLSearchParams(location.search).get("id");
@@ -281,7 +266,8 @@ let globalImgSerial = Number(localStorage.getItem("img_serial")||0);
 let searchIndex = 0, matchList = [], matchCase = false;
 let dragActive = false;
 
-// 轮播核心变量
+// ========== 轮播全局变量 ==========
+const carouselCheck = document.getElementById('carouselCheck');
 let isCarouselOn = false;
 let carouselImageQueue = [];
 let carouselCloseTimer = null;
@@ -299,12 +285,14 @@ const fontSizeSelect = document.getElementById("fontSizeSel");
 const fontColorInput = document.getElementById("fontColor");
 const bgColorInput = document.getElementById("bgColor");
 const imgFileInput = document.getElementById("imgFileInput");
+const hiddenImgFile = document.getElementById("hiddenImgFile");
 const findReplaceMask = document.getElementById("findReplaceMask");
 const findInput = document.getElementById("findInput");
 const replaceInput = document.getElementById("replaceInput");
 const matchCaseCheck = document.getElementById("matchCase");
+const cursorDragger = document.getElementById("cursorDragger");
 const netImgBtn = document.getElementById("netImgBtn");
-const carouselCheck = document.getElementById("carouselCheck");
+const editToolbar = document.getElementById("editToolbar");
 
 //========== 工具函数 ==========
 function getNowTimeStr(){
@@ -313,13 +301,14 @@ function getNowTimeStr(){
 }
 function addImgSerial(){ globalImgSerial++; localStorage.setItem("img_serial",globalImgSerial); }
 
-//========== 标签系统 ==========
+//========== 标签颜色 ==========
 function getTagColor(t){
   const k=t.toLowerCase().trim();
   if(tagColorMap[k]) return tagColorMap[k];
   const idx=currentTags.findIndex(x=>x.toLowerCase()===k);
   return tagColorMap[k]=TAG_COLOR_PRESETS[idx%TAG_COLOR_PRESETS.length];
 }
+// 修复：移除黑色限制
 function setTagColor(t,c){ 
   const k=t.toLowerCase().trim(); 
   if(!c) return; 
@@ -338,8 +327,9 @@ function renderTagsChips(){
   Array.from(tagsInputWrap.querySelectorAll('.tag-chip')).forEach(n=>n.remove());
   currentTags.forEach((t,i)=>{
     const c=getTagColor(t);
+    // 如果颜色是黑色或深色，文字变白，背景变深灰
     let textColor = c;
-    let bgColor = c + '22';
+    let bgColor = c + '22'; // 22 is low opacity
     if(c === '#000000' || c === '#000'){
       textColor = '#fff';
       bgColor = '#333333';
@@ -391,7 +381,7 @@ if(tagChipInput){
   });
 }
 
-//========== 本地缓存加载（推送功能依赖核心） ==========
+//========== 数据持久化 ==========
 function saveLocalCache() { localStorage.setItem(CACHE_KEY,JSON.stringify({list,targetId:targetNote?.id,imgUploadList,serial:globalImgSerial})); }
 function loadLocalCache() {
   let raw = null;
@@ -412,8 +402,6 @@ function loadLocalCache() {
       const tempCache = JSON.parse(cacheStr);
       const tempDraft = tempCache.list?.find(item => item._isTempNew === true);
       if (tempDraft && !list.some(n => n.id === tempDraft.id)) { list.push(tempDraft); console.log("✅ 合并了临时草稿"); }
-      imgUploadList = tempCache.imgUploadList || [];
-      globalImgSerial = tempCache.serial || 0;
     }
   } catch(e) { console.warn("合并草稿失败",e); }
   if (!list || !Array.isArray(list)) { console.error("list 初始化失败，强制设为空数组"); list = []; }
@@ -424,7 +412,7 @@ function fallbackToWindowData() {
   else { list = []; console.warn("window.NOTE_DATA 也不存在，list 为空"); }
 }
 
-//========== 登录验证 ==========
+//========== 登录 ==========
 function checkPwd(){
   const pwd=document.getElementById("pwdInput").value.trim();
   if(pwd!==ADMIN_PASSWORD){ alert("密码错误"); return; }
@@ -447,12 +435,12 @@ function checkPwd(){
 })();
 function logoutAdmin(){ localStorage.removeItem("admin_save_pwd"); localStorage.removeItem("admin_login_expire"); location.reload(); }
 
-//========== 初始化加载笔记 ==========
 function initLoadNote(){
   imgUploadList=[];
   carouselImageQueue = [];
   clearTimeout(carouselCloseTimer);
   
+  // 处理新建笔记
   if(editId === 'new' || !editId){
     targetNote = {
       id: Date.now(),
@@ -467,7 +455,9 @@ function initLoadNote(){
       _isTempNew: true
     };
     list.unshift(targetNote);
+    console.log("新建笔记模式，ID:", targetNote.id);
   } else {
+    // 编辑现有笔记
     const t = list.find(i => i.id === Number(editId));
     if(!t) {
       alert("笔记不存在");
@@ -496,15 +486,36 @@ function initLoadNote(){
   calcWordCount();
 }
 
-//========== 双向转换（核心修复：轮播完美互转） ==========
+// ========== 轮播开关监听 ==========
+carouselCheck.addEventListener('change', function(){
+  isCarouselOn = this.checked;
+  // 切换开关立刻清空等待队列，防止跨笔记合并
+  carouselImageQueue = [];
+  clearTimeout(carouselCloseTimer);
+});
+
+//========== 模式切换 ==========
+function switchMode(m){
+  currentEditMode=m;
+  richModeBtn.classList.toggle("active",m==="rich");
+  mdModeBtn.classList.toggle("active",m==="md");
+  if(m==="rich"){
+    richBox.innerHTML=mdToHtml(mdBox.value);
+    richBox.style.display="block"; mdBox.style.display="none"; mdPreviewBox.style.display="none";
+    richRecordStack=[richBox.innerHTML]; richRecordIndex=0;
+    checkFormatActive();
+  }else{
+    mdBox.value=htmlToMd(richBox.innerHTML).replace(/\n{3,}/g,"\n\n");
+    saveMdRecord(); renderMdPreview();
+    richBox.style.display="none"; mdBox.style.display="block"; mdPreviewBox.style.display="block";
+  }
+  calcWordCount();
+}
+
+//========== 转换（重写双向解析，支持::slide轮播标记） ==========
 function mdToHtml(s){
-  s = s.replace(/<!--SLIDE_START-->\n([\s\S]*?)\n<!--SLIDE_END-->/g,(match,inner)=>{
-    const imgHtml = inner.replace(/!\[(.*?)\]\((https?:\/\/[^\s)]+)\)/g,
-      `<figure class="carousel-item"><img src="$2" alt="$1" loading="lazy"><figcaption>$1</figcaption></figure>`
-    );
-    return `<div class="carousel-container">${imgHtml}</div>`;
-  });
-  s = s.replace(/::slide\n([\s\S]*?)\n::end/g,(match,inner)=>{
+  // Markdown 轮播标记转为横向滚动容器
+  s = s.replace(/::slide\n([\s\S]*?)\n::end/g, (match, inner) => {
     const imgHtml = inner.replace(/!\[(.*?)\]\((https?:\/\/[^\s)]+)\)/g,
       `<figure class="carousel-item"><img src="$2" alt="$1" loading="lazy"><figcaption>$1</figcaption></figure>`
     );
@@ -527,13 +538,14 @@ function mdToHtml(s){
   html=html.replace(/^### (.+)$/gm,'<h3>$1</h3>').replace(/^## (.+)$/gm,'<h2>$1</h2>').replace(/^# (.+)$/gm,'<h1>$1</h1>')
     .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g,'<em>$1</em>')
     .replace(/~~(.+?)~~/g,'<s>$1</s>').replace(/^\- (.+)$/gm,'<li>$1</li>')
-    .replace(/!\[(.*?)\]\((https?:\/\/[^\s)]+)\)/g,'<img loading="lazy" src="$2" alt="$1" style="max-width:100%;margin:6px 0;display:block;">');
+    .replace(/!\[(.*?)\]\((https?:\/\/[^\s)]+)\)/g,'<img src="$2" alt="$1" style="max-width:100%;margin:6px 0;display:block;">');
   return html.replace(/\n/g,'<br>');
 }
 
 function htmlToMd(s){
-  s = s.replace(/<div class="carousel-container">([\s\S]*?)<\/div>/g,(match,inner)=>{
-    const imgMd = inner.replace(/<figure class="carousel-item"><img loading="lazy" src="([^"]+)" alt="([^"]+)"[\s\S]*?<\/figure>/g,
+  // 富文本轮播容器还原为 Markdown ::slide 标记
+  s = s.replace(/<div class="carousel-container">([\s\S]*?)<\/div>/g, (match, inner) => {
+    const imgMd = inner.replace(/<figure class="carousel-item"><img loading="lazy" src="([^"]+)" alt="([^"]+)"[\s\S]*?<figcaption>([^<]+)<\/figcaption><\/figure>/g,
       '![$2]($1)\n'
     );
     return `\n::slide\n${imgMd}::end\n`;
@@ -574,6 +586,7 @@ function checkFormatActive(){
     el=el.parentNode; if(el===richBox)break;
   }
 }
+// selectionchange 是 document 事件，必须挂在 document 上
 document.addEventListener('selectionchange',checkFormatActive);
 
 function calcWordCount(){
@@ -581,7 +594,7 @@ function calcWordCount(){
   wordCountTip.innerText=`纯文字数：${t.replace(/\s/g,'').length} | 总字符：${t.length}`;
 }
 
-//========== 排版插入函数 ==========
+//========== 格式化插入 ==========
 function setCaretInMd(tpl){
   const len=mdBox.value.length; mdBox.value+=tpl; saveMdRecord(); renderMdPreview(); calcWordCount();
   mdBox.selectionStart=mdBox.selectionEnd=len+Math.floor(tpl.length/2); mdBox.focus();
@@ -604,12 +617,15 @@ function insertLink(){
     richBox.focus();
     const sel = window.getSelection();
     if(sel.rangeCount && !sel.isCollapsed) {
+      // 如果有选中文字，包裹成链接
       document.execCommand('createLink', false, 'https://example.com');
+      // 调整光标到最后
       const range = sel.getRangeAt(0);
       range.collapse(false);
       sel.removeAllRanges();
       sel.addRange(range);
     } else {
+      // 否则插入一个默认链接
       document.execCommand('insertHTML', false, '<a href="https://example.com" target="_blank">链接</a>');
     }
     calcWordCount();
@@ -642,7 +658,7 @@ function insertCenter(){
 });
 function insertQuote(){ if(currentEditMode==='rich'){ document.execCommand('insertText',false,'> '); richBox.focus(); calcWordCount(); } else { mdBox.value+='> '; saveMdRecord(); renderMdPreview(); calcWordCount(); } }
 function insertUl(){ if(currentEditMode==='rich'){ document.execCommand('insertText',false,'- '); richBox.focus(); calcWordCount(); } else { mdBox.value+='- '; saveMdRecord(); renderMdPreview(); calcWordCount(); } }
- function insertOrderedList(){ if(currentEditMode==='rich'){ document.execCommand('insertText',false,'1. '); richBox.focus(); calcWordCount(); } else { mdBox.value+='1. '; saveMdRecord(); renderMdPreview(); calcWordCount(); } }
+function insertOrderedList(){ if(currentEditMode==='rich'){ document.execCommand('insertText',false,'1. '); richBox.focus(); calcWordCount(); } else { mdBox.value+='1. '; saveMdRecord(); renderMdPreview(); calcWordCount(); } }
 function insertTaskList(){ if(currentEditMode==='rich'){ document.execCommand('insertText',false,'- [ ] '); richBox.focus(); calcWordCount(); } else { mdBox.value+='- [ ] '; saveMdRecord(); renderMdPreview(); calcWordCount(); } }
 function insertTable(){
   const rows = parseInt(prompt("请输入表格行数（包括表头）：", "3"), 10) || 3;
@@ -663,10 +679,10 @@ function insertTable(){
 function splitLine1(){ const t='---\n'; if(currentEditMode==='rich'){ document.execCommand('insertText',false,t); calcWordCount(); } else { mdBox.value+=t; saveMdRecord(); renderMdPreview(); calcWordCount(); } }
 function clearAllNotesContent(){ if(!confirm('清空全部内容？'))return; richBox.innerHTML=''; mdBox.value=''; renderMdPreview(); richRecordStack=['']; richRecordIndex=0; mdRecordStack=['']; mdRecordIndex=0; calcWordCount(); }
 
-//========== 图片上传核心（修复轮播，富文本可编辑，无默认配图） ==========
- function insertImageToEditor(url, alt) {
-   if (!url) return;
-   const mdImgLine = `![${alt}](${url})\n`;
+//========== 图片上传核心（轮播整合函数） ==========
+function insertImageToEditor(url, alt) {
+  if (!url) return;
+  const mdImgLine = `![${alt}](${url})\n`;
 
   if (isCarouselOn) {
     carouselImageQueue.push(mdImgLine);

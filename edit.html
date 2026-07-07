@@ -486,16 +486,48 @@ function initLoadNote(){
   calcWordCount();
 }
 
+// ========== 同步表单数据到目标笔记对象（修复缺失函数） ==========
+function syncFormToNoteList() {
+  if (!targetNote) return;
+  
+  targetNote.title = titleInput.value;
+  targetNote.tags = getCurrentTags();
+  targetNote.tagColors = { ...tagColorMap }; // 浅拷贝
+  targetNote.private = document.getElementById("privateCheck").checked;
+  targetNote.carousel = isCarouselOn;
+  
+  // 同步内容
+  if (currentEditMode === 'rich') {
+    targetNote.content = richBox.innerHTML;
+  } else {
+    targetNote.content = mdToHtml(mdBox.value); // 确保存储的是HTML格式，方便富文本读取
+  }
+  
+  targetNote.date = getNowTimeStr();
+}
+
 // ========== 轮播开关监听 ==========
 carouselCheck.addEventListener('change', function(){
   isCarouselOn = this.checked;
   // 切换开关立刻清空等待队列，防止跨笔记合并
-  carouselImageQueue = [];
-  clearTimeout(carouselCloseTimer);
+  if (carouselImageQueue.length > 0) {
+    // 如果有关闭动作，且队列里有东西，可能需要提示或直接丢弃，这里选择清空
+    carouselImageQueue = [];
+    clearTimeout(carouselCloseTimer);
+  }
 });
 
 //========== 模式切换 ==========
 function switchMode(m){
+  // 切换模式时，如果轮播队列不为空，强制插入
+  if (carouselImageQueue.length > 0) {
+    carouselImageQueue.forEach(line => {
+      processNormalImageInsert(line);
+    });
+    carouselImageQueue = [];
+    clearTimeout(carouselCloseTimer);
+  }
+
   currentEditMode=m;
   richModeBtn.classList.toggle("active",m==="rich");
   mdModeBtn.classList.toggle("active",m==="md");
@@ -668,27 +700,35 @@ function insertTable(){
     tableHtml += '<tr>';
     for (let c = 0; c < cols; c++) {
       const tag = r === 0 ? 'th' : 'td';
-      tableHtml += `<${tag} style="border:1px solid #999;padding:4px 6px;">${r===0?'标题':'内容'}</${tag}>`;
+      tableHtml += `<$${tag} style="border:1px solid #999;padding:4px 6px;">$${r===0?'标题':'内容'}</${tag}>`;
     }
     tableHtml += '</tr>';
   }
   tableHtml += '</table>';
   if(currentEditMode==='rich'){ richBox.focus(); document.execCommand('insertHTML',false,tableHtml); calcWordCount(); }
-  else{ mdBox.value+=`\n|${' 标题 |'.repeat(cols).slice(0,-2)}\n|${' --- |'.repeat(cols).slice(0,-2)}\n`; for(let r=1;r<rows;r++){mdBox.value+=`|${' 内容 |'.repeat(cols).slice(0,-2)}\n`;} saveMdRecord(); renderMdPreview(); calcWordCount(); }
+  else{ mdBox.value+=`\n|$${' 标题 |'.repeat(cols).slice(0,-2)}\n|$${' --- |'.repeat(cols).slice(0,-2)}\n`; for(let r=1;r<rows;r++){mdBox.value+=`|${' 内容 |'.repeat(cols).slice(0,-2)}\n`;} saveMdRecord(); renderMdPreview(); calcWordCount(); }
 }
 function splitLine1(){ const t='---\n'; if(currentEditMode==='rich'){ document.execCommand('insertText',false,t); calcWordCount(); } else { mdBox.value+=t; saveMdRecord(); renderMdPreview(); calcWordCount(); } }
 function clearAllNotesContent(){ if(!confirm('清空全部内容？'))return; richBox.innerHTML=''; mdBox.value=''; renderMdPreview(); richRecordStack=['']; richRecordIndex=0; mdRecordStack=['']; mdRecordIndex=0; calcWordCount(); }
 
-//========== 图片上传核心（轮播整合函数） ==========
+//========== 图片上传核心（优化版） ==========
 function insertImageToEditor(url, alt) {
   if (!url) return;
-  const mdImgLine = `![${alt}](${url})\n`;
+  const mdImgLine = `![$${alt}]($${url})\n`;
 
+  // 如果轮播开启
   if (isCarouselOn) {
     carouselImageQueue.push(mdImgLine);
     clearTimeout(carouselCloseTimer);
 
     carouselCloseTimer = setTimeout(() => {
+      // 再次检查轮播是否仍开启，防止用户中途关闭
+      if (!isCarouselOn) {
+        // 如果已关闭，直接作为普通图片插入
+        processNormalImageInsert(mdImgLine);
+        return;
+      }
+
       const slideBlock = `::slide\n${carouselImageQueue.join('')}::end\n`;
       
       if (currentEditMode === 'rich') {
@@ -710,21 +750,27 @@ function insertImageToEditor(url, alt) {
     }, 2000);
 
   } else {
-    if (currentEditMode === 'rich') {
-      const singleImg = `<img loading="lazy" src="${url}" alt="${alt}" style="max-width:100%;margin:6px 0;display:block;" onerror="this.style.display='none'">`;
-      richBox.focus();
-      document.execCommand('insertHTML', false, singleImg + '<br>');
-      richRecordStack.splice(richRecordIndex+1);
-      richRecordStack.push(richBox.innerHTML);
-      if(richRecordStack.length>RICH_RECORD_MAX) richRecordStack.shift();
-      richRecordIndex=richRecordStack.length-1;
-    } else {
-      mdBox.value += mdImgLine + '\n';
-      saveMdRecord();
-      renderMdPreview();
-    }
-    calcWordCount();
+    processNormalImageInsert(mdImgLine);
   }
+}
+
+// 辅助函数：处理普通图片插入
+function processNormalImageInsert(mdLine) {
+  if (currentEditMode === 'rich') {
+    // 如果是Markdown格式的行，先转HTML再插入
+    const htmlImg = mdToHtml(mdLine).replace(/<br\s*\/?>/gi, ''); // 去除末尾可能的<br>
+    richBox.focus();
+    document.execCommand('insertHTML', false, htmlImg + '<br>');
+    richRecordStack.splice(richRecordIndex+1);
+    richRecordStack.push(richBox.innerHTML);
+    if(richRecordStack.length>RICH_RECORD_MAX) richRecordStack.shift();
+    richRecordIndex=richRecordStack.length-1;
+  } else {
+    mdBox.value += mdLine + '\n';
+    saveMdRecord();
+    renderMdPreview();
+  }
+  calcWordCount();
 }
 
 function insertLocalImgRecord(fileName) {
@@ -748,7 +794,7 @@ function handleFileUpload(files){
     }
     const userSetPath = prompt(`确认图片源路径：\n${safeName}`, realFilePath);
     const finalPath = (userSetPath&&userSetPath.trim()) ? userSetPath.trim() : realFilePath;
-    const copyCmd = `cp "${finalPath}" ~/storage/shared/notes/images/"${safeName}"`;
+    const copyCmd = `cp "$${finalPath}" ~/storage/shared/notes/images/"$${safeName}"`;
     imgUploadList.push({
       name:safeName,
       originalName,
@@ -821,7 +867,7 @@ document.getElementById('batchImgBtn').onclick = function(){
   if(!imgUploadList.length){ alert('暂无新增图片记录'); return; }
   let out = "# 待上传图片列表\n";
   imgUploadList.forEach((item,idx)=>{
-    out += `${idx+1}. https://cdn.jsdelivr.net/gh/sxgpyjg/notes@main/images/${item.name}\n`;
+    out += `$${idx+1}. https://cdn.jsdelivr.net/gh/sxgpyjg/notes@main/images/$${item.name}\n`;
   });
   navigator.clipboard.writeText(out).then(()=>alert('已复制全部图片链接'));
 };
@@ -858,9 +904,9 @@ document.getElementById('showTemplateBtn').onclick = async function(){
   let shellBatch = 'cd ~/storage/shared/notes || exit 1\nmkdir -p images\n\n';
   imgUploadList.forEach((item, idx) => {
     const safeFileName = item.name.replace(/"/g, '\\"');
-    shellBatch += `# ${idx+1}. ${item.originalName}\n`;
-    shellBatch += `SRC=$(find /storage/emulated/0 -name "${safeFileName}" 2>/dev/null | head -n1)\n`;
-    shellBatch += `[ -n "$SRC" ] && cp "$SRC" images/"${safeFileName}" || echo "未找到文件：${safeFileName}"\n\n`;
+    shellBatch += `# $${idx+1}. $${item.originalName}\n`;
+    shellBatch += `SRC=$$(find /storage/emulated/0 -name "$${safeFileName}" 2>/dev/null | head -n1)\n`;
+    shellBatch += `[ -n "$$SRC" ] && cp "$$SRC" images/"$${safeFileName}" || echo "未找到文件：$${safeFileName}"\n\n`;
   });
 
   const finalJson = JSON.stringify(uniqueNotes, null, 2);
@@ -919,34 +965,6 @@ document.getElementById('copyJsonBtn').onclick = async function(){
   await navigator.clipboard.writeText(jsContent);
   alert('data.js 全部内容已复制');
 };
-
-//========== 切换编辑模式 ==========
-function switchMode(mode){
-  currentEditMode = mode;
-  if(mode === 'rich'){
-    richBox.style.display = 'block';
-    mdBox.style.display = 'none';
-    mdPreviewBox.style.display = 'none';
-    richModeBtn.classList.add('active');
-    mdModeBtn.classList.remove('active');
-    richBox.focus();
-  }else{
-    richBox.style.display = 'none';
-    mdBox.style.display = 'block';
-    mdPreviewBox.style.display = 'block';
-    richModeBtn.classList.remove('active');
-    mdModeBtn.classList.add('active');
-    mdBox.focus();
-  }
-}
-
-// 轮播开关监听
-carouselCheck.addEventListener('change', function(){
-  isCarouselOn = this.checked;
-  // 切换开关时清空等待队列，防止跨组合并
-  carouselImageQueue = [];
-  clearTimeout(carouselCloseTimer);
-});
 
 //========== 拖拽光标模式 ==========
 const dragToggleBtn = document.getElementById('dragModeToggle');
@@ -1032,7 +1050,7 @@ document.getElementById('findNextBtn').onclick = function(){
   }
   if(!matchList.length) return alert('未匹配到内容');
   if(searchIndex >= matchList.length) searchIndex = 0;
-  alert(`第 ${searchIndex+1}/${matchList.length} 处匹配`);
+  alert(`第 $${searchIndex+1}/$${matchList.length} 处匹配`);
   searchIndex++;
 };
 
@@ -1101,7 +1119,7 @@ window.addEventListener("DOMContentLoaded", ()=>{
         }
       },200);
     } else {
-      document.documentElement.style.setProperty('--keyboard-height','0px');
+            document.documentElement.style.setProperty('--keyboard-height','0px');
     }
   }
   if(window.visualViewport) window.visualViewport.addEventListener('resize',viewportResizeHandler);
@@ -1119,3 +1137,4 @@ if(carouselCheck){
 </script>
 </body>
 </html>
+
