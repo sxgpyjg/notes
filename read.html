@@ -237,17 +237,62 @@ cursor: pointer;
   font-size: 16px !important;
   -webkit-overflow-scrolling: touch;
 }
+
+/* ========== 优化轮播样式，和编辑器预览完全统一 ========== */
 .slide-wrap {
-  width:100%;overflow:hidden;
-  border-radius:10px;position:relative;
-  margin:12px 0;background:#f0f0f0;
+  width:100%;
+  overflow:hidden;
+  border-radius:10px;
+  position:relative;
+  margin:12px 0;
+  background:#f8fafc;
+  scroll-snap-type: x mandatory;
 }
-.slide-box {display:flex;transition:transform 0.3s ease;touch-action:pan-x;}
-.slide-item {width:100%;flex-shrink:0;display:flex;justify-content:center;align-items:center;}
-.slide-item img {max-width:100%;max-height:65vh;width:auto;height:auto;object-fit:contain;loading:lazy;}
-.slide-dot {position:absolute;bottom:8px;left:50%;transform: translateX(-50%);display:flex;gap:6px;}
-.dot {width:8px;height:8px;border-radius:50%;background:#ccc;}
-.dot.active {background:#333;}
+.slide-box {
+  display:flex;
+  transition:transform 0.3s cubic-bezier(0.25,0.46,0.45,0.94);
+  touch-action:pan-x;
+}
+.slide-item {
+  flex: 0 0 100%;
+  scroll-snap-align: center;
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  padding: 4px;
+}
+.slide-item img {
+  max-width:100%;
+  max-height:65vh;
+  width:auto;
+  height:auto;
+  object-fit:contain;
+  border-radius:8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  loading:lazy;
+}
+.slide-dot {
+  position:absolute;
+  bottom:10px;
+  left:50%;
+  transform: translateX(-50%);
+  display:flex;
+  gap:8px;
+  padding:4px 8px;
+  background:rgba(0,0,0,0.15);
+  border-radius:20px;
+}
+.dot {
+  width:8px;
+  height:8px;
+  border-radius:50%;
+  background:rgba(255,255,255,0.5);
+  transition: all 0.2s;
+}
+.dot.active {
+  background:#6366F1;
+  transform:scale(1.2);
+}
 </style>
 </head>
 <body>
@@ -323,17 +368,19 @@ function toggleCardHead(btn){
   btn.textContent = box.classList.contains('collapsed') ? "+" : "−";
 }
 
+// 优化正则：兼容任意换行空格，完美匹配编辑器生成的 ::slide 块
 function parseSlide(raw){
-  return raw.replace(/::slide\n([\s\S]*?)\n::end/g,(match,inner)=>{
+  return raw.replace(/::slide\s*\n([\s\S]*?)\n\s*::end/g,(match,inner)=>{
     const imgs = [];
     const dots = [];
-    inner.replace(/!\[(.*?)\]\((.*?)\)/g,(m,a,s)=>{
-      imgs.push(`<div class="slide-item"><img loading="lazy" src="${s}" alt="${a}"></div>`);
+    inner.replace(/!\[(.*?)\]\((https?:\/\/[^\s)]+)\)/g,(m,a,s)=>{
+      imgs.push(`<div class="slide-item"><img loading="lazy" src="${s}" alt="${a || '配图'}"></div>`);
       dots.push(`<span class="dot"></span>`);
     });
-    if(imgs.length<2) return match;
-    dots[0] = `<span class="dot active">`;
-    return `<div class="slide-wrap" data-total="${imgs.length}"><div class="slide-box" style="width:${imgs.length*100}%">${imgs.join('')}</div><div class="slide-dot">${dots.join('')}</div></div>`;
+    // 少于2张图，不渲染轮播，保留原始Markdown
+    if(imgs.length < 2) return match;
+    dots[0] = `<span class="dot active"></span>`;
+    return `<div class="slide-wrap" data-total="${imgs.length}"><div class="slide-box">${imgs.join('')}</div><div class="slide-dot">${dots.join('')}</div></div>`;
   });
 }
 
@@ -464,12 +511,13 @@ function injectCopyBtn(){
 /* ============ 旧监听清空无用 ============ */
 document.body.addEventListener('click', e=>{});
 
+// 优化轮播触摸滑动逻辑，边界回弹更流畅
 function initSlide(){
   document.querySelectorAll('.slide-wrap').forEach(w=>{
     const box = w.querySelector('.slide-box');
     const dots = w.querySelectorAll('.dot');
     const total = Number(w.dataset.total);
-    let cur = 0, sx=0, mx=0;
+    let cur = 0, sx=0, mx=0, isDragging = false;
     let timer = null;
 
     // 切换页面函数
@@ -480,6 +528,7 @@ function initSlide(){
 
     // 自动轮播
     function autoPlay(){
+      clearInterval(timer);
       timer = setInterval(()=>{
         cur = (cur + 1) % total;
         render();
@@ -487,14 +536,29 @@ function initSlide(){
     }
 
     // 触摸时暂停自动播放，松手恢复
-    w.addEventListener('touchstart',()=>{
+    w.addEventListener('touchstart',(e)=>{
       clearInterval(timer);
-      sx = event.touches[0].clientX;
-    });
-    w.addEventListener('touchmove',()=>mx=event.touches[0].clientX-sx);
+      isDragging = true;
+      sx = e.touches[0].clientX;
+      mx = 0;
+    }, {passive:true});
+
+    w.addEventListener('touchmove',(e)=>{
+      if(!isDragging) return;
+      mx = e.touches[0].clientX - sx;
+      // 拖拽跟随滑动，增加边界阻尼
+      const offset = -cur * 100 + (mx / w.clientWidth) * 100;
+      if(cur === 0 && offset > 15) return;
+      if(cur === total - 1 && offset < -(15)) return;
+      box.style.transform = `translateX(${offset}%)`;
+    }, {passive:true});
+
     w.addEventListener('touchend',()=>{
-      if(mx<-60) cur = Math.min(cur+1,total-1);
-      if(mx>60) cur = Math.max(cur-1,0);
+      if(!isDragging) return;
+      isDragging = false;
+      // 滑动阈值判定
+      if(mx < -60) cur = Math.min(cur+1, total-1);
+      if(mx > 60) cur = Math.max(cur-1, 0);
       render();
       mx=0;
       autoPlay();
