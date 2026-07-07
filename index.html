@@ -629,13 +629,16 @@ function getFirstImgFromHtml(html){
 
 // 清理HTML标签，保留表格结构用于列表预览
 function getPureTextPreview(html){
-  return String(html)
-    .replace(/<img[^>]*>/g,'')
-    // 清除所有轮播相关容器标签
-    .replace(/<\/?(div|track|slide|arrow|dots|dot|counter|intro|carousel-render)[^>]*>/gi,'')
-    // 清除残留的按钮、页码文本标记
-    .replace(/‹|›|\d+ \/ \d+/g,'')
-    .replace(/\s+/g,' ');
+  let text = String(html);
+  // 递归清空整套轮播区块
+  text = text.replace(/<div class="carousel-render"[\s\S]*?<\/div>/gi, '');
+  // 移除图片
+  text = text.replace(/<img[^>]*>/g,'');
+  // 清理各类特殊符号
+  text = text.replace(/‹|›|\d+ \/ \d+|●|○|•|◯|∘/g,'');
+  // 压缩空格
+  text = text.replace(/\s+/g,' ');
+  return text;
 }
 
 function renderNotes(){
