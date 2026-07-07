@@ -386,7 +386,7 @@ cursor: pointer;
 </header>
 <div class="content-wrap" id="readWrap"></div>
 
-<!-- 引入轮播渲染脚本，请确认路径正确 -->
+<!-- 轮播脚本引入，确认路径正确 -->
 <script src="./notes/carousel-renderer.js"></script>
 
 <script>
@@ -663,7 +663,14 @@ function render(){
     return `<span class="tag ${cls}" data-tag="${tag}" style="${getTagStyle(tag, item.tagColors)}">${tag}</span>`;
   }).join('');
 
-  const htmlStr = parseSlide(item.content);
+  // ========= 自动清洗旧轮播脏数据 =========
+  let cleanContent = item.content
+  // 清除 track 上写死的 transform 位移样式
+  .replace(/(<div class="track")\s+style="transform:[^"]*"/g, '$1')
+  // 清除所有 dot 标签里自带的 active 激活类
+  .replace(/(<button class="dot)( active)/g, '$1');
+
+  const htmlStr = parseSlide(cleanContent);
   wrap.innerHTML = `
     <div class="card-head">
       <div class="card-title">${item.title}</div>
@@ -678,7 +685,10 @@ function render(){
   injectCopyBtn();
   initSlide();
 
-  // 初始化编辑器生成的 carousel-render 轮播
+  // 清空旧初始化锁定标记，重新初始化轮播
+  document.querySelectorAll('.carousel-render').forEach(el => {
+    delete el.__inited;
+  });
   if(window.NoteCarouselInit){
     NoteCarouselInit();
   }
