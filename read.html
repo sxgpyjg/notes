@@ -238,39 +238,38 @@ cursor: pointer;
   -webkit-overflow-scrolling: touch;
 }
 
-/* ========== 优化轮播样式，和编辑器预览完全统一 ========== */
+/* 抖音式单页轮播样式（一屏只显示一张，滑动切页） */
 .slide-wrap {
   width:100%;
   overflow:hidden;
   border-radius:10px;
   position:relative;
   margin:12px 0;
-  background:#f8fafc;
-  scroll-snap-type: x mandatory;
+  background:#f0f0f0;
 }
 .slide-box {
   display:flex;
+  width: 100%;
   transition:transform 0.3s cubic-bezier(0.25,0.46,0.45,0.94);
   touch-action:pan-x;
 }
 .slide-item {
   flex: 0 0 100%;
-  scroll-snap-align: center;
+  width:100%;
   display:flex;
   justify-content:center;
   align-items:center;
-  padding: 4px;
+  padding:4px;
 }
 .slide-item img {
-  max-width:100%;
-  max-height:65vh;
-  width:auto;
+  width:100%;
   height:auto;
+  max-height:70vh;
   object-fit:contain;
   border-radius:8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
   loading:lazy;
 }
+/* 底部圆点指示器 */
 .slide-dot {
   position:absolute;
   bottom:10px;
@@ -278,7 +277,7 @@ cursor: pointer;
   transform: translateX(-50%);
   display:flex;
   gap:8px;
-  padding:4px 8px;
+  padding:4px 10px;
   background:rgba(0,0,0,0.15);
   border-radius:20px;
 }
@@ -287,10 +286,10 @@ cursor: pointer;
   height:8px;
   border-radius:50%;
   background:rgba(255,255,255,0.5);
-  transition: all 0.2s;
+  transition: all 0.2s ease;
 }
 .dot.active {
-  background:#6366F1;
+  background:#ffffff;
   transform:scale(1.2);
 }
 </style>
@@ -368,7 +367,7 @@ function toggleCardHead(btn){
   btn.textContent = box.classList.contains('collapsed') ? "+" : "−";
 }
 
-// 优化正则：兼容任意换行空格，完美匹配编辑器生成的 ::slide 块
+// 解析 ::slide 标记，生成单页轮播结构
 function parseSlide(raw){
   return raw.replace(/::slide\s*\n([\s\S]*?)\n\s*::end/g,(match,inner)=>{
     const imgs = [];
@@ -377,7 +376,7 @@ function parseSlide(raw){
       imgs.push(`<div class="slide-item"><img loading="lazy" src="${s}" alt="${a || '配图'}"></div>`);
       dots.push(`<span class="dot"></span>`);
     });
-    // 少于2张图，不渲染轮播，保留原始Markdown
+    // 少于2张图，不生成轮播容器，保持单图展示
     if(imgs.length < 2) return match;
     dots[0] = `<span class="dot active"></span>`;
     return `<div class="slide-wrap" data-total="${imgs.length}"><div class="slide-box">${imgs.join('')}</div><div class="slide-dot">${dots.join('')}</div></div>`;
@@ -508,65 +507,48 @@ function injectCopyBtn(){
   document.querySelectorAll('.card-content pre').forEach(createCodeToolbar);
 }
 
-/* ============ 旧监听清空无用 ============ */
-document.body.addEventListener('click', e=>{});
-
-// 优化轮播触摸滑动逻辑，边界回弹更流畅
+/* ============ 触摸滑动分页逻辑（和抖音完全一致） ============ */
 function initSlide(){
   document.querySelectorAll('.slide-wrap').forEach(w=>{
     const box = w.querySelector('.slide-box');
     const dots = w.querySelectorAll('.dot');
     const total = Number(w.dataset.total);
-    let cur = 0, sx=0, mx=0, isDragging = false;
-    let timer = null;
+    let cur = 0, startX=0, moveX=0, isDrag = false;
 
-    // 切换页面函数
-    function render(){
-      box.style.transform = `translateX(-${cur*100}%)`;
-      dots.forEach((d,i)=>d.classList.toggle('active', i===cur));
+    // 更新页面位移 + 激活圆点
+    function renderSlider(){
+      box.style.transform = `translateX(-${cur * 100}%)`;
+      dots.forEach((dot, idx)=> dot.classList.toggle('active', idx === cur));
     }
 
-    // 自动轮播
-    function autoPlay(){
-      clearInterval(timer);
-      timer = setInterval(()=>{
-        cur = (cur + 1) % total;
-        render();
-      }, 4000) // 4秒切换一张
-    }
-
-    // 触摸时暂停自动播放，松手恢复
-    w.addEventListener('touchstart',(e)=>{
-      clearInterval(timer);
-      isDragging = true;
-      sx = e.touches[0].clientX;
-      mx = 0;
+    // 触摸开始
+    w.addEventListener('touchstart', (e)=>{
+      isDrag = true;
+      startX = e.touches[0].clientX;
+      moveX = 0;
     }, {passive:true});
 
-    w.addEventListener('touchmove',(e)=>{
-      if(!isDragging) return;
-      mx = e.touches[0].clientX - sx;
-      // 拖拽跟随滑动，增加边界阻尼
-      const offset = -cur * 100 + (mx / w.clientWidth) * 100;
-      if(cur === 0 && offset > 15) return;
-      if(cur === total - 1 && offset < -(15)) return;
-      box.style.transform = `translateX(${offset}%)`;
+    // 拖动过程跟随偏移
+    w.addEventListener('touchmove', (e)=>{
+      if(!isDrag) return;
+      moveX = e.touches[0].clientX - startX;
+      // 边界阻尼，滑到首尾不会拉出容器
+      if( (cur === 0 && moveX > 0) || (cur === total-1 && moveX < 0) ) return;
+      box.style.transform = `translateX(calc(-${cur * 100}% + ${moveX}px))`;
     }, {passive:true});
 
-    w.addEventListener('touchend',()=>{
-      if(!isDragging) return;
-      isDragging = false;
-      // 滑动阈值判定
-      if(mx < -60) cur = Math.min(cur+1, total-1);
-      if(mx > 60) cur = Math.max(cur-1, 0);
-      render();
-      mx=0;
-      autoPlay();
+    // 松手判断切换页面
+    w.addEventListener('touchend', ()=>{
+      if(!isDrag) return;
+      isDrag = false;
+      // 滑动超过60px判定翻页
+      if(moveX < -60) cur = Math.min(cur + 1, total - 1);
+      if(moveX > 60) cur = Math.max(cur - 1, 0);
+      renderSlider();
     });
 
-    // 初始化启动自动轮播
-    render();
-    autoPlay();
+    // 初始化渲染
+    renderSlider();
   })
 }
 
