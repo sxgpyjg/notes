@@ -1,8 +1,212 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+<title>笔记编辑器（内联推送版）</title>
+<script src="./data.js?v=1"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:system-ui,-apple-system,sans-serif;}
+body{background:linear-gradient(135deg,#f5f7fe,#eef2ff);padding:10px 10px 60px;overflow-x:hidden;}
+body.keyboard-opened{padding-bottom:60px!important;}
+.lock-scroll{overflow:hidden!important;touch-action:none!important;}
+.tool-box{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0 10px;}
+.tool-bar{display:flex;gap:8px;margin-bottom:10px;}
+.tool-btn{background:#fff;border:1px solid #e8ecf4;border-radius:8px;padding:8px 10px;font-size:13px;color:#333;box-shadow:0 1px 3px rgba(99,102,241,.06);cursor:pointer;transition:all .15s;}
+.tool-btn:hover{background:#f0f3ff;border-color:#6366F1;}
+.tool-btn:active{background:#e0e7ff;}
+.title-input{width:100%;border:2px solid #e2e8f0;border-radius:10px;padding:10px 14px;font-size:15px;background:#fff;outline:none;margin-bottom:8px;transition:border-color .2s;}
+.title-input:focus{border-color:#6366F1;}
+.tags-input-wrap{width:100%;border:2px solid #e2e8f0;border-radius:10px;padding:6px 8px;margin-bottom:8px;background:#fff;display:flex;flex-wrap:wrap;align-items:center;gap:4px;min-height:38px;cursor:text;transition:border-color .2s;}
+.tags-input-wrap:focus-within{border-color:#6366F1;}
+.tag-chip{display:inline-flex;align-items:center;gap:3px;border-radius:99px;padding:2px 4px 2px 8px;font-size:12px;line-height:1.4;max-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.tag-chip-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.tag-chip-remove{display:inline-flex;width:14px;height:14px;border-radius:50%;align-items:center;justify-content:center;font-size:11px;cursor:pointer;flex-shrink:0;}
+.tag-chip-remove::before{content:"×";font-weight:bold;}
+.tag-chip-input{flex:1;min-width:65px;border:none;outline:none;background:transparent;font-size:13px;padding:3px 2px;}
+.tags-hint{font-size:10px;color:#9ca3af;margin:-6px 0 6px 4px;}
+.edit-toolbar-wrap{position:fixed;bottom:0;left:0;width:100%;background:#fff;border-top:1px solid #e0e3f0;z-index:100000;border-radius:12px 12px 0 0;box-shadow:0 -4px 15px rgba(0,0,0,.05);transition:bottom 0.2s;padding-bottom:0;}
+body.keyboard-opened .edit-toolbar-wrap{position:fixed;bottom:var(--keyboard-height,0);}
+.toolbar-main{display:flex;flex-wrap:wrap;gap:2px;padding:4px 4px;align-items:center;}
+.icon-btn{border:1px solid #ddd;background:#fff;border-radius:4px;width:26px;height:26px;font-size:12px;display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .15s;}
+.icon-btn:hover{background:#eef2ff;border-color:#6366F1;}
+.icon-btn:active{background:#e0e7ff;}
+.icon-btn.active-format{background:#6366F1!important;color:#fff!important;border-color:#4f46e5!important;}
+.color-input{width:24px;height:24px;border:none;cursor:pointer;border-radius:3px;padding:0;}
+.editor-wrap{margin-bottom:10px;}
+.rich-editor{width:100%;min-height:200px;border:2px solid #e2e8f0;border-radius:10px;padding:12px;font-size:15px;outline:none;background:#fff;line-height:1.7;position:relative;}
+.rich-editor:focus{border-color:#6366F1;}
+.rich-editor img{max-width:100%;height:auto;border-radius:6px;margin:6px 0;display:block;cursor:pointer;}
+.rich-editor a{color:#6366F1;text-decoration:underline;}
+.rich-editor table{width:100%;border-collapse:collapse;margin:6px 0;}
+.rich-editor th,.rich-editor td{border:1px solid #999;padding:4px 6px;min-width:40px;position:relative;}
+.rich-editor td .table-controls{display:none;position:absolute;top:2px;right:2px;gap:2px;z-index:10;}
+.rich-editor td:hover .table-controls{display:flex;}
+.table-controls button{background:#6366F1;color:#fff;border:none;border-radius:2px;padding:0 4px;font-size:10px;cursor:pointer;line-height:1.5;}
+.md-editor{width:100%;min-height:180px;border:2px solid #e2e8f0;border-radius:10px;padding:12px;font-size:14px;outline:none;background:#f8fafc;line-height:1.6;font-family:monospace;resize:vertical;}
+.md-editor:focus{border-color:#6366F1;}
+.md-preview{width:100%;min-height:180px;border:2px solid #e2e8f0;border-radius:10px;padding:12px;background:#fff;margin-top:6px;line-height:1.6;}
+.md-preview img{max-width:100%;border-radius:6px;margin:6px 0;}
+.mode-switch{display:flex;gap:8px;margin-bottom:6px;}
+.mode-switch button{flex:1;padding:6px 0;border-radius:8px;border:2px solid #6366F1;background:#fff;color:#6366F1;font-size:13px;font-weight:600;cursor:pointer;transition:all .2s;}
+.mode-switch button.active{background:#6366F1;color:#fff;}
+#imgFileInput{opacity:0;position:absolute;width:0;height:0;}
+.warn{color:#e53e3e;font-size:11px;margin-bottom:6px;background:#fff2f4;padding:4px 8px;border-radius:6px;}
+.tip-green{color:#16a34a;font-size:11px;margin-bottom:6px;background:#f0fdf4;padding:4px 8px;border-radius:6px;}
+.login-modal{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:9999;}
+.login-box{background:#fff;padding:18px;border-radius:10px;width:85%;max-width:280px;}
+.login-box input{width:100%;padding:8px;margin:8px 0;border:1px solid #ddd;border-radius:6px;}
+.login-box button{width:100%;padding:8px;background:#6366F1;color:#fff;border:none;border-radius:6px;cursor:pointer;}
+.find-replace-mask{position:fixed;inset:0;background:rgba(0,0,0,.25);display:none;align-items:center;justify-content:center;z-index:9999;}
+.find-replace-mask.show{display:flex;}
+.find-replace-box{background:rgba(255,255,255,.95);width:min(80%,300px);border-radius:12px;padding:14px;backdrop-filter:blur(8px);box-shadow:0 8px 25px rgba(0,0,0,.12);position:fixed;cursor:move;user-select:none;will-change:left,top;}
+.find-replace-box input{width:100%;padding:6px 8px;border:1px solid #ddd;border-radius:6px;font-size:12px;margin-bottom:8px;}
+.switch-wrap{display:flex;align-items:center;gap:6px;margin-bottom:8px;}
+.switch{position:relative;width:36px;height:20px;flex-shrink:0;cursor:pointer;}
+.switch input{opacity:0;width:0;height:0;position:absolute;}
+.slider{position:absolute;cursor:pointer;inset:0;background:#ccc;border-radius:20px;transition:.3s;}
+.slider:before{content:"";position:absolute;height:14px;width:14px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s;}
+.switch input:checked+.slider{background:#6366F1;}
+.switch input:checked+.slider:before{transform:translateX(16px);}
+.private-switch-group{display:flex;align-items:center;gap:8px;margin-bottom:8px;padding:4px 8px;background:#f1f5f9;border-radius:8px;}
+.private-switch-group .switch-label{font-size:13px;color:#475569;font-weight:500;}
+.private-switch-group .switch-label.private{color:#dc2626;font-weight:600;}
+.img-preview-mask{position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:999999;display:none;align-items:center;justify-content:center;}
+.img-preview-mask.show{display:flex;}
+.img-preview-img{max-width:95vw;max-height:95vh;object-fit:contain;}
+.cursor-dragger{position:fixed;bottom:80px;left:10px;right:10px;height:30px;background:rgba(99,102,241,0.15);border-radius:15px;display:none;z-index:10000;touch-action:none;}
+.cursor-dragger.show{display:flex;align-items:center;justify-content:center;}
+.cursor-dragger .thumb{width:20px;height:20px;background:#6366F1;border-radius:50%;border:2px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.2);}
+/* 拖曳覆盖层：pointer-events:none 让 toolbar 按钮仍可点 */
+.drag-overlay{position:fixed;inset:0;z-index:50000;background:rgba(99,102,241,0.05);touch-action:none;display:none;pointer-events:none;}
+.drag-overlay.show{display:block;}
+.drag-overlay .hint{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);background:#6366F1;color:#fff;padding:8px 14px;border-radius:20px;font-size:13px;pointer-events:none;box-shadow:0 4px 12px rgba(0,0,0,.15);}
+/* 网络图片弹窗 */
+.net-img-mask{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99999;display:flex;align-items:center;justify-content:center;padding:10px;animation:fadeIn .15s ease;}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.net-img-box{width:100%;max-width:350px;background:#fff;border-radius:12px;padding:18px;box-shadow:0 8px 30px rgba(0,0,0,.2);}
+.net-img-box h2{margin:0 0 14px;font-weight:500;font-size:16px;}
+.net-img-box input{width:100%;border:none;border-bottom:1px solid #999;padding:7px 0;font-size:15px;outline:none;background:transparent;margin-bottom:14px;}
+.net-img-box input:focus{border-bottom-color:#6366F1;}
+.net-img-actions{display:flex;gap:40px;justify-content:flex-end;}
+.net-img-actions button{background:transparent;border:none;color:#009688;font-size:15px;cursor:pointer;padding:4px;}
+</style>
+</head>
+<body>
+<div id="loginWrap" class="login-modal">
+  <div class="login-box">
+    <h3>管理员验证</h3>
+    <input type="password" id="pwdInput" placeholder="输入管理员密码">
+    <button onclick="checkPwd()">确认进入</button>
+  </div>
+</div>
+<div id="mainWrap" style="display:none">
+<div class="tool-bar">
+  <button class="tool-btn" onclick="location.href='index.html'">主页</button>
+  <button class="tool-btn" onclick="location.href='admin-list.html'">管理页</button>
+  <button class="tool-btn" onclick="logoutAdmin()">退出登录</button>
+</div>
+<div class="tip-green" id="wordCountTip">纯文字数：0 | 总字符：0</div>
+<div class="tool-box">
+  <button class="tool-btn" id="copyJsonBtn">一键复制data.js</button>
+  <button class="tool-btn" id="showTemplateBtn">生成推送命令</button>
+  <button class="tool-btn" id="downloadDataBtn">下载data.js</button>
+  <button class="tool-btn" id="batchImgBtn">批量图床链接</button>
+</div>
+<input type="file" id="imgFileInput" multiple style="display:none;">
+<input class="title-input" placeholder="填写笔记标题">
+
+<div class="tags-input-wrap" id="tagsInputWrap">
+  <input type="text" class="tag-chip-input" id="tagChipInput" placeholder="添加标签（回车确认）">
+</div>
+<div class="tags-hint">回车添加，点击色块换颜色，× 删除</div>
+<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:8px;">
+  <div class="private-switch-group" style="margin-bottom:0;padding:4px 8px;">
+    <label class="switch"><input type="checkbox" id="privateCheck"><span class="slider"></span></label>
+    <span class="switch-label private">设为私密</span>
+  </div>
+  <span style="font-size:11px;color:#94a3b8;">（数据将直接内联至推送脚本）</span>
+</div>
+
+<div class="mode-switch">
+  <button id="modeRich" class="active" onclick="switchMode('rich')">富文本</button>
+  <button id="modeMd" onclick="switchMode('md')">Markdown</button>
+</div>
+<div class="edit-toolbar-wrap" id="editToolbar">
+  <div class="toolbar-main">
+    <button class="icon-btn" data-tip="撤销" onclick="globalUndo()">↩</button>
+    <button class="icon-btn" data-tip="重做" onclick="globalRedo()">↪</button>
+    <input type="color" class="color-input" id="fontColor" value="#000000" title="文字颜色">
+    <input type="color" class="color-input" id="bgColor" value="#fff2cc" title="底色">
+    <button class="icon-btn" data-tip="加粗" onclick="formatBold()"><strong>B</strong></button>
+    <button class="icon-btn" data-tip="斜体" onclick="formatItalic()"><em>I</em></button>
+    <button class="icon-btn" data-tip="下划线" onclick="insertUnderline()"><u>U</u></button>
+    <button class="icon-btn" data-tip="删除线" onclick="formatStrikeThrough()" style="text-decoration:line-through;">S</button>
+    <button class="icon-btn" data-tip="清除格式" onclick="clearTextFormat()">T</button>
+    <button class="icon-btn" data-tip="居中" onclick="insertCenter()">≡</button>
+    <button class="icon-btn" data-tip="H1" onclick="insertH1()">H1</button>
+    <button class="icon-btn" data-tip="H2" onclick="insertH2()">H2</button>
+    <button class="icon-btn" data-tip="H3" onclick="insertH3()">H3</button>
+    <button class="icon-btn" data-tip="代码块" onclick="insertMdCode()">&lt;/&gt;</button>
+    <select id="fontSizeSel" style="height:24px;width:36px;border:1px solid #ddd;border-radius:3px;font-size:11px;">
+      <option value="12px">12</option><option value="14px">14</option><option value="16px" selected>16</option>
+      <option value="18px">18</option><option value="20px">20</option>
+    </select>
+    <button class="icon-btn" data-tip="行内代码" onclick="insertInlineCode()">`</button>
+    <button class="icon-btn" data-tip="引用" onclick="insertQuote()">></button>
+    <button class="icon-btn" data-tip="无序列表" onclick="insertUl()">•</button>
+    <button class="icon-btn" data-tip="有序列表" onclick="insertOrderedList()">1.</button>
+    <button class="icon-btn" data-tip="任务列表" onclick="insertTaskList()">☐</button>
+    <button class="icon-btn" data-tip="表格" onclick="insertTable()">▦</button>
+    <button class="icon-btn" data-tip="链接" onclick="insertLink()">[]()</button>
+    <button class="icon-btn" data-tip="本地图片" id="localImgBtn">🖼</button>
+    <button class="icon-btn" data-tip="网络图床" id="netImgBtn">🌐</button>
+    <button class="icon-btn" data-tip="清空" onclick="clearAllNotesContent()">🗑️</button>
+    <button class="icon-btn" data-tip="查找" id="findReplaceBtn">🔍</button>
+    <button class="icon-btn" data-tip="分割线" onclick="splitLine1()">—</button>
+    <button class="icon-btn" data-tip="拖曳光标" id="dragModeToggle">✋</button>
+    <input type="file" id="hiddenImgFile" multiple style="display:none;">
+  </div>
+</div>
+<div class="editor-wrap">
+  <div class="rich-editor" id="richEditor" contenteditable="true"></div>
+  <textarea class="md-editor" id="mdEditor" style="display:none" placeholder="Markdown..."></textarea>
+  <div class="md-preview" id="mdPreview" style="display:none"></div>
+</div>
+</div>
+<div class="find-replace-mask" id="findReplaceMask">
+  <div class="find-replace-box" id="findReplaceBox">
+    <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
+      <span style="font-weight:600;font-size:14px;">查找替换</span>
+      <button id="findReplaceClose" style="border:none;background:transparent;font-size:16px;cursor:pointer;">×</button>
+    </div>
+    <input type="text" id="findInput" placeholder="查找">
+    <input type="text" id="replaceInput" placeholder="替换为">
+    <div class="switch-wrap">
+      <label class="switch"><input type="checkbox" id="matchCase"><span class="slider"></span></label>
+      <span style="font-size:12px;">区分大小写</span>
+    </div>
+    <div style="display:flex;gap:4px;">
+      <button class="tool-btn" id="findNextBtn" style="flex:1;padding:4px 0;font-size:12px;">下一处</button>
+      <button class="tool-btn" id="replaceSingleBtn" style="flex:1;padding:4px 0;font-size:12px;">替换</button>
+      <button class="tool-btn" id="replaceAllBtn" style="flex:1;padding:4px 0;font-size:12px;background:#6366F1;color:#fff;">全部</button>
+    </div>
+  </div>
+</div>
+<div class="img-preview-mask" id="imgPreviewMask">
+  <img class="img-preview-img" id="previewImg">
+</div>
+<!-- 拖曳覆盖层：pointer-events:none 让 toolbar 等按钮仍可点击 -->
+<div class="drag-overlay" id="dragOverlay">
+  <div class="hint">拖曳移动光标 · 点 ✋ 按钮或按返回键退出</div>
+</div>
+
 <script>
 //========== 全局变量 ==========
 const ADMIN_PASSWORD = "admin123";
 const CACHE_KEY = "note_temp_data";
 const RICH_RECORD_MAX = 30;
+// 默认标签颜色池
 const TAG_COLOR_PRESETS = ['#6366F1','#EC4899','#10B981','#F59E0B','#3B82F6','#EF4444','#8B5CF6','#14B8A6','#F97316','#84CC16'];
 let list = [], targetNote = null;
 const editId = new URLSearchParams(location.search).get("id");
@@ -13,14 +217,6 @@ let currentTags = [], tagColorMap = {};
 let globalImgSerial = Number(localStorage.getItem("img_serial")||0);
 let searchIndex = 0, matchList = [], matchCase = false;
 let dragActive = false;
-
-// ========== 轮播全局变量 ==========
-const carouselCheck = document.getElementById('carouselCheck');
-const finishCarouselBtn = document.getElementById('finishCarouselBtn');
-const carouselQueueCount = document.getElementById('carouselQueueCount');
-let isCarouselOn = false;
-let carouselImageQueue = [];   // 每个元素: { url, alt, intro }
-let carouselCloseTimer = null;
 
 const titleInput = document.querySelector(".title-input");
 const tagChipInput = document.getElementById("tagChipInput");
@@ -35,10 +231,12 @@ const fontSizeSelect = document.getElementById("fontSizeSel");
 const fontColorInput = document.getElementById("fontColor");
 const bgColorInput = document.getElementById("bgColor");
 const imgFileInput = document.getElementById("imgFileInput");
+const hiddenImgFile = document.getElementById("hiddenImgFile");
 const findReplaceMask = document.getElementById("findReplaceMask");
 const findInput = document.getElementById("findInput");
 const replaceInput = document.getElementById("replaceInput");
 const matchCaseCheck = document.getElementById("matchCase");
+const cursorDragger = document.getElementById("cursorDragger");
 const netImgBtn = document.getElementById("netImgBtn");
 const editToolbar = document.getElementById("editToolbar");
 
@@ -56,11 +254,12 @@ function getTagColor(t){
   const idx=currentTags.findIndex(x=>x.toLowerCase()===k);
   return tagColorMap[k]=TAG_COLOR_PRESETS[idx%TAG_COLOR_PRESETS.length];
 }
-function setTagColor(t,c){
-  const k=t.toLowerCase().trim();
-  if(!c) return;
-  tagColorMap[k]=c;
-  renderTagsChips();
+// 修复：移除黑色限制
+function setTagColor(t,c){ 
+  const k=t.toLowerCase().trim(); 
+  if(!c) return; 
+  tagColorMap[k]=c; 
+  renderTagsChips(); 
 }
 function pickTagColorAtIndex(idx){
   const t=currentTags[idx]; if(!t)return;
@@ -74,12 +273,14 @@ function renderTagsChips(){
   Array.from(tagsInputWrap.querySelectorAll('.tag-chip')).forEach(n=>n.remove());
   currentTags.forEach((t,i)=>{
     const c=getTagColor(t);
+    // 如果颜色是黑色或深色，文字变白，背景变深灰
     let textColor = c;
-    let bgColor = c + '22';
+    let bgColor = c + '22'; // 22 is low opacity
     if(c === '#000000' || c === '#000'){
       textColor = '#fff';
       bgColor = '#333333';
     }
+    
     const chip=document.createElement('span');
     chip.className='tag-chip';
     chip.style.cssText=`background:${bgColor};border-left:3px solid ${c};color:${textColor};`;
@@ -141,6 +342,14 @@ function loadLocalCache() {
       } else { throw new Error("localStorage 数据为空或无效"); }
     } catch(e) { console.warn("回退到 window.NOTE_DATA",e); fallbackToWindowData(); }
   } else { console.warn("localStorage 无数据，回退到 window.NOTE_DATA"); fallbackToWindowData(); }
+  try {
+    const cacheStr = localStorage.getItem(CACHE_KEY);
+    if (cacheStr) {
+      const tempCache = JSON.parse(cacheStr);
+      const tempDraft = tempCache.list?.find(item => item._isTempNew === true);
+      if (tempDraft && !list.some(n => n.id === tempDraft.id)) { list.push(tempDraft); console.log("✅ 合并了临时草稿"); }
+    }
+  } catch(e) { console.warn("合并草稿失败",e); }
   if (!list || !Array.isArray(list)) { console.error("list 初始化失败，强制设为空数组"); list = []; }
   console.log("✅ 最终 list 长度:",list.length);
 }
@@ -174,10 +383,8 @@ function logoutAdmin(){ localStorage.removeItem("admin_save_pwd"); localStorage.
 
 function initLoadNote(){
   imgUploadList=[];
-  carouselImageQueue = [];
-  clearTimeout(carouselCloseTimer);
-  updateCarouselStatusUI();
-
+  
+  // 处理新建笔记
   if(editId === 'new' || !editId){
     targetNote = {
       id: Date.now(),
@@ -188,11 +395,12 @@ function initLoadNote(){
       content: "",
       date: getNowTimeStr(),
       private: false,
-      carousel: false,
       _isTempNew: true
     };
-    console.log("新建笔记模式，ID:", targetNote.id, "(临时对象，未入 list)");
+    list.unshift(targetNote);
+    console.log("新建笔记模式，ID:", targetNote.id);
   } else {
+    // 编辑现有笔记
     const t = list.find(i => i.id === Number(editId));
     if(!t) {
       alert("笔记不存在");
@@ -207,65 +415,47 @@ function initLoadNote(){
   if(!tags.length && targetNote.type) tags = [targetNote.type];
   setCurrentTags(tags, targetNote.tagColors || {});
   document.getElementById("privateCheck").checked = !!targetNote.private;
-  isCarouselOn = !!targetNote.carousel;
-  carouselCheck.checked = isCarouselOn;
-
+  
   richBox.innerHTML = targetNote.content || "";
-  richRecordStack = [richBox.innerHTML];
+  richRecordStack = [richBox.innerHTML]; 
   richRecordIndex = 0;
-
+  
   mdBox.value = htmlToMd(targetNote.content || "").replace(/\n{3,}/g, "\n\n");
-  saveMdRecord();
-  renderMdPreview();
-  checkFormatActive();
+  saveMdRecord(); 
+  renderMdPreview(); 
+  checkFormatActive(); 
   calcWordCount();
 }
 
-// ========== 同步表单数据到目标笔记对象 ==========
-function syncFormToNoteList() {
-  if (!targetNote) return;
+//========== 同步表单 ==========
+function syncFormToNoteList(){
+  if(!targetNote) return;
+  const t=titleInput.value.trim();
+  const tags=getCurrentTags();
+  const finalType=tags.length?tags[0]:'';
+  const isPrivate=document.getElementById('privateCheck').checked;
+  const content=currentEditMode==='rich'?richBox.innerHTML.trim():mdToHtml(mdBox.value);
+  const now=getNowTimeStr();
+  const tagColors={}; tags.forEach(t=>{ const k=t.toLowerCase().trim(); if(tagColorMap[k]) tagColors[k]=tagColorMap[k]; });
 
-  targetNote.title = titleInput.value;
-  targetNote.tags = getCurrentTags();
-  targetNote.tagColors = { ...tagColorMap };
-  targetNote.private = document.getElementById("privateCheck").checked;
-  targetNote.carousel = isCarouselOn;
-
-  if (currentEditMode === 'rich') {
-    targetNote.content = richBox.innerHTML;
-  } else {
-    targetNote.content = mdToHtml(mdBox.value);
+  if(targetNote){
+    const idx=list.findIndex(i=>i.id===targetNote.id);
+    if(idx>-1){
+      list[idx]={...list[idx],title:t,type:finalType,tags,tagColors,content,date:now,private:isPrivate};
+      delete list[idx]._isTempNew;
+    }
+  }else{
+    const newNote = {id:Date.now(),title:t,type:finalType,tags:tags,tagColors:tagColors,content:content,date:now,private:isPrivate,_isTempNew:true};
+    list.push(newNote);
+    targetNote = newNote;
   }
-
-  targetNote.date = getNowTimeStr();
-
-  if (targetNote._isTempNew) {
-    delete targetNote._isTempNew;
-    list.unshift(targetNote);
-    console.log("✅ 新建笔记已入 list:", targetNote.id);
-  }
+  saveLocalCache();
+  localStorage.setItem("notes",JSON.stringify(list));
+  window.NOTE_DATA=list;
 }
-
-// ========== 轮播开关监听 ==========
-carouselCheck.addEventListener('change', function(){
-  isCarouselOn = this.checked;
-  if (!isCarouselOn && carouselImageQueue.length) {
-    carouselImageQueue.forEach(item => processNormalImageInsert(itemToMd(item)));
-    carouselImageQueue = [];
-    clearTimeout(carouselCloseTimer);
-  }
-  updateCarouselStatusUI();
-});
 
 //========== 模式切换 ==========
 function switchMode(m){
-  if (carouselImageQueue.length > 0) {
-    carouselImageQueue.forEach(item => processNormalImageInsert(itemToMd(item)));
-    carouselImageQueue = [];
-    clearTimeout(carouselCloseTimer);
-    updateCarouselStatusUI();
-  }
-
   currentEditMode=m;
   richModeBtn.classList.toggle("active",m==="rich");
   mdModeBtn.classList.toggle("active",m==="md");
@@ -282,33 +472,8 @@ function switchMode(m){
   calcWordCount();
 }
 
-//========== 转换（升级：方案 B + C） ==========
+//========== 转换 ==========
 function mdToHtml(s){
-  s = s.replace(/::slide\n([\s\S]*?)\n::end/g, (_, inner) => {
-    const items = [];
-    inner.split(/\n(?=!\[)/).forEach(chunk => {
-      const m = chunk.match(/!\[(.*?)\]\((https?:\/\/[^\s)]+)\)/);
-      if (!m) return;
-      const introMatch = chunk.match(/::intro\s+(.+)/);
-      items.push({
-        alt: m[1] || '',
-        url: m[2],
-        intro: introMatch ? introMatch[1].trim() : ''
-      });
-    });
-    if (!items.length) return '';
-    const slides = items.map(it =>
-      `<div class="slide"><img src="${it.url}" alt="${escapeHtml(it.alt)}" loading="lazy">${it.intro ? `<div class="intro"><b>${escapeHtml(it.alt||'图')}</b>${escapeHtml(it.intro)}</div>` : ''}</div>`
-    ).join('');
-    const dots = items.map((_, i) => `<button class="dot ${i===0?'active':''}" data-idx="${i}" aria-label="第${i+1}张"></button>`).join('');
-    return `<div class="carousel-render" data-idx="0">` +
-           `<div class="counter" style="display:${items.length>1?'block':'none'}">1 / ${items.length}</div>` +
-           `<div class="track">${slides}</div>` +
-           (items.length>1 ? `<button class="arrow prev" aria-label="上一张">‹</button><button class="arrow next" aria-label="下一张">›</button>` : '') +
-           (items.length>1 ? `<div class="dots">${dots}</div>` : '') +
-           `</div>`;
-  });
-
   let html=s.replace(/```([\s\S]*?)```/g,'<pre style="background:#f5f5f5;padding:8px;border-radius:6px;white-space:pre-wrap;"><code>$1</code></pre>');
   html=html.replace(/(^|\n)(\|.+\|\n)((?:\|[-:| ]+\|)(?:\n|$))+(\|.+\|)/g,(_,pre,hRow,sep,cRow)=>{
     const rows=(hRow+sep+cRow).split('\n').filter(r=>r.trim());
@@ -328,23 +493,7 @@ function mdToHtml(s){
     .replace(/!\[(.*?)\]\((https?:\/\/[^\s)]+)\)/g,'<img src="$2" alt="$1" style="max-width:100%;margin:6px 0;display:block;">');
   return html.replace(/\n/g,'<br>');
 }
-
 function htmlToMd(s){
-  s = s.replace(/<div class="carousel-render"[^>]*>([\s\S]*?)<\/div>/g, (_, inner) => {
-    const mdLines = [];
-    const slideMatches = inner.match(/<div class="slide">([\s\S]*?)<\/div>/g) || [];
-    slideMatches.forEach(blk => {
-      const imgMatch = blk.match(/<img[^>]*src="([^"]+)"[^>]*alt="([^"]*)"/);
-      if (!imgMatch) return;
-      const [, url, alt] = imgMatch;
-      mdLines.push(`![${alt || ''}](${url})`);
-      const introM = blk.match(/<div class="intro"[^>]*>(?:<b>[^<]*<\/b>)?([\s\S]*?)<\/div>/);
-      if (introM && introM[1].trim()) mdLines.push(`::intro ${introM[1].trim()}`);
-    });
-    if (!mdLines.length) return '';
-    return `\n::slide\n${mdLines.join('\n')}\n::end\n`;
-  });
-
   let md=s.replace(/<pre[^>]*><code>([\s\S]*?)<\/code><\/pre>/g,'```\n$1\n```')
     .replace(/<h1>(.*?)<\/h1>/g,'# $1').replace(/<h2>(.*?)<\/h2>/g,'## $1').replace(/<h3>(.*?)<\/h3>/g,'### $1')
     .replace(/<strong>(.*?)<\/strong>/g,'**$1**').replace(/<em>(.*?)<\/em>/g,'*$1*').replace(/<s>(.*?)<\/s>/g,'~~$1~~')
@@ -352,113 +501,16 @@ function htmlToMd(s){
   md=md.replace(/<(?!p style="text-align:center"|u|table|tr|th|td)[^>]+>/g,'');
   return md.replace(/<img[^>]*src="([^"]+)"[^>]*alt="([^"]*)"[^>]*>/g,'![$2]($1)');
 }
-
-function escapeHtml(s){
-  return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
-
-function renderMdPreview(){
-  const html = mdToHtml(mdBox.value);
-  mdPreviewBox.innerHTML = html;
-  if (typeof initAllCarousels === 'function') initAllCarousels(mdPreviewBox);
-}
-
-function initAllCarousels(scope){
-  (scope||document).querySelectorAll('.carousel-render').forEach(el => initOneCarousel(el));
-}
-
-function initOneCarousel(el){
-  if (el.__inited) return;
-  el.__inited = true;
-  const track = el.querySelector('.track');
-  const slides = el.querySelectorAll('.slide');
-  const dots = el.querySelectorAll('.dot');
-  const prev = el.querySelector('.arrow.prev');
-  const next = el.querySelector('.arrow.next');
-  const counter = el.querySelector('.counter');
-  const total = slides.length;
-  if (total <= 1) return;
-
-  let idx = 0;
-  let autoplay = null;
-  const INTERVAL = 4500;
-
-  function show(i){
-    idx = (i + total) % total;
-    track.style.transform = `translateX(-${idx*100}%)`;
-    dots.forEach((d,j)=>d.classList.toggle('active', j===idx));
-    if (counter) counter.textContent = `${idx+1} / ${total}`;
-  }
-  function start(){ stop(); autoplay = setInterval(()=> show(idx+1), INTERVAL); }
-  function stop(){ if (autoplay){ clearInterval(autoplay); autoplay=null; } }
-
-  prev && (prev.onclick = ()=>{ show(idx-1); start(); });
-  next && (next.onclick = ()=>{ show(idx+1); start(); });
-  dots.forEach(d => d.onclick = ()=>{ show(+d.dataset.idx); start(); });
-  el.addEventListener('mouseenter', stop);
-  el.addEventListener('mouseleave', start);
-  el.addEventListener('click', e => {
-    if (e.target.closest('.arrow')||e.target.closest('.dot')) return;
-    show(idx+1); start();
-  });
-
-  let sx=0, dx=0, dragging=false;
-  el.addEventListener('touchstart', e=>{ sx=e.touches[0].clientX; dragging=true; stop(); }, {passive:true});
-  el.addEventListener('touchmove',  e=>{ if(!dragging) return; dx=e.touches[0].clientX - sx; }, {passive:true});
-  el.addEventListener('touchend',   ()=>{
-    if (!dragging) return;
-    dragging = false;
-    if (Math.abs(dx) > 50) show(idx + (dx<0?1:-1));
-    dx = 0;
-    start();
-  });
-
-  if ('IntersectionObserver' in window) {
-    const io = new IntersectionObserver(entries => {
-      entries.forEach(e => {
-        if (e.isIntersecting) {
-          const img = e.target.querySelector('img');
-          if (img && img.dataset.src) { img.src = img.dataset.src; delete img.dataset.src; }
-        }
-      });
-    }, { root: el, threshold: 0.5 });
-    slides.forEach(s => io.observe(s));
-  }
-
-  start();
-}
+function renderMdPreview(){ mdPreviewBox.innerHTML=mdToHtml(mdBox.value); }
 
 //========== 撤销重做 ==========
 function saveMdRecord(){ mdRecordStack.splice(mdRecordIndex+1); mdRecordStack.push(mdBox.value); mdRecordIndex=mdRecordStack.length-1; }
 function mdUndo(){ if(mdRecordIndex<=0)return; mdRecordIndex--; mdBox.value=mdRecordStack[mdRecordIndex]; renderMdPreview(); calcWordCount(); }
 function mdRedo(){ if(mdRecordIndex>=mdRecordStack.length-1)return; mdRecordIndex++; mdBox.value=mdRecordStack[mdRecordIndex]; renderMdPreview(); calcWordCount(); }
-function globalUndo(){
-  if(currentEditMode==='rich'){
-    if(richRecordIndex<=0)return alert("已到最早");
-    richRecordIndex--; richBox.innerHTML=richRecordStack[richRecordIndex]; checkFormatActive(); calcWordCount();
-  } else mdUndo();
-}
-function globalRedo(){
-  if(currentEditMode==='rich'){
-    if(richRecordIndex>=richRecordStack.length-1)return alert("无后续");
-    richRecordIndex++; richBox.innerHTML=richRecordStack[richRecordIndex]; checkFormatActive(); calcWordCount();
-  } else mdRedo();
-}
-let mdRenderTimer = null;
-richBox.addEventListener('input',()=>{
-  richRecordStack.splice(richRecordIndex+1);
-  richRecordStack.push(richBox.innerHTML);
-  if(richRecordStack.length>RICH_RECORD_MAX) richRecordStack.shift();
-  richRecordIndex=richRecordStack.length-1;
-  checkFormatActive();
-  if (mdRenderTimer) clearTimeout(mdRenderTimer);
-  mdRenderTimer = setTimeout(()=>{ calcWordCount(); if(typeof initAllCarousels==='function') initAllCarousels(richBox); }, 250);
-});
-mdBox.addEventListener('input',()=>{
-  saveMdRecord();
-  if (mdRenderTimer) clearTimeout(mdRenderTimer);
-  mdRenderTimer = setTimeout(()=>{ renderMdPreview(); calcWordCount(); }, 250);
-});
+function globalUndo(){ if(currentEditMode==='rich'){ if(richRecordIndex<=0)return alert("已到最早"); richRecordIndex--; richBox.innerHTML=richRecordStack[richRecordIndex]; checkFormatActive(); calcWordCount(); } else mdUndo(); }
+function globalRedo(){ if(currentEditMode==='rich'){ if(richRecordIndex>=richRecordStack.length-1)return alert("无后续"); richRecordIndex++; richBox.innerHTML=richRecordStack[richRecordIndex]; checkFormatActive(); calcWordCount(); } else mdRedo(); }
+richBox.addEventListener('input',()=>{ richRecordStack.splice(richRecordIndex+1); richRecordStack.push(richBox.innerHTML); if(richRecordStack.length>RICH_RECORD_MAX) richRecordStack.shift(); richRecordIndex=richRecordStack.length-1; checkFormatActive(); calcWordCount(); });
+mdBox.addEventListener('input',()=>{ saveMdRecord(); renderMdPreview(); calcWordCount(); });
 
 function checkFormatActive(){
   document.querySelectorAll('.icon-btn').forEach(b=>b.classList.remove('active-format'));
@@ -476,6 +528,7 @@ function checkFormatActive(){
     el=el.parentNode; if(el===richBox)break;
   }
 }
+// selectionchange 是 document 事件，必须挂在 document 上
 document.addEventListener('selectionchange',checkFormatActive);
 
 function calcWordCount(){
@@ -506,12 +559,15 @@ function insertLink(){
     richBox.focus();
     const sel = window.getSelection();
     if(sel.rangeCount && !sel.isCollapsed) {
+      // 如果有选中文字，包裹成链接
       document.execCommand('createLink', false, 'https://example.com');
+      // 调整光标到最后
       const range = sel.getRangeAt(0);
       range.collapse(false);
       sel.removeAllRanges();
       sel.addRange(range);
     } else {
+      // 否则插入一个默认链接
       document.execCommand('insertHTML', false, '<a href="https://example.com" target="_blank">链接</a>');
     }
     calcWordCount();
@@ -565,579 +621,547 @@ function insertTable(){
 function splitLine1(){ const t='---\n'; if(currentEditMode==='rich'){ document.execCommand('insertText',false,t); calcWordCount(); } else { mdBox.value+=t; saveMdRecord(); renderMdPreview(); calcWordCount(); } }
 function clearAllNotesContent(){ if(!confirm('清空全部内容？'))return; richBox.innerHTML=''; mdBox.value=''; renderMdPreview(); richRecordStack=['']; richRecordIndex=0; mdRecordStack=['']; mdRecordIndex=0; calcWordCount(); }
 
-//========== 图片 / 轮播 核心 ==========
-function itemToMd(item){
-  let line = `![$${item.alt||''}]($${item.url})`;
-  if (item.intro) line += `\n::intro ${item.intro}`;
-  return line + '\n';
-}
-
-function updateCarouselStatusUI(){
-  const on = isCarouselOn && carouselImageQueue.length > 0;
-  finishCarouselBtn.style.display = on ? 'inline-flex' : 'none';
-  carouselQueueCount.textContent = carouselImageQueue.length;
-}
-
-function insertImageToEditor(url, alt, intro){
-  if (!url) return;
-  const item = { url, alt: alt || '', intro: intro || '' };
-
-  if (isCarouselOn) {
-    carouselImageQueue.push(item);
-    clearTimeout(carouselCloseTimer);
-    updateCarouselStatusUI();
-
-    carouselCloseTimer = setTimeout(()=> flushCarousel(), 2000);
-  } else {
-    processNormalImageInsert(itemToMd(item));
+//========== 图片上传 ==========
+function insertLocalImgTagTerminal(safeName) {
+  const url = `https://cdn.jsdelivr.net/gh/sxgpyjg/notes@main/images/${safeName}`;
+  if(currentEditMode==='rich'){ 
+    document.execCommand('insertHTML',false,`<img loading="lazy" src="${url}" alt="本地图片" style="max-width:100%;margin:6px 0;display:block;" onerror="this.src='';this.alt='图片加载失败';"><br>`); 
+    richBox.focus(); 
   }
+  else{ mdBox.value+=`![本地图](${url})\n\n`; saveMdRecord(); renderMdPreview(); calcWordCount(); }
 }
-
-function flushCarousel(){
-  if (!carouselImageQueue.length) return;
-  if (!isCarouselOn) {
-    carouselImageQueue.forEach(it => processNormalImageInsert(itemToMd(it)));
-    carouselImageQueue = [];
-    updateCarouselStatusUI();
-    return;
-  }
-  const slideBlock = `::slide\n${carouselImageQueue.map(itemToMd).join('')}::end\n`;
-
-  if (currentEditMode === 'rich') {
-    richBox.focus();
-    document.execCommand('insertHTML', false, mdToHtml(slideBlock));
-    richRecordStack.splice(richRecordIndex+1);
-    richRecordStack.push(richBox.innerHTML);
-    if(richRecordStack.length>RICH_RECORD_MAX) richRecordStack.shift();
-    richRecordIndex=richRecordStack.length-1;
-    setTimeout(()=>initAllCarousels(richBox), 50);
-  } else {
-    mdBox.value += slideBlock;
-    saveMdRecord();
-    renderMdPreview();
-  }
-
-  carouselImageQueue = [];
-  updateCarouselStatusUI();
-  calcWordCount();
-}
-
-function finishCarouselNow(){
-  if (!carouselImageQueue.length) {
-    alert('轮播队列为空，先插入几张图片');
-    return;
-  }
-  clearTimeout(carouselCloseTimer);
-  flushCarousel();
-}
-
-function processNormalImageInsert(mdLine) {
-  if (currentEditMode === 'rich') {
-    const htmlImg = mdToHtml(mdLine).replace(/<br\s*\/?>/gi, '');
-    richBox.focus();
-    document.execCommand('insertHTML', false, htmlImg + '<br>');
-    richRecordStack.splice(richRecordIndex+1);
-    richRecordStack.push(richBox.innerHTML);
-    if(richRecordStack.length>RICH_RECORD_MAX) richRecordStack.shift();
-    richRecordIndex=richRecordStack.length-1;
-    setTimeout(()=>initAllCarousels(richBox), 50);
-  } else {
-    mdBox.value += mdLine + '\n';
-    saveMdRecord();
-    renderMdPreview();
-  }
-  calcWordCount();
-}
-
-function insertLocalImgRecord(fileName) {
-  const imgUrl = `https://cdn.jsdelivr.net/gh/sxgpyjg/notes@main/images/${fileName}`;
-  insertImageToEditor(imgUrl, "");
-}
-
-function handleFileUpload(files){
+function handleFileSelect(files){
   if(!files||!files.length)return;
   Array.from(files).forEach(file=>{
     const originalName = file.name;
     const safeName = originalName.replace(/[^\w\-\.\u4e00-\u9fa5]/g, '_');
-    let realFilePath = file.path||'';
-    if(!realFilePath){
+    let realPath = file.path||'';
+    if(!realPath){
       const fn = originalName.toLowerCase();
-      if (/screenshot/i.test(fn)) realFilePath = `/storage/emulated/0/Pictures/Screenshots/${originalName}`;
-      else if (/wx_|wechat/i.test(fn)) realFilePath = `/storage/emulated/0/tencent/MicroMsg/WeiXin/${originalName}`;
-      else realFilePath = `/storage/emulated/0/Download/${originalName}`;
-    } else {
-      realFilePath = realFilePath.replace(/^\/storage\/emulated\/0\//i,'/storage/emulated/0/');
-    }
-    const userSetPath = prompt(`确认图片源路径：\n${safeName}`, realFilePath);
-    const finalPath = (userSetPath&&userSetPath.trim()) ? userSetPath.trim() : realFilePath;
-    const copyCmd = `cp "$${finalPath}" ~/storage/shared/notes/images/"$${safeName}"`;
-    imgUploadList.push({ name:safeName, originalName, src:finalPath, copyCmd:copyCmd });
-    insertLocalImgRecord(safeName);
-    addImgSerial();
+      if (/screenshot|screen_shot/i.test(fn)) realPath = `/storage/emulated/0/Pictures/Screenshots/${originalName}`;
+      else if (/wx_|wechat|mmexport/i.test(fn)) realPath = `/storage/emulated/0/tencent/MicroMsg/WeiXin/${originalName}`;
+      else if (/qq/i.test(fn)) realPath = `/storage/emulated/0/tencent/QQ_images/${originalName}`;
+      else if (/download/i.test(fn)) realPath = `/storage/emulated/0/Download/${originalName}`;
+      else if (/pictures|images/i.test(fn) && !/screenshot/i.test(fn)) realPath = `/storage/emulated/0/Pictures/${originalName}`;
+      else if (/whatsapp|wa_/i.test(fn)) realPath = `/storage/emulated/0/WhatsApp/Media/WhatsApp Images/${originalName}`;
+      else realPath = `/storage/emulated/0/DCIM/Camera/${originalName}`;
+    } else realPath = realPath.replace(/^\/storage\/emulated\/0\//i,'/storage/emulated/0/');
+    const userPath = prompt(`请确认图片源路径（可修改）：\n${safeName}`, realPath);
+    const finalPath = (userPath&&userPath.trim()) ? userPath.trim() : realPath;
+    const cpCmd = `cp "$${finalPath}" ~/storage/shared/notes/images/"$${safeName}"`;
+    imgUploadList.push({name:safeName, originalName:originalName, src:finalPath, copyCmd:cpCmd});
+    insertLocalImgTagTerminal(safeName);
   });
 }
 document.getElementById('localImgBtn').onclick=()=>imgFileInput.click();
-imgFileInput.onchange=function(e){ handleFileUpload(e.target.files); this.value=''; };
+imgFileInput.onchange=function(e){ handleFileSelect(e.target.files); this.value=''; };
 
-//========== 网络图床弹窗 ==========
-function openNetImageModal(){
-  if(document.getElementById('netImgModal')) return;
+//========== 网络图床图片弹窗 ==========
+function openNetImgModal(){
+  if(document.getElementById('netImgModalMask')) return;
+
   const mask = document.createElement("div");
-  mask.id = 'netImgModal';
+  mask.id = 'netImgModalMask';
   mask.className = 'net-img-mask';
 
   const box = document.createElement("div");
   box.className = 'net-img-box';
   box.innerHTML =
-    '<h2>插入网络图片</h2>' +
-    '<div id="netImgList" style="display:flex;flex-direction:column;gap:6px;max-height:300px;overflow-y:auto;margin-bottom:12px;"></div>' +
-    '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px;">' +
-      '<button id="netAddRowBtn" type="button" style="background:#eef2ff;border:1px solid #6366F1;color:#6366F1;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:12px;">+ 添加一行</button>' +
-      '<span id="netCarouselHint" style="display:none;font-size:11px;color:#b45309;background:#fef3c7;padding:4px 8px;border-radius:6px;">⓵ 已开启轮播 · 插入后会进轮播队列</span>' +
-      '<span id="netReadClipboard" style="font-size:11px;color:#94a3b8;cursor:pointer;background:#f1f5f9;padding:4px 8px;border-radius:6px;" title="从剪贴板读多条 URL">📋 从剪贴板读</span>' +
-    '</div>' +
+    '<h2 style="font-weight:500;font-size:16px;">插入网络图片</h2>' +
+    '<input id="imgLinkInput" placeholder="图片链接（http/https 开头）" autocomplete="off">' +
+    '<input id="imgDescInput" placeholder="图片描述（可不填）" autocomplete="off">' +
     '<div class="net-img-actions">' +
-      '<button id="cancelNetImg">取消</button>' +
-      '<button id="confirmNetImg">确定插入</button>' +
+      '<button id="cancelImg">取消</button>' +
+      '<button id="confirmImg">插入</button>' +
     '</div>';
+
   mask.appendChild(box);
   document.body.appendChild(mask);
 
-  const style = document.createElement('style');
-  style.textContent = `
-    .net-row { display:grid; grid-template-columns:1fr 90px 14px; gap:4px; align-items:center; }
-    .net-row input { border:none; border-bottom:1px solid #ddd; padding:5px 0; font-size:13px; outline:none; background:transparent; }
-    .net-row input:focus { border-bottom-color:#6366F1; }
-    .net-row .net-del { background:transparent; border:none; color:#dc2626; cursor:pointer; font-size:14px; }
-    #netImgList label { font-size:10px; color:#94a3b8; display:block; margin-bottom:1px; padding-left:2px; }
-  `;
-  document.head.appendChild(style);
+  const linkInput = document.getElementById('imgLinkInput');
+  const descInput = document.getElementById('imgDescInput');
+  const cancelBtn = document.getElementById('cancelImg');
+  const confirmBtn = document.getElementById('confirmImg');
 
-  const listWrap = document.getElementById('netImgList');
-  const confirmBtn = document.getElementById('confirmNetImg');
-  const cancelBtn = document.getElementById('cancelNetImg');
-  const addRowBtn = document.getElementById('netAddRowBtn');
-  const carouselHint = document.getElementById('netCarouselHint');
-  const readClipboardBtn = document.getElementById('netReadClipboard');
-
-  carouselHint.style.display = isCarouselOn ? 'inline-block' : 'none';
-
-  function buildRow(prefill){
-    const row = document.createElement('div');
-    row.className = 'net-row';
-    row.style.gridTemplateColumns = '1fr 90px 14px';
-    row.innerHTML =
-      '<div><label>图片URL（https 开头）</label><input class="net-url" type="url" placeholder="https://..." autocomplete="off"></div>' +
-      '<div><label>描述 (alt)</label><input class="net-alt" type="text" placeholder="说明" autocomplete="off"></div>' +
-      '<button type="button" class="net-del" title="删除">×</button>';
-    if (prefill){
-      row.querySelector('.net-url').value = prefill.url || '';
-      row.querySelector('.net-alt').value = prefill.alt || '';
-    }
-    row.querySelector('.net-del').onclick = ()=>{
-      if (listWrap.children.length <= 1){ alert('至少保留 1 行'); return; }
-      row.remove();
-    };
-    const inputs = row.querySelectorAll('input');
-    inputs.forEach((inp, i) => {
-      inp.addEventListener('keydown', e=>{
-        if (e.key === 'Enter'){
-          e.preventDefault();
-          if (i === inputs.length - 1){
-            confirmBtn.click();
-          } else {
-            inputs[i + 1].focus();
-          }
-        }
-      });
-    });
-    return row;
+  function close(){
+    if(mask.parentNode) mask.parentNode.removeChild(mask);
+    document.removeEventListener('keydown', onEsc);
   }
 
-  listWrap.appendChild(buildRow());
-
-  addRowBtn.onclick = ()=>{
-    listWrap.appendChild(buildRow());
-    const rows = listWrap.querySelectorAll('.net-row');
-    rows[rows.length - 1].querySelector('.net-url').focus();
-  };
-
-  readClipboardBtn.onclick = async ()=>{
-    try{
-      const txt = await navigator.clipboard.readText();
-      if (!txt) { alert('剪贴板为空'); return; }
-      const lines = txt.split(/\r?\n/).map(s=>s.trim()).filter(s=>s.startsWith('http'));
-      if (!lines.length){ alert('剪贴板里没找到 http:// 开头的 URL'); return; }
-      listWrap.innerHTML = '';
-      lines.forEach(url => listWrap.appendChild(buildRow({url})));
-      alert(`从剪贴板读取到 ${lines.length} 条 URL`);
-    } catch(e){
-      alert('读取剪贴板失败：' + e.message + '\n请手动检查浏览器权限');
-    }
-  };
-
-  function closeModal(){ mask.remove(); }
-
-  confirmBtn.onclick = ()=>{
-    const rows = Array.from(listWrap.querySelectorAll('.net-row'));
-    const items = [];
-    rows.forEach(row => {
-      const url = row.querySelector('.net-url').value.trim();
-      const alt = row.querySelector('.net-alt').value.trim();
-      if (url && /^https?:\/\//i.test(url)) items.push({url, alt});
-    });
-    if (!items.length){ alert('请至少填一条 https 链接'); return; }
-
-    if (isCarouselOn){
-      items.forEach(it => insertImageToEditor(it.url, it.alt));
-      if (carouselImageQueue.length){
-        clearTimeout(carouselCloseTimer);
-        flushCarousel();
-      }
+  // 修复：根据当前模式插入正确的格式
+  function insertAtCursor(url, alt){
+    if(currentEditMode === 'rich'){
+      richBox.focus();
+      // 修正插值语法，去掉多余$
+      const html = `<img loading="lazy" src="$${url}" alt="$${alt}" style="max-width:100%;margin:6px 0;display:block;" onerror="this.src='';this.alt='图片加载失败';"><br>`;
+      document.execCommand('insertHTML', false, html);
+      calcWordCount();
     } else {
-      items.forEach(it => insertImageToEditor(it.url, it.alt));
-    }
-    closeModal();
-  };
-
-  cancelBtn.onclick = closeModal;
-  mask.onclick = e=>{ if (e.target === mask) closeModal(); };
-
-  setTimeout(()=> listWrap.querySelector('.net-url')?.focus(), 80);
-}
-netImgBtn.onclick = openNetImageModal;
-
-//========== 批量图床链接 ==========
-function batchInsertImagesByUrls(urls){
-  if(!urls.length) return 0;
-  let count = 0;
-  if (isCarouselOn) {
-    urls.forEach(url => {
-      if (!url || !url.startsWith('http')) return;
-      insertImageToEditor(url, '配图');
-      count++;
-    });
-    if (carouselImageQueue.length) {
-      clearTimeout(carouselCloseTimer);
-      flushCarousel();
-    }
-  } else {
-    urls.forEach(url => {
-      if (!url || !url.startsWith('http')) return;
-      if(currentEditMode==='rich'){
-        richBox.focus();
-        const html = `<img loading="lazy" src="${url}" alt="配图" style="max-width:100%;margin:6px 0;display:block;" onerror="this.src='';this.alt='图片加载失败';"><br>`;
-        document.execCommand('insertHTML', false, html);
-      } else {
-        mdBox.value += `![配图](${url})\n\n`;
-      }
-      count++;
-    });
-    if(currentEditMode==='md') { saveMdRecord(); renderMdPreview(); calcWordCount(); }
-    if(currentEditMode==='rich' && richRecordStack){
-      richRecordStack.splice(richRecordIndex+1);
-            richRecordStack.push(richBox.innerHTML);
-      if(richRecordStack.length>RICH_RECORD_MAX) richRecordStack.shift();
-      richRecordIndex=richRecordStack.length-1;
+      // Markdown 修复插值，移除多余$
+      const mdText = `![$${alt}]($${url})\n\n`;
+      const start = mdBox.selectionStart || 0;
+      const end = mdBox.selectionEnd || 0;
+      const before = mdBox.value.slice(0, start);
+      const sel = mdBox.value.slice(start, end);
+      const after = mdBox.value.slice(end);
+      mdBox.value = before + mdText + after;
+      const newPos = before.length + mdText.length;
+      mdBox.selectionStart = mdBox.selectionEnd = newPos;
+      mdBox.focus();
+      saveMdRecord();
+      renderMdPreview();
       calcWordCount();
     }
   }
-  return count;
+
+  function doConfirm(){
+    const url = linkInput.value.trim();
+    const alt = descInput.value.trim() || '配图';
+    if(!url){ alert('请输入链接'); return; }
+    if(!/^https?:\/\//i.test(url)){
+      alert('链接必须以 http:// 或 https:// 开头');
+      linkInput.focus();
+      return;
+    }
+    insertAtCursor(url, alt);
+    close();
+  }
+
+  cancelBtn.onclick = close;
+  confirmBtn.onclick = doConfirm;
+  mask.onclick = function(e){ if(e.target === mask) close(); };
+  function onEsc(e){ if(e.key === 'Escape') close(); }
+  document.addEventListener('keydown', onEsc);
+  linkInput.addEventListener('keydown', e=>{ if(e.key === 'Enter'){ e.preventDefault(); doConfirm(); } });
+  descInput.addEventListener('keydown', e=>{ if(e.key === 'Enter'){ e.preventDefault(); doConfirm(); } });
+
+  setTimeout(()=>linkInput.focus(), 80);
 }
 
-document.getElementById('batchImgBtn').onclick = function(){
-  navigator.clipboard.readText().then(clipText => {
-    if(clipText && /^https?:\/\/[\w\W]*\.(\w{2,5})/.test(clipText) && /\r?\n/.test(clipText)){
-      const arr = clipText.split(/\r?\n/).map(u=>u.trim()).filter(u=>u.startsWith('http'));
-      const n = batchInsertImagesByUrls(arr);
-      if(n>0) return alert(`从剪贴板批量插入了 ${n} 张图${isCarouselOn?'（轮播模式）':''}`);
-    }
-    askAndInsert();
-  }).catch(()=>{
-    askAndInsert();
-  });
+netImgBtn.onclick = openNetImgModal;
 
-  function askAndInsert(){
-    const urls = prompt("批量粘贴图床链接，一行一张：", "");
-    if(!urls) return;
-    const arr = urls.split(/\r?\n/).map(u=>u.trim()).filter(u=>u.startsWith('http'));
-    const n = batchInsertImagesByUrls(arr);
-    alert(`插入了 ${n} 张图片${isCarouselOn?'（轮播模式）':''}`);
-  }
-};
-
-//========== 生成推送命令（修复版） ==========
+//========== 生成推送命令（简化版：仅内联） ==========
 document.getElementById('showTemplateBtn').onclick = async function(){
   syncFormToNoteList();
-  
+
   const currentNotes = list.filter(i => i && i.id);
   
   const uniqueNotes = [];
-  const idSet = new Set();
-  currentNotes.forEach(note=>{
-    if(!idSet.has(note.id)){
-      idSet.add(note.id);
+  const seenIds = new Set();
+  currentNotes.forEach(note => {
+    if (note && !seenIds.has(note.id)) {
+      seenIds.add(note.id);
       uniqueNotes.push(note);
     }
   });
 
-  const nowStr = getNowTimeStr();
-  const useDownloadMode = document.getElementById('useDownloadCheck').checked;
-
-  let shellBatch = 'cd ~/storage/shared/notes || exit 1\nmkdir -p images\n\n';
+  const now = getNowTimeStr();
+  
+  let cmdBatch = 'cd ~/storage/shared/notes || exit 1\nmkdir -p images\n\n';
   imgUploadList.forEach((item, idx) => {
-    const safeFileName = item.name.replace(/"/g, '\\"');
-    shellBatch += `# ${idx+1}. ${item.originalName}\n`;
-    shellBatch += `SRC=$(find /storage/emulated/0 -name "${safeFileName}" 2>/dev/null | head -n1)\n`;
-    shellBatch += `[ -n "$SRC" ] && cp "$SRC" images/"${safeFileName}" || echo "未找到文件：${safeFileName}"\n\n`;
+    const fileName = item.name.replace(/"/g, '\\"');
+    cmdBatch += '# 图片 ' + (idx+1) + ': ' + fileName + '\n';
+    cmdBatch += 'SRC=$(find /storage/emulated/0/DCIM /storage/emulated/0/Download /storage/emulated/0/Pictures /storage/emulated/0/tencent -name "' + fileName + '" 2>/dev/null | head -1)\n';
+    cmdBatch += 'if [ -n "$SRC" ]; then\n';
+    cmdBatch += '  cp "$SRC" images/"' + fileName + '" && echo "已复制: ' + fileName + '"\n';
+    cmdBatch += 'else\n';
+    cmdBatch += '  SRC=$(find /storage/emulated/0 -name "' + fileName + '" 2>/dev/null | head -1)\n';
+    cmdBatch += '  if [ -n "$SRC" ]; then\n';
+    cmdBatch += '    cp "$SRC" images/"' + fileName + '" && echo "已复制(全盘): ' + fileName + '"\n';
+    cmdBatch += '  else\n';
+    cmdBatch += '    echo "未找到文件: ' + fileName + '"\n';
+    cmdBatch += '  fi\n';
+    cmdBatch += 'fi\n\n';
   });
 
-  const finalJson = JSON.stringify(uniqueNotes, null, 2);
-  const jsContent = `window.NOTE_DATA = ${finalJson};\n`;
+  const formattedJson = JSON.stringify(uniqueNotes, null, 2);
+  let jsContent = 'window.NOTE_DATA = ' + formattedJson + ';\n';
 
-  let gitCmd = 'git add images/ data.js\n';
-  gitCmd += 'if ! git diff --cached --quiet; then\n';
-  gitCmd += `  git commit -m "update notes ${nowStr}"\n`;
-  gitCmd += '  git push origin main\n';
-  gitCmd += 'else\n';
-  gitCmd += '  echo "无变更内容，跳过推送"\n';
-  gitCmd += 'fi\n';
+  let cmdGit = 'git add images/ data.js\n';
+  cmdGit += 'if ! git diff --cached --quiet; then\n';
+  cmdGit += '  git commit -m "update notes ' + now + '"\n';
+  cmdGit += '  git push origin main && echo "推送成功"\n';
+  cmdGit += 'else\n';
+  cmdGit += '  echo "无变化，跳过提交"\n';
+  cmdGit += 'fi\n';
 
-  if (useDownloadMode) {
-    const blob = new Blob([jsContent], {type: 'application/javascript'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'data.js';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+  // 始终使用内联方式
+  let cmd = '# === 图片复制 + data.js 内联推送命令 (已格式化) ===\n';
+  cmd += cmdBatch;
+  cmd += 'rm -f data.js\n';
+  cmd += 'cat > data.js << \'ENDOFDATA\'\n';
+  cmd += jsContent;
+  cmd += 'ENDOFDATA\n\n';
+  cmd += cmdGit;
 
-    const fullScript =
-      '#!/bin/bash\n' +
-      '#==================== 部署脚本·手动复贴板 ====================\n' +
-      shellBatch +
-      '\n' +
-      '#==================== 把 data.js 拷贝到仓库根 ====================\n' +
-      'DATA_SRC=""\n' +
-      'for CANDIDATE in \\\n' +
-      '  ~/storage/downloads/data.js \\\n' +
-      '  ~/storage/shared/Download/data.js \\\n' +
-      '  /storage/emulated/0/Download/data.js \\\n' +
-      '  ~/downloads/data.js \\\n' +
-      '  ./data.js; do\n' +
-      '  if [ -f "$CANDIDATE" ]; then\n' +
-      '    DATA_SRC="$CANDIDATE"\n' +
-      '    echo "✅ 找到下载文件: $DATA_SRC"\n' +
-      '    break\n' +
-      '  fi\n' +
-      'done\n\n' +
-      'if [ -z "$DATA_SRC" ]; then\n' +
-      '  echo "⚠️ 没自动找到下载的 data.js"\n' +
-      '  read -p "请粘贴 data.js 的完整路径: " DATA_SRC\n' +
-      '  if [ ! -f "$DATA_SRC" ]; then\n' +
-      '    echo "❌ 路径无效: $DATA_SRC"\n' +
-      '    exit 1\n' +
-      '  fi\n' +
-      'fi\n\n' +
-      'cp -f "$DATA_SRC" ./data.js\n' +
-      'echo "✅ data.js 已更新"\n\n' +
-      gitCmd;
-
-    await navigator.clipboard.writeText(fullScript);
-    alert(`已下载 data.js 到 Download/，智能部署脚本已复制剪贴板 (${uniqueNotes.length} 条笔记)`);
-  } else {
-    // 关闭下载方式：data.js 内嵌到 shell 脚本里
-    const fullScript = shellBatch + '\n' + 'cat > data.js << \'ENDOFFILE\'\n' + jsContent + '\nENDOFFILE\n\n' + gitCmd;
-    await navigator.clipboard.writeText(fullScript);
-    alert(`完整推送部署脚本已复制到剪贴板 (${uniqueNotes.length} 条笔记)`);
-  }
+  await navigator.clipboard.writeText(cmd).catch(() => {
+    const t = document.createElement('textarea');
+    t.value = cmd;
+    document.body.appendChild(t);
+    t.select();
+    document.execCommand('copy');
+    document.body.removeChild(t);
+  });
+  alert('完整推送命令已复制（包含所有历史笔记，已格式化换行）。');
 };
 
-// 下载完整 data.js
+// 批量图床链接
+document.getElementById('batchImgBtn').onclick = function(){
+  const urls = prompt("批量粘贴图床链接，一行一张：");
+  if(!urls) return;
+  const arr = urls.split(/\r?\n/).map(u=>u.trim()).filter(u=>u.startsWith('http'));
+  arr.forEach(url => {
+    if(currentEditMode==='rich'){ 
+      // 修复：富文本模式插入 HTML img 标签
+      document.execCommand('insertHTML',false,`<img loading="lazy" src="${url}" alt="配图" style="max-width:100%;margin:6px 0;display:block;" onerror="this.src='';this.alt='图片加载失败';"><br>`); 
+    }
+    else { mdBox.value += `![配图](${url})\n\n`; }
+  });
+  if(currentEditMode==='md') { saveMdRecord(); renderMdPreview(); calcWordCount(); }
+  alert(`插入 ${arr.length} 张图片`);
+};
+
+// 下载 data.js
 document.getElementById('downloadDataBtn').onclick = function(){
   syncFormToNoteList();
-  const finalJson = JSON.stringify(list, null, 2);
-  const jsContent = `window.NOTE_DATA = ${finalJson};\n`;
-  const blob = new Blob([jsContent], {type: 'application/javascript'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href = url; a.download = 'data.js';
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  const allNotes = list.filter(i => i && i.id && (i.title||'').trim() && i.content);
+  const js = "window.NOTE_DATA = " + JSON.stringify(allNotes, null, 2);
+  const blob = new Blob([js], {type:'application/javascript'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'data.js'; a.click(); URL.revokeObjectURL(a.href);
 };
 
-// 一键复制 data.js
+//========== 一键复制 ==========
 document.getElementById('copyJsonBtn').onclick = async function(){
   syncFormToNoteList();
-  const validNotes = list.filter(n => n && n.id);
-  const finalJson = JSON.stringify(validNotes, null, 2);
-  const jsContent = `window.NOTE_DATA = ${finalJson};\n`;
-  try {
-    await navigator.clipboard.writeText(jsContent);
-    alert(`成功复制 ${validNotes.length} 条笔记数据到剪贴板！`);
-  } catch (err) {
-    console.error('复制失败:', err);
-    alert('复制失败，请检查浏览器权限。');
-  }
-};
-
-//========== 拖拽光标模式 ==========
-const dragToggleBtn = document.getElementById('dragModeToggle');
-const dragOverlay = document.getElementById('dragOverlay');
-function setDragMode(active){
-  dragActive = active;
-  if(active){ dragOverlay.classList.add('show'); document.body.classList.add('lock-scroll'); }
-  else{ dragOverlay.classList.remove('show'); document.body.classList.remove('lock-scroll'); }
-}
-dragToggleBtn.onclick = ()=> setDragMode(!dragActive);
-document.addEventListener('keydown',e=>{ if(e.key === 'Escape' && dragActive) setDragMode(false); });
-
-//========== 图片点击预览 ==========
-function bindImgPreview(scope){
-  (scope||document).querySelectorAll('img').forEach(img=>{
-    if (img.__previewBound) return;
-    img.__previewBound = true;
-    img.addEventListener('click', e=>{
-      if (e.target.closest('.carousel-render')) return;
-      e.preventDefault();
-      const previewMask = document.getElementById('imgPreviewMask');
-      const previewImg = document.getElementById('previewImg');
-      previewImg.src = img.src;
-      previewMask.classList.add('show');
-    });
+  const valid = list.filter(i => i && i.id && i.content && i.content.trim());
+  const json = "window.NOTE_DATA = " + JSON.stringify(valid, null, 2);
+  await navigator.clipboard.writeText(json).catch(() => {
+    const t = document.createElement('textarea'); t.value = json; document.body.appendChild(t); t.select(); document.execCommand('copy'); document.body.removeChild(t);
   });
+  alert(`复制完成，共 ${valid.length} 条`);
+};
+
+//========== 查找替换 ==========
+const findReplaceBtn=document.getElementById('findReplaceBtn');
+const findReplaceBox=document.getElementById('findReplaceBox');
+document.getElementById('findReplaceClose').onclick=()=>{ findReplaceMask.classList.remove('show'); document.body.classList.remove('lock-scroll'); };
+findReplaceBtn.onclick=()=>{
+  document.body.classList.add('lock-scroll'); findReplaceMask.classList.add('show');
+  const s=window.getSelection().toString().trim(); if(s) findInput.value=s;
+  searchIndex=0; matchList=[]; setTimeout(()=>findInput.focus(),100);
+  findReplaceBox.style.left = '50%'; findReplaceBox.style.top = '50%'; findReplaceBox.style.transform = 'translate(-50%, -50%)';
+};
+findReplaceMask.onclick=e=>{ if(e.target===findReplaceMask){ findReplaceMask.classList.remove('show'); document.body.classList.remove('lock-scroll'); } };
+matchCaseCheck.addEventListener('change',()=>{ matchCase=matchCaseCheck.checked; });
+// 拖曳
+(function(){
+  let dragging=false,sX,sY,oX,oY;
+  findReplaceBox.addEventListener('mousedown',function(e){
+    if(e.target.tagName==='INPUT'||e.target.tagName==='BUTTON')return;
+    e.preventDefault(); dragging=true;
+    const r=this.getBoundingClientRect();
+    sX=e.clientX;sY=e.clientY;oX=sX-r.left;oY=sY-r.top;
+    this.style.transform='none'; this.style.left=r.left+'px'; this.style.top=r.top+'px';
+  });
+  document.addEventListener('mousemove',function(e){
+    if(!dragging)return;
+    let l=e.clientX-oX,t=e.clientY-oY;
+    l=Math.max(0,Math.min(l,window.innerWidth-findReplaceBox.offsetWidth));
+    t=Math.max(0,Math.min(t,window.innerHeight-findReplaceBox.offsetHeight));
+    findReplaceBox.style.left=l+'px'; findReplaceBox.style.top=t+'px';
+  });
+  document.addEventListener('mouseup',()=>dragging=false);
+  findReplaceBox.addEventListener('touchstart',function(e){
+    if(e.target.tagName==='INPUT'||e.target.tagName==='BUTTON')return;
+    const t=e.touches[0]; dragging=true;
+    const r=this.getBoundingClientRect();
+    sX=t.clientX;sY=t.clientY;oX=sX-r.left;oY=sY-r.top;
+    this.style.transform='none'; this.style.left=r.left+'px'; this.style.top=r.top+'px';
+  });
+  document.addEventListener('touchmove',function(e){
+    if(!dragging)return;
+    const t=e.touches[0];
+    let l=t.clientX-oX,tt=t.clientY-oY;
+    l=Math.max(0,Math.min(l,window.innerWidth-findReplaceBox.offsetWidth));
+    tt=Math.max(0,Math.min(tt,window.innerHeight-findReplaceBox.offsetHeight));
+    findReplaceBox.style.left=l+'px'; findReplaceBox.style.top=tt+'px';
+  });
+  document.addEventListener('touchend',()=>dragging=false);
+})();
+function getEditorText(){ return currentEditMode==='rich'?richBox.innerText:mdBox.value; }
+function selectRichText(start,len){
+  const sel=window.getSelection(); const range=document.createRange();
+  let offset=0,node=null,nodeOff=0;
+  function walk(el){ for(const c of el.childNodes){ if(node)return; if(c.nodeType===Node.TEXT_NODE){ const l=c.textContent.length; if(offset+l>start){ node=c; nodeOff=start-offset; return; } offset+=l; }else walk(c); } }
+  walk(richBox);
+  if(node){ range.setStart(node,nodeOff); range.setEnd(node,nodeOff+len); sel.removeAllRanges(); sel.addRange(range); richBox.focus(); }
 }
-
-richBox.addEventListener('click', e=>{
-  bindImgPreview(richBox);
-});
-document.getElementById('imgPreviewMask').onclick = function(){
-  this.classList.remove('show');
-  document.getElementById('previewImg').src = '';
-};
-
-//========== 查找替换（拖拽越界修复） ==========
-const findBox = document.getElementById('findReplaceBox');
-let dragStartX = 0, dragStartY = 0, boxStartX = 0, boxStartY = 0;
-findBox.addEventListener('mousedown', e=>{
-  if(e.target.tagName === 'INPUT' || e.target.tagName === 'BUTTON') return;
-  dragStartX = e.clientX;
-  dragStartY = e.clientY;
-  const rect = findBox.getBoundingClientRect();
-  boxStartX = rect.left;
-  boxStartY = rect.top;
-  findBox.style.left = boxStartX + 'px';
-  findBox.style.top = boxStartY + 'px';
-  document.addEventListener('mousemove', dragMoveFindBox);
-  document.addEventListener('mouseup', dragEndFindBox, {once:true});
-});
-function dragMoveFindBox(e){
-  const dx = e.clientX - dragStartX;
-  const dy = e.clientY - dragStartY;
-  const maxX = window.innerWidth - findBox.offsetWidth - 6;
-  const maxY = window.innerHeight - findBox.offsetHeight - 6;
-  findBox.style.left = Math.max(6, Math.min(maxX, boxStartX + dx)) + 'px';
-  findBox.style.top  = Math.max(6, Math.min(maxY, boxStartY + dy)) + 'px';
-}
-function dragEndFindBox(){ document.removeEventListener('mousemove', dragMoveFindBox); }
-
-document.getElementById('findReplaceBtn').onclick = ()=>{
-  findReplaceMask.classList.add('show');
-  findInput.focus();
-};
-document.getElementById('findReplaceClose').onclick = ()=>{
-  findReplaceMask.classList.remove('show');
-  matchList = []; searchIndex = 0;
-};
-
-document.getElementById('findNextBtn').onclick = function(){
-  const keyword = findInput.value.trim();
-  if(!keyword) return alert('请输入查找内容');
-  matchCase = matchCaseCheck.checked;
-  const fullText = currentEditMode === 'rich' ? richBox.innerText : mdBox.value;
-  const reg = new RegExp(keyword, matchCase ? 'g' : 'gi');
-  matchList = [];
-  let res;
-  while((res = reg.exec(fullText)) !== null){ matchList.push(res.index); }
-  if(!matchList.length) return alert('未匹配到内容');
-  if(searchIndex >= matchList.length) searchIndex = 0;
-  alert(`第 ${searchIndex+1}/${matchList.length} 处匹配`);
+document.getElementById('findNextBtn').onclick=()=>{
+  const text=getEditorText(); const f=findInput.value.trim(); if(!f)return alert('输入查找内容');
+  const reg=new RegExp(f,matchCase?'g':'gi'); matchList=[]; let m; while((m=reg.exec(text))!==null) matchList.push(m.index);
+  if(!matchList.length)return alert('未找到');
+  if(searchIndex>=matchList.length) searchIndex=0;
+  alert(`第 $${searchIndex+1}/$${matchList.length} 处`);
+  if(currentEditMode==='rich') selectRichText(matchList[searchIndex],f.length);
   searchIndex++;
 };
-
-document.getElementById('replaceSingleBtn').onclick = function(){
-  const keyword = findInput.value.trim();
-  const repStr = replaceInput.value;
-  if(!keyword) return;
-  if(currentEditMode === 'rich') return alert('富文本仅支持全部替换，请切换到Markdown');
-  const pos = matchList[searchIndex -1];
-  if(pos === undefined) return alert('请先执行查找');
-  const origin = mdBox.value;
-  const left = origin.slice(0, pos);
-  const right = origin.slice(pos + keyword.length);
-  mdBox.value = left + repStr + right;
-  saveMdRecord(); renderMdPreview(); calcWordCount();
-  document.getElementById('findNextBtn').click();
+document.getElementById('replaceSingleBtn').onclick=()=>{
+  const f=findInput.value.trim(); if(!f)return alert('输入查找内容');
+  if(!matchList.length)return alert('请先查找');
+  const idx=searchIndex-1>=0?searchIndex-1:0;
+  if(currentEditMode==='rich'){ document.execCommand('insertText',false,replaceInput.value); calcWordCount(); }
+  else{ const old=getEditorText(); const l=old.slice(0,matchList[idx]); const r=old.slice(matchList[idx]+f.length); mdBox.value=l+replaceInput.value+r; saveMdRecord(); renderMdPreview(); calcWordCount(); }
+  alert('已替换当前一处'); document.getElementById('findNextBtn').click();
+};
+document.getElementById('replaceAllBtn').onclick=()=>{
+  const f=findInput.value.trim(); if(!f)return alert('输入查找内容');
+  if(currentEditMode==='rich')return alert('富文本请用单次替换');
+  const rep=replaceInput.value; const reg=new RegExp(f,matchCase?'g':'gi');
+  const old=getEditorText(); const nw=old.replace(reg,rep);
+  if(old===nw)return alert('无替换');
+  mdBox.value=nw; saveMdRecord(); renderMdPreview(); calcWordCount();
+  alert('替换完成');
 };
 
-document.getElementById('replaceAllBtn').onclick = function(){
-  const keyword = findInput.value.trim();
-  const repStr = replaceInput.value;
-  if(!keyword) return;
-  if(currentEditMode === 'rich') return alert('富文本不支持全部替换，切换Markdown');
-  matchCase = matchCaseCheck.checked;
-  const reg = new RegExp(keyword, matchCase ? 'g' : 'gi');
-  const newMd = mdBox.value.replace(reg, repStr);
-  if(newMd === mdBox.value) return alert('无内容被替换');
-  mdBox.value = newMd;
-  saveMdRecord(); renderMdPreview(); calcWordCount();
-  alert('全部替换完成');
-};
+//========== 大图预览 ==========
+richBox.addEventListener('click',function(e){ const img=e.target.closest('img'); if(img&&img.src){ document.getElementById('previewImg').src=img.src; document.getElementById('imgPreviewMask').classList.add('show'); } });
+document.getElementById('imgPreviewMask').onclick=function(e){ if(e.target===this)this.classList.remove('show'); };
 
-//========== 页面退出前保存草稿 ==========
-window.addEventListener('beforeunload', ()=>{
-  try {
-    syncFormToNoteList();
-    saveLocalCache();
-  } catch(e) { console.warn('草稿保存失败', e); }
-});
+//========== 字号颜色 ==========
+fontSizeSelect.onchange=function(){ document.execCommand('fontSize',false,this.value); richBox.focus(); calcWordCount(); };
+fontColorInput.oninput=function(){ document.execCommand('foreColor',false,this.value); richBox.focus(); calcWordCount(); };
+bgColorInput.oninput=function(){
+  richBox.focus(); const sel=window.getSelection(); if(!sel.rangeCount||sel.getRangeAt(0).collapsed) return;    try { document.execCommand('hiliteColor', false, this.value); } catch(e) {
+      const range=sel.getRangeAt(0); const span=document.createElement('span'); span.style.backgroundColor=this.value; range.surroundContents(span);
+    }
+    calcWordCount();
+  };
 
-//========== 页面加载完毕初始化 ==========
-window.addEventListener("DOMContentLoaded", ()=>{
-  renderMdPreview();
-  calcWordCount();
-});
-
-//========== 移动端键盘高度适配 ==========
-(function(){
-  let initViewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-  const keyboardOffset = -20;
-  function viewportResizeHandler(){
-    const currentH = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-    const keyboardHeight = initViewportHeight - currentH;
-    const isKeyboardOpen = keyboardHeight > 100;
-    document.body.classList.toggle('keyboard-opened', isKeyboardOpen);
-    if(isKeyboardOpen){
-      document.documentElement.style.setProperty('--keyboard-height', (keyboardHeight + keyboardOffset) + 'px');
-      setTimeout(()=>{
-        const activeEl = document.activeElement;
-        if(activeEl&&(activeEl.id==='richEditor'||activeEl.id==='mdEditor')){
-          activeEl.scrollIntoView({behavior:'smooth',block:'end'});
-        }
-      },200);
-    } else {
-      document.documentElement.style.setProperty('--keyboard-height','0px');
+//========== 回车退出格式标记 ==========
+mdBox.addEventListener('keydown',function(e){
+  if(e.key==='Enter'){
+    const val=this.value, pos=this.selectionStart;
+    const pairs=[{s:'**',e:'**'},{s:'*',e:'*'},{s:'~~',e:'~~'},{s:'`',e:'`'},{s:'$$',e:'$$'},{s:'[',e:']'},{s:'<u>',e:'</u>'},{s:'![',e:']'}];
+    for(const p of pairs){
+      const sl=p.s.length, el=p.e.length;
+      const lineStart=val.lastIndexOf('\n',pos-1)+1;
+      const before=val.slice(lineStart,pos), after=val.slice(pos,val.indexOf('\n',pos)>0?val.indexOf('\n',pos):val.length);
+      const lastStart=before.lastIndexOf(p.s), firstEnd=after.indexOf(p.e);
+      if(lastStart!==-1&&firstEnd!==-1&&before.slice(lastStart+sl).indexOf(p.e)===-1&&after.slice(0,firstEnd).indexOf(p.s)===-1){
+        e.preventDefault(); this.value=val.slice(0,pos)+'\n'+val.slice(pos+firstEnd+el); this.selectionStart=this.selectionEnd=pos+1;
+        saveMdRecord(); renderMdPreview(); calcWordCount(); return;
+      }
     }
   }
-  if(window.visualViewport) window.visualViewport.addEventListener('resize',viewportResizeHandler);
-  else window.addEventListener('resize',viewportResizeHandler);
+});
+
+// ========== 光标拖曳模式（重写版）==========
+const dragOverlay = document.getElementById('dragOverlay');
+const dragModeToggle = document.getElementById('dragModeToggle');
+
+// 把 (x, y) 屏幕坐标转成当前编辑器内的 Range
+function screenToEditorRange(x, y){
+  if(document.caretPositionFromPoint){
+    try{
+      const cp = document.caretPositionFromPoint(x, y);
+      if(cp && cp.offsetNode){
+        const range = document.createRange();
+        range.setStart(cp.offsetNode, cp.offset);
+        range.collapse(true);
+        if(currentEditMode === 'rich' && !richBox.contains(cp.offsetNode)) return null;
+        if(currentEditMode === 'md' && cp.offsetNode !== mdBox) return null;
+        return range;
+      }
+    }catch(e){}
+  }
+  if(document.caretRangeFromPoint){
+    try{
+      const range = document.caretRangeFromPoint(x, y);
+      if(range && range.startContainer){
+        if(currentEditMode === 'rich' && !richBox.contains(range.startContainer)) return null;
+                if(currentEditMode === 'md' && range.startContainer !== mdBox) return null;
+        return range;
+      }
+    }catch(e){}
+  }
+  return null;
+}
+
+function moveCaretRichHorizontal(dx){
+  const sel = window.getSelection();
+  if(!sel.rangeCount) return false;
+  const range = sel.getRangeAt(0);
+  const node = range.startContainer;
+  if(node.nodeType !== Node.TEXT_NODE) return false;
+  const step = Math.round(dx * 0.5);
+  if(step === 0) return false;
+  const newOffset = Math.max(0, Math.min(node.textContent.length, range.startOffset + step));
+  if(newOffset === range.startOffset) return false;
+  range.setStart(node, newOffset);
+  range.setEnd(node, newOffset);
+  sel.removeAllRanges();
+  sel.addRange(range);
+  return true;
+}
+
+function moveCaretRichVertical(dy, touchX){
+  const sel = window.getSelection();
+  if(!sel.rangeCount) return false;
+  const range = sel.getRangeAt(0);
+  const rect = range.getBoundingClientRect();
+  if(rect.height === 0) return false;
+  const targetY = rect.top + rect.height / 2 + (dy > 0 ? rect.height + 4 : -rect.height - 4);
+  const boxRect = richBox.getBoundingClientRect();
+  const clampedY = Math.max(boxRect.top + 4, Math.min(boxRect.bottom - 4, targetY));
+  const newRange = screenToEditorRange(touchX, clampedY);
+  if(newRange){
+    sel.removeAllRanges();
+    sel.addRange(newRange);
+    return true;
+  }
+  return false;
+}
+
+function moveCaretMdHorizontal(dx){
+  const step = Math.round(dx * 0.5);
+  if(step === 0) return false;
+  const pos = mdBox.selectionStart;
+  const newPos = Math.max(0, Math.min(mdBox.value.length, pos + step));
+  if(newPos === pos) return false;
+  mdBox.selectionStart = mdBox.selectionEnd = newPos;
+  return true;
+}
+
+function moveCaretMdVertical(dy){
+  const text = mdBox.value;
+  const lines = text.split('\n');
+  const pos = mdBox.selectionStart;
+  let cumLen = 0, curLine = 0, curCol = 0;
+  for(let i=0; i<lines.length; i++){
+    if(cumLen + lines[i].length >= pos){
+      curLine = i;
+      curCol = pos - cumLen;
+      break;
+    }
+    cumLen += lines[i].length + 1;
+  }
+  const dir = dy > 0 ? 1 : -1;
+  const targetLine = Math.max(0, Math.min(lines.length - 1, curLine + dir));
+  if(targetLine === curLine) return false;
+  let targetPos = 0;
+  for(let i=0; i<targetLine; i++) targetPos += lines[i].length + 1;
+  targetPos += Math.min(curCol, lines[targetLine].length);
+  mdBox.selectionStart = mdBox.selectionEnd = targetPos;
+  return true;
+}
+
+function setDragMode(on){
+  dragActive = !!on;
+  dragModeToggle.style.background = dragActive ? '#6366F1' : '';
+  dragModeToggle.style.color = dragActive ? '#fff' : '';
+  dragOverlay.classList.toggle('show', dragActive);
+  if(dragActive){
+    if(currentEditMode === 'rich'){ richBox.focus(); }
+    else { mdBox.focus(); }
+  }
+}
+
+dragModeToggle.addEventListener('click', function(){
+  setDragMode(!dragActive);
+});
+
+let dragStartX = 0, dragStartY = 0, dragTouchId = null;
+
+dragOverlay.addEventListener('touchstart', function(e){
+  if(!dragActive) return;
+  if(dragTouchId !== null) return;
+  const t = e.touches[0];
+  dragTouchId = t.identifier;
+  dragStartX = t.clientX;
+  dragStartY = t.clientY;
+}, {passive: true});
+
+dragOverlay.addEventListener('touchmove', function(e){
+  if(!dragActive || dragTouchId === null) return;
+  let t = null;
+  for(let i=0; i<e.changedTouches.length; i++){
+    if(e.changedTouches[i].identifier === dragTouchId){ t = e.changedTouches[i]; break; }
+  }
+  if(!t) return;
+
+  const dx = t.clientX - dragStartX;
+  const dy = t.clientY - dragStartY;
+  const TH = 4;
+  if(Math.abs(dx) < TH && Math.abs(dy) < TH) return;
+
+  if(Math.abs(dx) >= Math.abs(dy)){
+    if(Math.abs(dx) >= TH){
+      if(currentEditMode === 'rich') moveCaretRichHorizontal(dx);
+      else moveCaretMdHorizontal(dx);
+    }
+  } else {
+    if(Math.abs(dy) >= TH){
+      if(currentEditMode === 'rich') moveCaretRichVertical(dy, t.clientX);
+      else moveCaretMdVertical(dy);
+      if(currentEditMode === 'md') mdBox.focus();
+    }
+  }
+  dragStartX = t.clientX;
+  dragStartY = t.clientY;
+}, {passive: true});
+
+dragOverlay.addEventListener('touchend', function(e){
+  for(let i=0; i<e.changedTouches.length; i++){
+    if(e.changedTouches[i].identifier === dragTouchId){
+      dragTouchId = null;
+      break;
+    }
+  }
+});
+dragOverlay.addEventListener('touchcancel', function(){
+  dragTouchId = null;
+});
+
+window.addEventListener('keydown', function(e){
+  if(dragActive && (e.key === 'Escape' || e.key === 'Backspace')){
+    const ae = document.activeElement;
+    const editing = ae === richBox || ae === mdBox || ae === titleInput || ae === tagChipInput;
+    if(e.key === 'Escape' || !editing){
+      e.preventDefault();
+      setDragMode(false);
+    }
+  }
+});
+
+//========== 快捷键 ==========
+window.addEventListener('keydown',function(e){
+  if(e.ctrlKey&&e.key==='s'){ e.preventDefault(); document.getElementById('copyJsonBtn').click(); }
+  if(e.ctrlKey&&(e.key==='z'||e.key==='Z')){ e.preventDefault(); globalUndo(); }
+  if(e.ctrlKey&&(e.key==='y'||e.key==='Y')){ e.preventDefault(); globalRedo(); }
+  if(e.ctrlKey&&e.key==='f'){ e.preventDefault(); findReplaceBtn.click(); }
+  if(e.ctrlKey&&e.key==='b'){ e.preventDefault(); formatBold(); }
+  if(e.ctrlKey&&e.key==='i'){ e.preventDefault(); formatItalic(); }
+  if(e.ctrlKey&&e.key==='u'){ e.preventDefault(); insertUnderline(); }
+});
+
+//========== 移动端键盘适配 ==========
+(function(){
+  let initVh=window.visualViewport?window.visualViewport.height:window.innerHeight;
+  const TOOLBAR_OFFSET = -20;
+  function handleResize(){
+    const curH=window.visualViewport?window.visualViewport.height:window.innerHeight;
+    const keyboardHeight=initVh-curH; const opened=keyboardHeight>100;
+    document.body.classList.toggle('keyboard-opened',opened);
+    if(opened){
+      document.documentElement.style.setProperty('--keyboard-height', (keyboardHeight + TOOLBAR_OFFSET) + 'px');
+      setTimeout(()=>{const a=document.activeElement; if(a&&(a.id==='richEditor'||a.id==='mdEditor')) a.scrollIntoView({behavior:'smooth',block:'end'});},200);
+    } else { document.documentElement.style.setProperty('--keyboard-height','0px'); }
+  }
+  if(window.visualViewport) window.visualViewport.addEventListener('resize',handleResize); else window.addEventListener('resize',handleResize);
 })();
 
-// 暴露给阅读端
-window.NoteCarousel = { initAll: initAllCarousels, initOne: initOneCarousel };
-
-
+//========== 初始化 ==========
+window.addEventListener("DOMContentLoaded",()=>{ renderMdPreview(); calcWordCount(); });
 </script>
 </body>
 </html>
