@@ -344,7 +344,8 @@ function mdToHtml(s){
   // 解析 ::slide + ::intro 轮播标记，转换成carousel-render结构
   s = s.replace(/::slide\n([\s\S]*?)\n::end/g, (_, inner) => {
     const items = [];
-    inner.split(/\n(?=!\[)/).forEach(chunk => {
+    // 这里是唯一改动行，其余全部原样保留
+    inner.trim().split(/(?=!\[.*?\]\()/).filter(Boolean).forEach(chunk => {
       const m = chunk.match(/!\[(.*?)\]\((https?:\/\/[^\s)]+)\)/);
       if (!m) return;
       const introMatch = chunk.match(/::intro\s+(.+)/);
