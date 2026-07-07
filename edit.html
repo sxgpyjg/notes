@@ -533,9 +533,16 @@ function switchMode(m){
   calcWordCount();
 }
 
-//========== 转换函数（已修复轮播双向解析） ==========
+//========== 转换函数（双向兼容注释标记 + 标准::slide，富文本可编辑） ==========
 function mdToHtml(s){
-  // 解析 ::slide 为轮播容器
+  // 优先解析注释格式轮播
+  s = s.replace(/<!--SLIDE_START-->\n([\s\S]*?)\n<!--SLIDE_END-->/g,(match,inner)=>{
+    const imgHtml = inner.replace(/!\[(.*?)\]\((https?:\/\/[^\s)]+)\)/g,
+      `<figure class="carousel-item"><img src="$2" alt="$1" loading="lazy"><figcaption>$1</figcaption></figure>`
+    );
+    return `<div class="carousel-container">${imgHtml}</div>`;
+  });
+  // 兼容旧版标准 ::slide 标签
   s = s.replace(/::slide\n([\s\S]*?)\n::end/g,(match,inner)=>{
     const imgHtml = inner.replace(/!\[(.*?)\]\((https?:\/\/[^\s)]+)\)/g,
       `<figure class="carousel-item"><img src="$2" alt="$1" loading="lazy"><figcaption>$1</figcaption></figure>`
@@ -564,7 +571,7 @@ function mdToHtml(s){
 }
 
 function htmlToMd(s){
-  // 还原轮播容器为 ::slide 标记
+  // 富文本轮播容器统一导出为标准 ::slide 标签（阅读页识别不变）
   s = s.replace(/<div class="carousel-container">([\s\S]*?)<\/div>/g,(match,inner)=>{
     const imgMd = inner.replace(/<figure class="carousel-item"><img loading="lazy" src="([^"]+)" alt="([^"]+)"[\s\S]*?<\/figure>/g,
       '![$2]($1)\n'
@@ -675,7 +682,7 @@ function insertCenter(){
 });
 function insertQuote(){ if(currentEditMode==='rich'){ document.execCommand('insertText',false,'> '); richBox.focus(); calcWordCount(); } else { mdBox.value+='> '; saveMdRecord(); renderMdPreview(); calcWordCount(); } }
 function insertUl(){ if(currentEditMode==='rich'){ document.execCommand('insertText',false,'- '); richBox.focus(); calcWordCount(); } else { mdBox.value+='- '; saveMdRecord(); renderMdPreview(); calcWordCount(); } }
-function insertOrderedList(){ if(currentEditMode==='rich'){ document.execCommand('insertText',false,'1. '); richBox.focus(); calcWordCount(); } else { mdBox.value+='1. '; saveMdRecord(); renderMdPreview(); calcWordCount(); } }
+ function insertOrderedList(){ if(currentEditMode==='rich'){ document.execCommand('insertText',false,'1. '); richBox.focus(); calcWordCount(); } else { mdBox.value+='1. '; saveMdRecord(); renderMdPreview(); calcWordCount(); } }
 function insertTaskList(){ if(currentEditMode==='rich'){ document.execCommand('insertText',false,'- [ ] '); richBox.focus(); calcWordCount(); } else { mdBox.value+='- [ ] '; saveMdRecord(); renderMdPreview(); calcWordCount(); } }
 function insertTable(){
   const rows = parseInt(prompt("请输入表格行数（包括表头）：", "3"), 10) || 3;
@@ -696,50 +703,43 @@ function insertTable(){
 function splitLine1(){ const t='---\n'; if(currentEditMode==='rich'){ document.execCommand('insertText',false,t); calcWordCount(); } else { mdBox.value+=t; saveMdRecord(); renderMdPreview(); calcWordCount(); } }
 function clearAllNotesContent(){ if(!confirm('清空全部内容？'))return; richBox.innerHTML=''; mdBox.value=''; renderMdPreview(); richRecordStack=['']; richRecordIndex=0; mdRecordStack=['']; mdRecordIndex=0; calcWordCount(); }
 
-//========== 图片上传核心逻辑（修复轮播打包断裂BUG + 移除默认配图文字） ==========
-
-// 重写图片插入函数，统一使用阅读页兼容的 ::slide 标记
+//========== 图片上传核心逻辑（修复轮播断裂 + 富文本可编辑 + 无强制配图文字） ==========
 function insertImageToEditor(url, alt) {
   if (!url) return;
   const mdImgLine = `![${alt}](${url})\n`;
 
   if (isCarouselOn) {
-    // 开启轮播：加入队列，延迟统一拼接轮播块
     carouselImageQueue.push(mdImgLine);
     clearTimeout(carouselCloseTimer);
 
-    // 2秒内继续插图就合并，停止插入后自动闭合轮播
     carouselCloseTimer = setTimeout(() => {
-      const slideBlock = `\n::slide\n${carouselImageQueue.join('')}::end\n\n`;
+      const slideBlock = `<!--SLIDE_START-->
+${carouselImageQueue.join('')}
+<!--SLIDE_END-->`;
       
       if (currentEditMode === 'rich') {
-        // ✅ 修复点：富文本改用 insertHTML，不会自动把 \n 转成 <br>，保证标签完整
         richBox.focus();
-        document.execCommand('insertHTML', false, `<pre style="display:none">${slideBlock}</pre>`);
-        // 同步更新富文本撤销栈
+        document.execCommand('insertHTML', false, slideBlock);
+        // 更新撤销栈
         richRecordStack.splice(richRecordIndex+1);
         richRecordStack.push(richBox.innerHTML);
         if(richRecordStack.length>RICH_RECORD_MAX) richRecordStack.shift();
         richRecordIndex=richRecordStack.length-1;
       } else {
-        // Markdown模式：直接写入标准轮播代码
         mdBox.value += slideBlock;
         saveMdRecord();
         renderMdPreview();
       }
 
-      // 清空队列，准备下一组轮播
       carouselImageQueue = [];
       calcWordCount();
     }, 2000);
 
   } else {
-    // 关闭轮播：正常插入单张图片
     if (currentEditMode === 'rich') {
-      const baseImg = `<img loading="lazy" src="${url}" alt="${alt}" style="max-width:100%;margin:6px 0;display:block;" onerror="this.src='';this.alt='图片加载失败';">`;
+      const singleImg = `<img loading="lazy" src="${url}" alt="${alt}" style="max-width:100%;margin:6px 0;display:block;" onerror="this.style.display='none'">`;
       richBox.focus();
-      document.execCommand('insertHTML', false, baseImg + '<br>');
-      // 更新撤销栈
+      document.execCommand('insertHTML', false, singleImg + '<br>');
       richRecordStack.splice(richRecordIndex+1);
       richRecordStack.push(richBox.innerHTML);
       if(richRecordStack.length>RICH_RECORD_MAX) richRecordStack.shift();
@@ -753,9 +753,9 @@ function insertImageToEditor(url, alt) {
   }
 }
 
-function insertLocalImgTagTerminal(safeName) {
-  const url = `https://cdn.jsdelivr.net/gh/sxgpyjg/notes@main/images/${safeName}`;
-  insertImageToEditor(url, safeName);
+function insertLocalImgTagTerminal(fileName) {
+  const imgUrl = `https://cdn.jsdelivr.net/gh/sxgpyjg/notes@main/images/${fileName}`;
+  insertImageToEditor(imgUrl, fileName);
 }
 
 function handleFileSelect(files){
@@ -784,7 +784,7 @@ function handleFileSelect(files){
 document.getElementById('localImgBtn').onclick=()=>imgFileInput.click();
 imgFileInput.onchange=function(e){ handleFileSelect(e.target.files); this.value=''; };
 
-//========== 网络图床图片弹窗（移除默认配图，留空则alt为空） ==========
+//========== 网络图床弹窗（描述留空则alt为空，不再强制配图） ==========
 function openNetImgModal(){
   if(document.getElementById('netImgModalMask')) return;
 
@@ -811,37 +811,48 @@ function openNetImgModal(){
   const cancelBtn = document.getElementById('cancelImg');
   const confirmBtn = document.getElementById('confirmImg');
 
-  function close(){
+  function closeModal(){
     if(mask.parentNode) mask.parentNode.removeChild(mask);
-    document.removeEventListener('keydown', onEsc);
+    document.removeEventListener('keydown', escClose);
   }
+  function escClose(e){ if(e.key === 'Escape') closeModal(); }
 
-  // 使用统一插入函数，不填描述则alt为空
-  function doConfirm(){
+  function confirmInsert(){
     const url = linkInput.value.trim();
     const alt = descInput.value.trim();
-    if(!url){ alert('请输入链接'); return; }
+    if(!url){ alert('请输入图片链接'); return; }
     if(!/^https?:\/\//i.test(url)){
       alert('链接必须以 http:// 或 https:// 开头');
       linkInput.focus();
       return;
     }
     insertImageToEditor(url, alt);
-    close();
+    closeModal();
   }
 
-  cancelBtn.onclick = close;
-  confirmBtn.onclick = doConfirm;
-  mask.onclick = function(e){ if(e.target === mask) close(); };
-  function onEsc(e){ if(e.key === 'Escape') close(); }
-  document.addEventListener('keydown', onEsc);
-  linkInput.addEventListener('keydown', e=>{ if(e.key === 'Enter'){ e.preventDefault(); doConfirm(); } });
-  descInput.addEventListener('keydown', e=>{ if(e.key === 'Enter'){ e.preventDefault(); doConfirm(); } });
+  cancelBtn.onclick = closeModal;
+  confirmBtn.onclick = confirmInsert;
+  mask.onclick = function(e){ if(e.target === mask) closeModal(); };
+  document.addEventListener('keydown', escClose);
+  linkInput.addEventListener('keydown', e=>{ if(e.key === 'Enter'){ e.preventDefault(); confirmInsert(); } });
+  descInput.addEventListener('keydown', e=>{ if(e.key === 'Enter'){ e.preventDefault(); confirmInsert(); } });
 
   setTimeout(()=>linkInput.focus(), 80);
 }
 
 netImgBtn.onclick = openNetImgModal;
+
+//========== 批量图床链接按钮（默认空alt） ==========
+document.getElementById('batchImgBtn').onclick = function(){
+  const urlsText = prompt("批量粘贴图床链接，一行一张：");
+  if(!urlsText) return;
+  const urlList = urlsText.split(/\r?\n/).map(u=>u.trim()).filter(u=>u.startsWith('http'));
+  urlList.forEach(url => {
+    insertImageToEditor(url, '');
+  });
+  if(currentEditMode==='md') { saveMdRecord(); renderMdPreview(); calcWordCount(); }
+  alert(`成功插入 ${urlList.length} 张图片`);
+};
 
 //========== 生成推送命令 ==========
 document.getElementById('showTemplateBtn').onclick = async function(){
@@ -930,10 +941,10 @@ document.getElementById('showTemplateBtn').onclick = async function(){
       document.execCommand('copy');
       document.body.removeChild(t);
     });
-    alert('data_temp.js 已开始下载\n短命令已复制，请在下载完成后执行。');
+    alert('data_temp.js 已开始下载\n命令已复制剪贴板，下载完成后执行即可。');
 
   } else {
-    let cmd = '# === 图片复制 + data.js 内联推送命令 (已格式化) ===\n';
+    let cmd = '# === 图片复制 + data.js 内联推送命令 (格式化) ===\n';
     cmd += cmdBatch;
     cmd += 'rm -f data.js\n';
     cmd += 'cat > data.js << \'ENDOFDATA\'\n';
@@ -949,60 +960,58 @@ document.getElementById('showTemplateBtn').onclick = async function(){
       document.execCommand('copy');
       document.body.removeChild(t);
     });
-    alert('完整推送命令已复制（包含所有历史笔记，已格式化换行）。');
+    alert('完整推送命令已复制（包含全部笔记数据）。');
   }
-};
-
-// 批量图床链接（默认空alt，不再强制配图）
-document.getElementById('batchImgBtn').onclick = function(){
-  const urls = prompt("批量粘贴图床链接，一行一张：");
-  if(!urls) return;
-  const arr = urls.split(/\r?\n/).map(u=>u.trim()).filter(u=>u.startsWith('http'));
-  arr.forEach(url => {
-    insertImageToEditor(url, '');
-  });
-  if(currentEditMode==='md') { saveMdRecord(); renderMdPreview(); calcWordCount(); }
-  alert(`插入 ${arr.length} 张图片`);
 };
 
 // 下载 data.js
 document.getElementById('downloadDataBtn').onclick = function(){
   syncFormToNoteList();
-  const allNotes = list.filter(i => i && i.id && (i.title||'').trim() && i.content);
-  const js = "window.NOTE_DATA = " + JSON.stringify(allNotes, null, 2);
-  const blob = new Blob([js], {type:'application/javascript'});
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'data.js'; a.click(); URL.revokeObjectURL(a.href);
+  const validNotes = list.filter(i => i && i.id && (i.title||'').trim() && i.content);
+  const jsCode = "window.NOTE_DATA = " + JSON.stringify(validNotes, null, 2);
+  const blob = new Blob([jsCode], {type:'application/javascript'});
+  const a = document.createElement('a'); 
+  a.href = URL.createObjectURL(blob); 
+  a.download = 'data.js'; 
+  a.click(); 
+  URL.revokeObjectURL(a.href);
 };
 
-//========== 一键复制 ==========
+//========== 一键复制data.js ==========
 document.getElementById('copyJsonBtn').onclick = async function(){
-  const valid = list.filter(i => i && i.id && i.content && i.content.trim());
-  const json = "window.NOTE_DATA = " + JSON.stringify(valid, null, 2);
-  await navigator.clipboard.writeText(json).catch(() => {
-    const t = document.createElement('textarea'); t.value = json; document.body.appendChild(t); t.select(); document.execCommand('copy'); document.body.removeChild(t);
+  const validList = list.filter(i => i && i.id && i.content && i.content.trim());
+  const output = "window.NOTE_DATA = " + JSON.stringify(validList, null, 2);
+  await navigator.clipboard.writeText(output).catch(() => {
+    const t = document.createElement('textarea'); 
+    t.value = output; 
+    document.body.appendChild(t); 
+    t.select(); 
+    document.execCommand('copy'); 
+    document.body.removeChild(t);
   });
-  alert(`复制完成，共 ${valid.length} 条`);
+  alert(`复制完成，共 ${validList.length} 条笔记`);
 };
 
-//========== 同步表单 ==========
+//========== 同步表单数据到数组 ==========
 function syncFormToNoteList(){
-  const t=titleInput.value.trim();
+  const title=titleInput.value.trim();
   const tags=getCurrentTags();
   const finalType=tags.length?tags[0]:'';
   const isPrivate=document.getElementById('privateCheck').checked;
   const carouselState = document.getElementById('carouselCheck').checked;
-  const content=currentEditMode==='rich'?richBox.innerHTML.trim():mdToHtml(mdBox.value);
+  const content=currentEditMode==='rich'?richBox.innerHTML.trim():mdToMd(mdBox.value);
   const now=getNowTimeStr();
-  const tagColors={}; tags.forEach(t=>{ const k=t.toLowerCase().trim(); if(tagColorMap[k]) tagColors[k]=tagColorMap[k]; });
+  const tagColors={}; 
+  tags.forEach(t=>{ const k=t.toLowerCase().trim(); if(tagColorMap[k]) tagColors[k]=tagColorMap[k]; });
 
   if(targetNote){
     const idx=list.findIndex(i=>i.id===targetNote.id);
     if(idx>-1){
-      list[idx]={...list[idx],title:t,type:finalType,tags,tagColors,content,date:now,private:isPrivate,carousel:carouselState};
+      list[idx]={...list[idx],title,type:finalType,tags,tagColors,content,date:now,private:isPrivate,carousel:carouselState};
       delete list[idx]._isTempNew;
     }
   }else{
-    const newNote = {id:Date.now(),title:t,type:finalType,tags,tagColors,content:content,date:now,private:isPrivate,carousel:carouselState,_isTempNew:true};
+    const newNote = {id:Date.now(),title,type:finalType,tags,tagColors,content,date:now,private:isPrivate,carousel:carouselState,_isTempNew:true};
     list.push(newNote);
     targetNote = newNote;
   }
@@ -1011,138 +1020,214 @@ function syncFormToNoteList(){
   window.NOTE_DATA=list;
 }
 
-//========== 查找替换 ==========
+//========== 查找替换功能 ==========
 const findReplaceBtn=document.getElementById('findReplaceBtn');
 const findReplaceBox=document.getElementById('findReplaceBox');
 document.getElementById('findReplaceClose').onclick=()=>{ findReplaceMask.classList.remove('show'); document.body.classList.remove('lock-scroll'); };
 findReplaceBtn.onclick=()=>{
-  document.body.classList.add('lock-scroll'); findReplaceMask.classList.add('show');
-  const s=window.getSelection().toString().trim(); if(s) findInput.value=s;
-  searchIndex=0; matchList=[]; setTimeout(()=>findInput.focus(),100);
-  findReplaceBox.style.left = '50%'; findReplaceBox.style.top = '50%'; findReplaceBox.style.transform = 'translate(-50%, -50%)';
+  document.body.classList.add('lock-scroll'); 
+  findReplaceMask.classList.add('show');
+  const selectText=window.getSelection().toString().trim(); 
+  if(selectText) findInput.value=selectText;
+  searchIndex=0; matchList=[]; 
+  setTimeout(()=>findInput.focus(),100);
+  findReplaceBox.style.left = '50%'; 
+  findReplaceBox.style.top = '50%'; 
+  findReplaceBox.style.transform = 'translate(-50%, -50%)';
 };
 findReplaceMask.onclick=e=>{ if(e.target===findReplaceMask){ findReplaceMask.classList.remove('show'); document.body.classList.remove('lock-scroll'); } };
 matchCaseCheck.addEventListener('change',()=>{ matchCase=matchCaseCheck.checked; });
-// 拖曳
+
+// 拖拽查找框
 (function(){
   let dragging=false,sX,sY,oX,oY;
   findReplaceBox.addEventListener('mousedown',function(e){
     if(e.target.tagName==='INPUT'||e.target.tagName==='BUTTON')return;
     e.preventDefault(); dragging=true;
-    const r=this.getBoundingClientRect();
-    sX=e.clientX;sY=e.clientY;oX=sX-r.left;oY=sY-r.top;
-    this.style.transform='none'; this.style.left=r.left+'px'; this.style.top=r.top+'px';
+    const rect=this.getBoundingClientRect();
+    sX=e.clientX;sY=e.clientY;oX=sX-rect.left;oY=sY-rect.top;
+    this.style.transform='none'; 
+    this.style.left=rect.left+'px'; 
+    this.style.top=rect.top+'px';
   });
   document.addEventListener('mousemove',function(e){
     if(!dragging)return;
     let l=e.clientX-oX,t=e.clientY-oY;
     l=Math.max(0,Math.min(l,window.innerWidth-findReplaceBox.offsetWidth));
     t=Math.max(0,Math.min(t,window.innerHeight-findReplaceBox.offsetHeight));
-    findReplaceBox.style.left=l+'px'; findReplaceBox.style.top=t+'px';
+    findReplaceBox.style.left=l+'px'; 
+    findReplaceBox.style.top=t+'px';
   });
   document.addEventListener('mouseup',()=>dragging=false);
   findReplaceBox.addEventListener('touchstart',function(e){
     if(e.target.tagName==='INPUT'||e.target.tagName==='BUTTON')return;
-    const t=e.touches[0]; dragging=true;
-    const r=this.getBoundingClientRect();
-    sX=t.clientX;sY=t.clientY;oX=sX-r.left;oY=sY-r.top;
-    this.style.transform='none'; this.style.left=r.left+'px'; this.style.top=r.top+'px';
+    const touch=e.touches[0]; dragging=true;
+    const rect=this.getBoundingClientRect();
+    sX=touch.clientX;sY=touch.clientY;oX=sX-rect.left;oY=sY-rect.top;
+    this.style.transform='none'; 
+    this.style.left=rect.left+'px'; 
+    this.style.top=rect.top+'px';
   });
   document.addEventListener('touchmove',function(e){
     if(!dragging)return;
-    const t=e.touches[0];
-    let l=t.clientX-oX,tt=t.clientY-oY;
+    const touch=e.touches[0];
+    let l=touch.clientX-oX,tt=touch.clientY-oY;
     l=Math.max(0,Math.min(l,window.innerWidth-findReplaceBox.offsetWidth));
     tt=Math.max(0,Math.min(tt,window.innerHeight-findReplaceBox.offsetHeight));
-    findReplaceBox.style.left=l+'px'; findReplaceBox.style.top=tt+'px';
+    findReplaceBox.style.left=l+'px'; 
+    findReplaceBox.style.top=tt+'px';
   });
   document.addEventListener('touchend',()=>dragging=false);
 })();
-function getEditorText(){ return currentEditMode==='rich'?richBox.innerText:mdBox.value; }
+
+function getEditorFullText(){ return currentEditMode==='rich'?richBox.innerText:mdBox.value; }
 function selectRichText(start,len){
-  const sel=window.getSelection(); const range=document.createRange();
+  const sel=window.getSelection(); 
+  const range=document.createRange();
   let offset=0,node=null,nodeOff=0;
-  function walk(el){ for(const c of el.childNodes){ if(node)return; if(c.nodeType===Node.TEXT_NODE){ const l=c.textContent.length; if(offset+l>start){ node=c; nodeOff=start-offset; return; } offset+=l; }else walk(c); } }
+  function walk(el){ 
+    for(const c of el.childNodes){ 
+      if(node)return; 
+      if(c.nodeType===Node.TEXT_NODE){ 
+        const len=c.textContent.length; 
+        if(offset+len>start){ node=c; nodeOff=start-offset; return; } 
+        offset+=len; 
+      }else walk(c); 
+    } 
+  }
   walk(richBox);
-  if(node){ range.setStart(node,nodeOff); range.setEnd(node,nodeOff+len); sel.removeAllRanges(); sel.addRange(range); richBox.focus(); }
+  if(node){ 
+    range.setStart(node,nodeOff); 
+    range.setEnd(node,nodeOff+len); 
+    sel.removeAllRanges(); 
+    sel.addRange(range); 
+    richBox.focus(); 
+  }
 }
 document.getElementById('findNextBtn').onclick=()=>{
-  const text=getEditorText(); const f=findInput.value.trim(); if(!f)return alert('输入查找内容');
-  const reg=new RegExp(f,matchCase?'g':'gi'); matchList=[]; let m; while((m=reg.exec(text))!==null) matchList.push(m.index);
-  if(!matchList.length)return alert('未找到');
+  const fullText=getEditorFullText(); 
+  const keyword=findInput.value.trim(); 
+  if(!keyword)return alert('请输入查找内容');
+  const reg=new RegExp(keyword,matchCase?'g':'gi'); 
+  matchList=[]; 
+  let res; 
+  while((res=reg.exec(fullText))!==null) matchList.push(res.index);
+  if(!matchList.length)return alert('未匹配到内容');
   if(searchIndex>=matchList.length) searchIndex=0;
-  alert(`第 ${searchIndex+1}/${matchList.length} 处`);
-  if(currentEditMode==='rich') selectRichText(matchList[searchIndex],f.length);
+  alert(`第 ${searchIndex+1}/${matchList.length} 处匹配`);
+  if(currentEditMode==='rich') selectRichText(matchList[searchIndex],keyword.length);
   searchIndex++;
 };
 document.getElementById('replaceSingleBtn').onclick=()=>{
-  const f=findInput.value.trim(); if(!f)return alert('输入查找内容');
-  if(!matchList.length)return alert('请先查找');
+  const keyword=findInput.value.trim(); 
+  if(!keyword)return alert('请输入查找内容');
+  if(!matchList.length)return alert('请先执行查找');
   const idx=searchIndex-1>=0?searchIndex-1:0;
-  if(currentEditMode==='rich'){ document.execCommand('insertText',false,replaceInput.value); calcWordCount(); }
-  else{ const old=getEditorText(); const l=old.slice(0,matchList[idx]); const r=old.slice(matchList[idx]+f.length); mdBox.value=l+replaceInput.value+r; saveMdRecord(); renderMdPreview(); calcWordCount(); }
-  alert('已替换当前一处'); document.getElementById('findNextBtn').click();
+  if(currentEditMode==='rich'){ 
+    document.execCommand('insertText',false,replaceInput.value); 
+    calcWordCount(); 
+  }else{ 
+    const fullText=getEditorFullText(); 
+    const left=fullText.slice(0,matchList[idx]); 
+    const right=fullText.slice(matchList[idx]+keyword.length); 
+    mdBox.value=left+replaceInput.value+right; 
+    saveMdRecord(); 
+    renderMdPreview(); 
+    calcWordCount(); 
+  }
+  document.getElementById('findNextBtn').click();
 };
 document.getElementById('replaceAllBtn').onclick=()=>{
-  const f=findInput.value.trim(); if(!f)return alert('输入查找内容');
-  if(currentEditMode==='rich')return alert('富文本请用单次替换');
-  const rep=replaceInput.value; const reg=new RegExp(f,matchCase?'g':'gi');
-  const old=getEditorText(); const nw=old.replace(reg,rep);
-  if(old===nw)return alert('无替换');
-  mdBox.value=nw; saveMdRecord(); renderMdPreview(); calcWordCount();
-  alert('替换完成');
+  const keyword=findInput.value.trim(); 
+  if(!keyword)return alert('请输入查找内容');
+  if(currentEditMode==='rich')return alert('富文本不支持全部替换，请切换到Markdown模式操作');
+  const repStr=replaceInput.value; 
+  const reg=new RegExp(keyword,matchCase?'g':'gi');
+  const newMd=mdBox.value.replace(reg,repStr);
+  if(newMd===mdBox.value)return alert('无内容被替换');
+  mdBox.value=newMd; 
+  saveMdRecord(); 
+  renderMdPreview(); 
+  calcWordCount(); 
+  alert('全部替换完成');
 };
 
-//========== 大图预览 ==========
-richBox.addEventListener('click',function(e){ const img=e.target.closest('img'); if(img&&img.src){ document.getElementById('previewImg').src=img.src; document.getElementById('imgPreviewMask').classList.add('show'); } });
-document.getElementById('imgPreviewMask').onclick=function(e){ if(e.target===this)this.classList.remove('show'); };
+//========== 大图点击预览 ==========
+richBox.addEventListener('click',function(e){ 
+  const targetImg=e.target.closest('img'); 
+  if(targetImg&&targetImg.src){ 
+    document.getElementById('previewImg').src=targetImg.src; 
+    document.getElementById('imgPreviewMask').classList.add('show'); 
+  } 
+});
+document.getElementById('imgPreviewMask').onclick=function(e){ 
+  if(e.target===this) this.classList.remove('show'); 
+};
 
-//========== 字号颜色 ==========
-fontSizeSelect.onchange=function(){ document.execCommand('fontSize',false,this.value); richBox.focus(); calcWordCount(); };
-fontColorInput.oninput=function(){ document.execCommand('foreColor',false,this.value); richBox.focus(); calcWordCount(); };
+//========== 文字颜色/背景颜色实时应用 ==========
+fontColorInput.oninput=function(){ 
+  richBox.focus(); 
+  document.execCommand('foreColor',false,this.value); 
+  calcWordCount(); 
+};
 bgColorInput.oninput=function(){
-  richBox.focus(); const sel=window.getSelection(); if(!sel.rangeCount||sel.getRangeAt(0).collapsed) return;    try { document.execCommand('hiliteColor', false, this.value); } catch(e) {
-      const range=sel.getRangeAt(0); const span=document.createElement('span'); span.style.backgroundColor=this.value; range.surroundContents(span);
-    }
-    calcWordCount();
-  };
+  richBox.focus(); 
+  const sel=window.getSelection(); 
+  if(!sel.rangeCount||sel.getRangeAt(0).isCollapsed) return;
+  try { 
+    document.execCommand('hiliteColor', false, this.value); 
+  } catch(e) {
+    const range=sel.getRangeAt(0); 
+    const span=document.createElement('span'); 
+    span.style.backgroundColor=this.value; 
+    range.surroundContents(span);
+  }
+  calcWordCount();
+};
 
-//========== 回车退出格式标记 ==========
+//========== Markdown回车自动闭合标记 ==========
 mdBox.addEventListener('keydown',function(e){
   if(e.key==='Enter'){
     const val=this.value, pos=this.selectionStart;
-    const pairs=[{s:'**',e:'**'},{s:'*',e:'*'},{s:'~~',e:'~~'},{s:'`',e:'`'},{s:'$$',e:'$$'},{s:'[',e:']'},{s:'<u>',e:'</u>'}];
+    const pairs=[
+      {s:'**',e:'**'},{s:'*',e:'*'},{s:'~~',e:'~~'},
+      {s:'`',e:'`'},{s:'$$',e:'$$'},{s:'<u>',e:'</u>'}
+    ];
     for(const p of pairs){
       const sl=p.s.length, el=p.e.length;
       const lineStart=val.lastIndexOf('\n',pos-1)+1;
       const before=val.slice(lineStart,pos), after=val.slice(pos,val.indexOf('\n',pos)>0?val.indexOf('\n',pos):val.length);
-      const lastStart=before.lastIndexOf(p.s), firstEnd=after.indexOf(p.e);
-      if(lastStart!==-1&&firstEnd!==-1&&before.slice(lastStart+sl).indexOf(p.e)===-1&&after.slice(0,firstEnd).indexOf(p.s)===-1){
-        e.preventDefault(); this.value=val.slice(0,pos)+'\n'+val.slice(pos+firstEnd+el); this.selectionStart=this.selectionEnd=pos+1;
-        saveMdRecord(); renderMdPreview(); calcWordCount(); return;
+      const lastOpen=before.lastIndexOf(p.s), firstClose=after.indexOf(p.e);
+      if(lastOpen!==-1&&firstClose!==-1&&before.slice(lastOpen+sl).indexOf(p.e)===-1&&after.slice(0,firstClose).indexOf(p.s)===-1){
+        e.preventDefault(); 
+        this.value=val.slice(0,pos)+'\n'+val.slice(pos+firstClose+el); 
+        this.selectionStart=this.selectionEnd=pos+1;
+        saveMdRecord(); 
+        renderMdPreview(); 
+        calcWordCount(); 
+        return;
       }
     }
   }
 });
 
-// ========== 光标拖曳模式（重写版）==========
+// ========== 拖拽光标模式 ==========
 const dragOverlay = document.getElementById('dragOverlay');
 const dragModeToggle = document.getElementById('dragModeToggle');
 
-// 把 (x, y) 屏幕坐标转成当前编辑器内的 Range
 function screenToEditorRange(x, y){
   if(document.caretPositionFromPoint){
     try{
-      const cp = document.caretPositionFromPoint(x, y);
-      if(cp && cp.offsetNode){
+      const caret = document.caretPositionFromPoint(x, y);
+      if(caret && caret.offsetNode){
         const range = document.createRange();
-        range.setStart(cp.offsetNode, cp.offset);
+        range.setStart(caret.offsetNode, caret.offset);
         range.collapse(true);
-        if(currentEditMode === 'rich' && !richBox.contains(cp.offsetNode)) return null;
-        if(currentEditMode === 'md' && cp.offsetNode !== mdBox) return null;
+        if(currentEditMode === 'rich' && !richBox.contains(caret.offsetNode)) return null;
+        if(currentEditMode === 'md' && caret.offsetNode !== mdBox) return null;
         return range;
       }
-    }catch(e){}
+    }catch(err){}
   }
   if(document.caretRangeFromPoint){
     try{
@@ -1152,7 +1237,7 @@ function screenToEditorRange(x, y){
         if(currentEditMode === 'md' && range.startContainer !== mdBox) return null;
         return range;
       }
-    }catch(e){}
+    }catch(err){}
   }
   return null;
 }
@@ -1182,8 +1267,8 @@ function moveCaretRichVertical(dy, touchX){
   if(rect.height === 0) return false;
   const targetY = rect.top + rect.height / 2 + (dy > 0 ? rect.height + 4 : -rect.height - 4);
   const boxRect = richBox.getBoundingClientRect();
-  const clampedY = Math.max(boxRect.top + 4, Math.min(boxRect.bottom - 4, targetY));
-  const newRange = screenToEditorRange(touchX, clampedY);
+  const clampY = Math.max(boxRect.top + 4, Math.min(boxRect.bottom - 4, targetY));
+  const newRange = screenToEditorRange(touchX, clampY);
   if(newRange){
     sel.removeAllRanges();
     sel.addRange(newRange);
@@ -1206,14 +1291,14 @@ function moveCaretMdVertical(dy){
   const text = mdBox.value;
   const lines = text.split('\n');
   const pos = mdBox.selectionStart;
-  let cumLen = 0, curLine = 0, curCol = 0;
+  let totalLen = 0, curLine = 0, curCol = 0;
   for(let i=0; i<lines.length; i++){
-    if(cumLen + lines[i].length >= pos){
+    if(totalLen + lines[i].length >= pos){
       curLine = i;
-      curCol = pos - cumLen;
+      curCol = pos - totalLen;
       break;
     }
-    cumLen += lines[i].length + 1;
+    totalLen += lines[i].length + 1;
   }
   const dir = dy > 0 ? 1 : -1;
   const targetLine = Math.max(0, Math.min(lines.length - 1, curLine + dir));
@@ -1225,14 +1310,14 @@ function moveCaretMdVertical(dy){
   return true;
 }
 
-function setDragMode(on){
-  dragActive = !!on;
+function setDragMode(active){
+  dragActive = !!active;
   dragModeToggle.style.background = dragActive ? '#6366F1' : '';
   dragModeToggle.style.color = dragActive ? '#fff' : '';
   dragOverlay.classList.toggle('show', dragActive);
   if(dragActive){
-    if(currentEditMode === 'rich'){ richBox.focus(); }
-    else { mdBox.focus(); }
+    if(currentEditMode === 'rich') richBox.focus();
+    else mdBox.focus();
   }
 }
 
@@ -1245,39 +1330,42 @@ let dragStartX = 0, dragStartY = 0, dragTouchId = null;
 dragOverlay.addEventListener('touchstart', function(e){
   if(!dragActive) return;
   if(dragTouchId !== null) return;
-  const t = e.touches[0];
-  dragTouchId = t.identifier;
-  dragStartX = t.clientX;
-  dragStartY = t.clientY;
+  const touch = e.touches[0];
+  dragTouchId = touch.identifier;
+  dragStartX = touch.clientX;
+  dragStartY = touch.clientY;
 }, {passive: true});
 
 dragOverlay.addEventListener('touchmove', function(e){
   if(!dragActive || dragTouchId === null) return;
-  let t = null;
+  let targetTouch = null;
   for(let i=0; i<e.changedTouches.length; i++){
-    if(e.changedTouches[i].identifier === dragTouchId){ t = e.changedTouches[i]; break; }
+    if(e.changedTouches[i].identifier === dragTouchId){
+      targetTouch = e.changedTouches[i];
+      break;
+    }
   }
-  if(!t) return;
+  if(!targetTouch) return;
 
-  const dx = t.clientX - dragStartX;
-  const dy = t.clientY - dragStartY;
-  const TH = 4;
-  if(Math.abs(dx) < TH && Math.abs(dy) < TH) return;
+  const dx = targetTouch.clientX - dragStartX;
+  const dy = targetTouch.clientY - dragStartY;
+  const threshold = 4;
+  if(Math.abs(dx) < threshold && Math.abs(dy) < threshold) return;
 
   if(Math.abs(dx) >= Math.abs(dy)){
-    if(Math.abs(dx) >= TH){
+    if(Math.abs(dx) >= threshold){
       if(currentEditMode === 'rich') moveCaretRichHorizontal(dx);
       else moveCaretMdHorizontal(dx);
     }
   } else {
-    if(Math.abs(dy) >= TH){
-      if(currentEditMode === 'rich') moveCaretRichVertical(dy, t.clientX);
+    if(Math.abs(dy) >= threshold){
+      if(currentEditMode === 'rich') moveCaretRichVertical(dy, targetTouch.clientX);
       else moveCaretMdVertical(dy);
       if(currentEditMode === 'md') mdBox.focus();
     }
   }
-  dragStartX = t.clientX;
-  dragStartY = t.clientY;
+  dragStartX = targetTouch.clientX;
+  dragStartY = targetTouch.clientY;
 }, {passive: true});
 
 dragOverlay.addEventListener('touchend', function(e){
@@ -1294,50 +1382,58 @@ dragOverlay.addEventListener('touchcancel', function(){
 
 window.addEventListener('keydown', function(e){
   if(dragActive && (e.key === 'Escape' || e.key === 'Backspace')){
-    const ae = document.activeElement;
-    const editing = ae === richBox || ae === mdBox || ae === titleInput || ae === tagChipInput;
-    if(e.key === 'Escape' || !editing){
+    const activeEl = document.activeElement;
+    const isEditing = activeEl === richBox || activeEl === mdBox || activeEl === titleInput || activeEl === tagChipInput;
+    if(e.key === 'Escape' || !isEditing){
       e.preventDefault();
       setDragMode(false);
     }
   }
 });
 
-//========== 快捷键 ==========
+//========== 键盘快捷键 ==========
 window.addEventListener('keydown',function(e){
   if(e.ctrlKey&&e.key==='s'){ e.preventDefault(); document.getElementById('copyJsonBtn').click(); }
   if(e.ctrlKey&&(e.key==='z'||e.key==='Z')){ e.preventDefault(); globalUndo(); }
-  if(e.ctrlKey&&(e.key==='y'||e.key==='Y')){ e.preventDefault(); globalRedo(); }
+  if(e.ctrlKey&&e.key==='y'){ e.preventDefault(); globalRedo(); }
   if(e.ctrlKey&&e.key==='f'){ e.preventDefault(); findReplaceBtn.click(); }
   if(e.ctrlKey&&e.key==='b'){ e.preventDefault(); formatBold(); }
   if(e.ctrlKey&&e.key==='i'){ e.preventDefault(); formatItalic(); }
   if(e.ctrlKey&&e.key==='u'){ e.preventDefault(); insertUnderline(); }
 });
 
-//========== 移动端键盘适配 ==========
+//========== 移动端键盘高度监听 ==========
 (function(){
-  let initVh=window.visualViewport?window.visualViewport.height:window.innerHeight;
-  const TOOLBAR_OFFSET = -20;
-  function handleResize(){
-    const curH=window.visualViewport?window.visualViewport.height:window.innerHeight;
-    const keyboardHeight=initVh-curH; const opened=keyboardHeight>100;
-    document.body.classList.toggle('keyboard-opened',opened);
-    if(opened){
-      document.documentElement.style.setProperty('--keyboard-height', (keyboardHeight + TOOLBAR_OFFSET) + 'px');
-      setTimeout(()=>{const a=document.activeElement; if(a&&(a.id==='richEditor'||a.id==='mdEditor')) a.scrollIntoView({behavior:'smooth',block:'end'});},200);
-    } else { document.documentElement.style.setProperty('--keyboard-height','0px'); }
+  let initViewportHeight = window.visualViewport?window.visualViewport.height:window.innerHeight;
+  const keyboardOffset = -20;
+  function viewportResizeHandler(){
+    const currentH = window.visualViewport?window.visualViewport.height:window.innerHeight;
+    const keyboardHeight = initViewportHeight - currentH;
+    const isKeyboardOpen = keyboardHeight > 100;
+    document.body.classList.toggle('keyboard-opened', isKeyboardOpen);
+    if(isKeyboardOpen){
+      document.documentElement.style.setProperty('--keyboard-height', (keyboardHeight + keyboardOffset) + 'px');
+      setTimeout(()=>{
+        const activeEl = document.activeElement;
+        if(activeEl&&(activeEl.id==='richEditor'||activeEl.id==='mdEditor')){
+          activeEl.scrollIntoView({behavior:'smooth',block:'end'});
+        }
+      },200);
+    } else {
+      document.documentElement.style.setProperty('--keyboard-height','0px');
+    }
   }
-  if(window.visualViewport) window.visualViewport.addEventListener('resize',handleResize); else window.addEventListener('resize',handleResize);
+  if(window.visualViewport) window.visualViewport.addEventListener('resize',viewportResizeHandler);
+  else window.addEventListener('resize',viewportResizeHandler);
 })();
 
-//========== 初始化 ==========
+//========== 页面初始化执行 ==========
 window.addEventListener("DOMContentLoaded",()=>{ renderMdPreview(); calcWordCount(); });
 
-//========== 轮播开关监听 ==========
+//========== 轮播开关切换监听 ==========
 if(carouselCheck){
   carouselCheck.addEventListener('change', function(){
     isCarouselOn = this.checked;
-    // 切换开关时清空等待合并的轮播队列
     carouselImageQueue = [];
     clearTimeout(carouselCloseTimer);
   });
