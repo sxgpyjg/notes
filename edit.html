@@ -68,10 +68,29 @@ body.keyboard-opened .edit-toolbar-wrap{position:fixed;bottom:var(--keyboard-hei
 .slider:before{content:"";position:absolute;height:14px;width:14px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s;}
 .switch input:checked+.slider{background:#6366F1;}
 .switch input:checked+.slider:before{transform:translateX(16px);}
-/* 新增：统一开关组样式 */
-.settings-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 8px; padding: 8px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0; }
-.switch-group { display: flex; align-items: center; gap: 6px; padding: 4px 8px; background: #fff; border-radius: 6px; border: 1px solid #e8ecf4; }
-.switch-label { font-size: 13px; color: #475569; font-weight: 500; }
+/* 修复：三开关一行均分布局 */
+.settings-row { 
+  display: flex; 
+  gap: 6px; 
+  align-items: center; 
+  margin-bottom: 8px; 
+  padding: 8px; 
+  background: #f8fafc; 
+  border-radius: 8px; 
+  border: 1px solid #e2e8f0; 
+}
+.switch-group { 
+  flex: 1; 
+  display: flex; 
+  align-items: center; 
+  gap: 6px; 
+  padding: 4px 4px; 
+  background: #fff; 
+  border-radius: 6px; 
+  border: 1px solid #e8ecf4; 
+  justify-content: center;
+}
+.switch-label { font-size: 13px; color: #475569; font-weight: 500; white-space: nowrap; }
 .switch-label.private { color: #dc2626; font-weight: 600; }
 .switch-label.carousel { color: #6366F1; font-weight: 600; }
 
@@ -95,7 +114,7 @@ body.keyboard-opened .edit-toolbar-wrap{position:fixed;bottom:var(--keyboard-hei
 .net-img-actions{display:flex;gap:40px;justify-content:flex-end;}
 .net-img-actions button{background:transparent;border:none;color:#009688;font-size:15px;cursor:pointer;padding:4px;}
 
-/* 轮播样式 */
+/* 轮播样式（和阅读页预览一致） */
 .carousel-container {
   width: 100%;
   overflow-x: auto;
@@ -157,7 +176,6 @@ body.keyboard-opened .edit-toolbar-wrap{position:fixed;bottom:var(--keyboard-hei
 </div>
 <div class="tags-hint">回车添加，点击色块换颜色，× 删除</div>
 
-<!-- 修改：将开关放在一行 -->
 <div class="settings-row">
   <!-- 私密开关 -->
   <div class="switch-group">
@@ -277,8 +295,10 @@ let globalImgSerial = Number(localStorage.getItem("img_serial")||0);
 let searchIndex = 0, matchList = [], matchCase = false;
 let dragActive = false;
 
-// 新增：轮播开关状态
+// 轮播全局变量（新增）
 let isCarouselOn = false;
+let carouselImageQueue = [];
+let carouselCloseTimer = null;
 
 const titleInput = document.querySelector(".title-input");
 const tagChipInput = document.getElementById("tagChipInput");
@@ -336,9 +356,8 @@ function renderTagsChips(){
   Array.from(tagsInputWrap.querySelectorAll('.tag-chip')).forEach(n=>n.remove());
   currentTags.forEach((t,i)=>{
     const c=getTagColor(t);
-    // 如果颜色是黑色或深色，文字变白，背景变深灰
     let textColor = c;
-    let bgColor = c + '22'; // 22 is low opacity
+    let bgColor = c + '22';
     if(c === '#000000' || c === '#000'){
       textColor = '#fff';
       bgColor = '#333333';
@@ -446,6 +465,8 @@ function logoutAdmin(){ localStorage.removeItem("admin_save_pwd"); localStorage.
 
 function initLoadNote(){
   imgUploadList=[];
+  carouselImageQueue = [];
+  clearTimeout(carouselCloseTimer);
   
   // 处理新建笔记
   if(editId === 'new' || !editId){
@@ -458,6 +479,7 @@ function initLoadNote(){
       content: "",
       date: getNowTimeStr(),
       private: false,
+      carousel: false,
       _isTempNew: true
     };
     list.unshift(targetNote);
@@ -478,8 +500,9 @@ function initLoadNote(){
   if(!tags.length && targetNote.type) tags = [targetNote.type];
   setCurrentTags(tags, targetNote.tagColors || {});
   document.getElementById("privateCheck").checked = !!targetNote.private;
-  // 初始化轮播开关状态（可选：如果需要记住上次状态，可以加逻辑）
-  isCarouselOn = carouselCheck.checked;
+  // 回显轮播开关状态
+  isCarouselOn = !!targetNote.carousel;
+  carouselCheck.checked = isCarouselOn;
   
   richBox.innerHTML = targetNote.content || "";
   richRecordStack = [richBox.innerHTML]; 
@@ -510,8 +533,16 @@ function switchMode(m){
   calcWordCount();
 }
 
-//========== 转换 ==========
+//========== 转换函数（已修复轮播双向解析） ==========
 function mdToHtml(s){
+  // 解析 ::slide 为轮播容器
+  s = s.replace(/::slide\n([\s\S]*?)\n::end/g,(match,inner)=>{
+    const imgHtml = inner.replace(/!\[(.*?)\]\((https?:\/\/[^\s)]+)\)/g,
+      `<figure class="carousel-item"><img src="$2" alt="$1" loading="lazy"><figcaption>$1</figcaption></figure>`
+    );
+    return `<div class="carousel-container">${imgHtml}</div>`;
+  });
+
   let html=s.replace(/```([\s\S]*?)```/g,'<pre style="background:#f5f5f5;padding:8px;border-radius:6px;white-space:pre-wrap;"><code>$1</code></pre>');
   html=html.replace(/(^|\n)(\|.+\|\n)((?:\|[-:| ]+\|)(?:\n|$))+(\|.+\|)/g,(_,pre,hRow,sep,cRow)=>{
     const rows=(hRow+sep+cRow).split('\n').filter(r=>r.trim());
@@ -528,10 +559,19 @@ function mdToHtml(s){
   html=html.replace(/^### (.+)$/gm,'<h3>$1</h3>').replace(/^## (.+)$/gm,'<h2>$1</h2>').replace(/^# (.+)$/gm,'<h1>$1</h1>')
     .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g,'<em>$1</em>')
     .replace(/~~(.+?)~~/g,'<s>$1</s>').replace(/^\- (.+)$/gm,'<li>$1</li>')
-    .replace(/!\[(.*?)\]\((https?:\/\/[^\s)]+)\)/g,'<img src="$2" alt="$1" style="max-width:100%;margin:6px 0;display:block;">');
+    .replace(/!\[(.*?)\]\((https?:\/\/[^\s)]+)\)/g,'<img loading="lazy" src="$2" alt="$1" style="max-width:100%;margin:6px 0;display:block;">');
   return html.replace(/\n/g,'<br>');
 }
+
 function htmlToMd(s){
+  // 还原轮播容器为 ::slide 标记
+  s = s.replace(/<div class="carousel-container">([\s\S]*?)<\/div>/g,(match,inner)=>{
+    const imgMd = inner.replace(/<figure class="carousel-item"><img loading="lazy" src="([^"]+)" alt="([^"]+)"[\s\S]*?<\/figure>/g,
+      '![$2]($1)\n'
+    );
+    return `\n::slide\n${imgMd}::end\n`;
+  });
+
   let md=s.replace(/<pre[^>]*><code>([\s\S]*?)<\/code><\/pre>/g,'```\n$1\n```')
     .replace(/<h1>(.*?)<\/h1>/g,'# $1').replace(/<h2>(.*?)<\/h2>/g,'## $1').replace(/<h3>(.*?)<\/h3>/g,'### $1')
     .replace(/<strong>(.*?)<\/strong>/g,'**$1**').replace(/<em>(.*?)<\/em>/g,'*$1*').replace(/<s>(.*?)<\/s>/g,'~~$1~~')
@@ -539,6 +579,7 @@ function htmlToMd(s){
   md=md.replace(/<(?!p style="text-align:center"|u|table|tr|th|td)[^>]+>/g,'');
   return md.replace(/<img[^>]*src="([^"]+)"[^>]*alt="([^"]*)"[^>]*>/g,'![$2]($1)');
 }
+
 function renderMdPreview(){ mdPreviewBox.innerHTML=mdToHtml(mdBox.value); }
 
 //========== 撤销重做 ==========
@@ -566,7 +607,6 @@ function checkFormatActive(){
     el=el.parentNode; if(el===richBox)break;
   }
 }
-// selectionchange 是 document 事件，必须挂在 document 上
 document.addEventListener('selectionchange',checkFormatActive);
 
 function calcWordCount(){
@@ -597,15 +637,12 @@ function insertLink(){
     richBox.focus();
     const sel = window.getSelection();
     if(sel.rangeCount && !sel.isCollapsed) {
-      // 如果有选中文字，包裹成链接
       document.execCommand('createLink', false, 'https://example.com');
-      // 调整光标到最后
       const range = sel.getRangeAt(0);
       range.collapse(false);
       sel.removeAllRanges();
       sel.addRange(range);
     } else {
-      // 否则插入一个默认链接
       document.execCommand('insertHTML', false, '<a href="https://example.com" target="_blank">链接</a>');
     }
     calcWordCount();
@@ -648,46 +685,60 @@ function insertTable(){
     tableHtml += '<tr>';
     for (let c = 0; c < cols; c++) {
       const tag = r === 0 ? 'th' : 'td';
-      tableHtml += `<$${tag} style="border:1px solid #999;padding:4px 6px;">$${r===0?'标题':'内容'}</${tag}>`;
+      tableHtml += `<${tag} style="border:1px solid #999;padding:4px 6px;">${r===0?'标题':'内容'}</${tag}>`;
     }
     tableHtml += '</tr>';
   }
   tableHtml += '</table>';
   if(currentEditMode==='rich'){ richBox.focus(); document.execCommand('insertHTML',false,tableHtml); calcWordCount(); }
-  else{ mdBox.value+=`\n|$${' 标题 |'.repeat(cols).slice(0,-2)}\n|$${' --- |'.repeat(cols).slice(0,-2)}\n`; for(let r=1;r<rows;r++){mdBox.value+=`|${' 内容 |'.repeat(cols).slice(0,-2)}\n`;} saveMdRecord(); renderMdPreview(); calcWordCount(); }
+  else{ mdBox.value+=`\n|${' 标题 |'.repeat(cols).slice(0,-2)}\n|${' --- |'.repeat(cols).slice(0,-2)}\n`; for(let r=1;r<rows;r++){mdBox.value+=`|${' 内容 |'.repeat(cols).slice(0,-2)}\n`;} saveMdRecord(); renderMdPreview(); calcWordCount(); }
 }
 function splitLine1(){ const t='---\n'; if(currentEditMode==='rich'){ document.execCommand('insertText',false,t); calcWordCount(); } else { mdBox.value+=t; saveMdRecord(); renderMdPreview(); calcWordCount(); } }
 function clearAllNotesContent(){ if(!confirm('清空全部内容？'))return; richBox.innerHTML=''; mdBox.value=''; renderMdPreview(); richRecordStack=['']; richRecordIndex=0; mdRecordStack=['']; mdRecordIndex=0; calcWordCount(); }
 
 //========== 图片上传核心逻辑 ==========
 
-// 核心函数：根据开关状态插入图片
+// 重写图片插入函数，统一使用阅读页兼容的 ::slide 标记
 function insertImageToEditor(url, alt) {
   if (!url) return;
-  
-  // 基础图片 HTML
-  const baseImg = `<img loading="lazy" src="$${url}" alt="$${alt}" style="max-width:100%;margin:6px 0;display:block;" onerror="this.src='';this.alt='图片加载失败';">`;
-  
-  if (currentEditMode === 'rich') {
-    richBox.focus();
-    if (isCarouselOn) {
-      // 轮播模式：包裹在 div 容器中
-      const carouselHtml = `<figure class="carousel-item">$${baseImg}$${alt ? `<figcaption>${alt}</figcaption>` : ''}</figure>`;
-      document.execCommand('insertHTML', false, `<div class="carousel-container">${carouselHtml}<br></div>`);
-    } else {
-      // 普通模式
-      document.execCommand('insertHTML', false, baseImg + '<br>');
-    }
-    calcWordCount();
+  const mdImgLine = `![${alt || '配图'}](${url})\n`;
+
+  if (isCarouselOn) {
+    // 开启轮播：加入队列，延迟统一拼接轮播块
+    carouselImageQueue.push(mdImgLine);
+    clearTimeout(carouselCloseTimer);
+
+    // 2秒内继续插图就合并，停止插入后自动闭合轮播
+    carouselCloseTimer = setTimeout(() => {
+      const slideBlock = `\n::slide\n${carouselImageQueue.join('')}::end\n\n`;
+      
+      if (currentEditMode === 'rich') {
+        // 富文本模式：先插入原生标记文本，预览时再渲染轮播样式
+        richBox.focus();
+        document.execCommand('insertText', false, slideBlock);
+      } else {
+        // Markdown模式：直接写入标准轮播代码
+        mdBox.value += slideBlock;
+        saveMdRecord();
+        renderMdPreview();
+      }
+
+      // 清空队列，准备下一组轮播
+      carouselImageQueue = [];
+      calcWordCount();
+    }, 2000);
+
   } else {
-    // Markdown 模式：轮播无法原生支持，降级为普通图片，或者提示
-    // 这里选择降级为普通图片，因为 markdown 渲染器通常不支持自定义 div 类名
-    if (isCarouselOn) {
-       console.warn("Markdown模式下轮播不可用，已插入普通图片");
+    // 关闭轮播：正常插入单张图片
+    if (currentEditMode === 'rich') {
+      const baseImg = `<img loading="lazy" src="${url}" alt="${alt}" style="max-width:100%;margin:6px 0;display:block;" onerror="this.src='';this.alt='图片加载失败';">`;
+      richBox.focus();
+      document.execCommand('insertHTML', false, baseImg + '<br>');
+    } else {
+      mdBox.value += mdImgLine + '\n';
+      saveMdRecord();
+      renderMdPreview();
     }
-    mdBox.value += `![$${alt || '配图'}]($${url})\n\n`;
-    saveMdRecord();
-    renderMdPreview();
     calcWordCount();
   }
 }
@@ -715,7 +766,7 @@ function handleFileSelect(files){
     } else realPath = realPath.replace(/^\/storage\/emulated\/0\//i,'/storage/emulated/0/');
     const userPath = prompt(`请确认图片源路径（可修改）：\n${safeName}`, realPath);
     const finalPath = (userPath&&userPath.trim()) ? userPath.trim() : realPath;
-    const cpCmd = `cp "$${finalPath}" ~/storage/shared/notes/images/"$${safeName}"`;
+    const cpCmd = `cp "${finalPath}" ~/storage/shared/notes/images/"${safeName}"`;
     imgUploadList.push({name:safeName, originalName:originalName, src:finalPath, copyCmd:cpCmd});
     insertLocalImgTagTerminal(safeName);
   });
@@ -815,11 +866,11 @@ document.getElementById('showTemplateBtn').onclick = async function(){
   imgUploadList.forEach((item, idx) => {
     const fileName = item.name.replace(/"/g, '\\"');
     cmdBatch += '# 图片 ' + (idx+1) + ': ' + fileName + '\n';
-    cmdBatch += 'SRC=$' + '(find /storage/emulated/0/DCIM /storage/emulated/0/Download /storage/emulated/0/Pictures /storage/emulated/0/tencent -name "' + fileName + '" 2>/dev/null | head -1)\n';
+    cmdBatch += 'SRC=$(find /storage/emulated/0/DCIM /storage/emulated/0/Download /storage/emulated/0/Pictures /storage/emulated/0/tencent -name "' + fileName + '" 2>/dev/null | head -1)\n';
     cmdBatch += 'if [ -n "$SRC" ]; then\n';
     cmdBatch += '  cp "$SRC" images/"' + fileName + '" && echo "已复制: ' + fileName + '"\n';
     cmdBatch += 'else\n';
-    cmdBatch += '  SRC=$' + '(find /storage/emulated/0 -name "' + fileName + '" 2>/dev/null | head -1)\n';
+    cmdBatch += '  SRC=$(find /storage/emulated/0 -name "' + fileName + '" 2>/dev/null | head -1)\n';
     cmdBatch += '  if [ -n "$SRC" ]; then\n';
     cmdBatch += '    cp "$SRC" images/"' + fileName + '" && echo "已复制(全盘): ' + fileName + '"\n';
     cmdBatch += '  else\n';
@@ -929,6 +980,7 @@ function syncFormToNoteList(){
   const tags=getCurrentTags();
   const finalType=tags.length?tags[0]:'';
   const isPrivate=document.getElementById('privateCheck').checked;
+  const carouselState = document.getElementById('carouselCheck').checked;
   const content=currentEditMode==='rich'?richBox.innerHTML.trim():mdToHtml(mdBox.value);
   const now=getNowTimeStr();
   const tagColors={}; tags.forEach(t=>{ const k=t.toLowerCase().trim(); if(tagColorMap[k]) tagColors[k]=tagColorMap[k]; });
@@ -936,11 +988,11 @@ function syncFormToNoteList(){
   if(targetNote){
     const idx=list.findIndex(i=>i.id===targetNote.id);
     if(idx>-1){
-      list[idx]={...list[idx],title:t,type:finalType,tags,tagColors,content,date:now,private:isPrivate};
+      list[idx]={...list[idx],title:t,type:finalType,tags,tagColors,content,date:now,private:isPrivate,carousel:carouselState};
       delete list[idx]._isTempNew;
     }
   }else{
-    const newNote = {id:Date.now(),title:t,type:finalType,tags:tags,tagColors:tagColors,content:content,date:now,private:isPrivate,_isTempNew:true};
+    const newNote = {id:Date.now(),title:t,type:finalType,tags,tagColors,content:content,date:now,private:isPrivate,carousel:carouselState,_isTempNew:true};
     list.push(newNote);
     targetNote = newNote;
   }
@@ -1009,7 +1061,7 @@ document.getElementById('findNextBtn').onclick=()=>{
   const reg=new RegExp(f,matchCase?'g':'gi'); matchList=[]; let m; while((m=reg.exec(text))!==null) matchList.push(m.index);
   if(!matchList.length)return alert('未找到');
   if(searchIndex>=matchList.length) searchIndex=0;
-  alert(`第 $${searchIndex+1}/$${matchList.length} 处`);
+  alert(`第 ${searchIndex+1}/${matchList.length} 处`);
   if(currentEditMode==='rich') selectRichText(matchList[searchIndex],f.length);
   searchIndex++;
 };
@@ -1049,7 +1101,7 @@ bgColorInput.oninput=function(){
 mdBox.addEventListener('keydown',function(e){
   if(e.key==='Enter'){
     const val=this.value, pos=this.selectionStart;
-    const pairs=[{s:'**',e:'**'},{s:'*',e:'*'},{s:'~~',e:'~~'},{s:'`',e:'`'},{s:'$$',e:'$$'},{s:'[',e:']'},{s:'<u>',e:'</u>'},{s:'![',e:']'}];
+    const pairs=[{s:'**',e:'**'},{s:'*',e:'*'},{s:'~~',e:'~~'},{s:'`',e:'`'},{s:'$$',e:'$$'},{s:'[',e:']'},{s:'<u>',e:'</u>'}];
     for(const p of pairs){
       const sl=p.s.length, el=p.e.length;
       const lineStart=val.lastIndexOf('\n',pos-1)+1;
@@ -1275,6 +1327,9 @@ window.addEventListener("DOMContentLoaded",()=>{ renderMdPreview(); calcWordCoun
 if(carouselCheck){
   carouselCheck.addEventListener('change', function(){
     isCarouselOn = this.checked;
+    // 切换开关时清空等待合并的轮播队列
+    carouselImageQueue = [];
+    clearTimeout(carouselCloseTimer);
   });
 }
 </script>
