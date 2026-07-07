@@ -631,7 +631,10 @@ function getFirstImgFromHtml(html){
 function getPureTextPreview(html){
   return String(html)
     .replace(/<img[^>]*>/g,'')
-    .replace(/<\/?(div|section|article|track|slide|arrow|dots|dot|counter|intro)[^>]*>/gi,'')
+    // 清除所有轮播相关容器标签
+    .replace(/<\/?(div|track|slide|arrow|dots|dot|counter|intro|carousel-render)[^>]*>/gi,'')
+    // 清除残留的按钮、页码文本标记
+    .replace(/‹|›|\d+ \/ \d+/g,'')
     .replace(/\s+/g,' ');
 }
 
