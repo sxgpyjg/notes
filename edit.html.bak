@@ -250,11 +250,10 @@ body.keyboard-opened .edit-toolbar-wrap{position:fixed;bottom:var(--keyboard-hei
 </div>
 
 <script>
-//========== 全局变量（新增轮播队列变量） ==========
+//========== 全局变量 ==========
 const ADMIN_PASSWORD = "admin123";
 const CACHE_KEY = "note_temp_data";
 const RICH_RECORD_MAX = 30;
-// 默认标签颜色池
 const TAG_COLOR_PRESETS = ['#6366F1','#EC4899','#10B981','#F59E0B','#3B82F6','#EF4444','#8B5CF6','#14B8A6','#F97316','#84CC16'];
 let list = [], targetNote = null;
 const editId = new URLSearchParams(location.search).get("id");
@@ -308,7 +307,6 @@ function getTagColor(t){
   const idx=currentTags.findIndex(x=>x.toLowerCase()===k);
   return tagColorMap[k]=TAG_COLOR_PRESETS[idx%TAG_COLOR_PRESETS.length];
 }
-// 修复：移除黑色限制
 function setTagColor(t,c){ 
   const k=t.toLowerCase().trim(); 
   if(!c) return; 
@@ -327,14 +325,12 @@ function renderTagsChips(){
   Array.from(tagsInputWrap.querySelectorAll('.tag-chip')).forEach(n=>n.remove());
   currentTags.forEach((t,i)=>{
     const c=getTagColor(t);
-    // 如果颜色是黑色或深色，文字变白，背景变深灰
     let textColor = c;
-    let bgColor = c + '22'; // 22 is low opacity
+    let bgColor = c + '22';
     if(c === '#000000' || c === '#000'){
       textColor = '#fff';
       bgColor = '#333333';
     }
-    
     const chip=document.createElement('span');
     chip.className='tag-chip';
     chip.style.cssText=`background:${bgColor};border-left:3px solid ${c};color:${textColor};`;
@@ -440,7 +436,6 @@ function initLoadNote(){
   carouselImageQueue = [];
   clearTimeout(carouselCloseTimer);
   
-  // 处理新建笔记
   if(editId === 'new' || !editId){
     targetNote = {
       id: Date.now(),
@@ -457,7 +452,6 @@ function initLoadNote(){
     list.unshift(targetNote);
     console.log("新建笔记模式，ID:", targetNote.id);
   } else {
-    // 编辑现有笔记
     const t = list.find(i => i.id === Number(editId));
     if(!t) {
       alert("笔记不存在");
@@ -486,13 +480,13 @@ function initLoadNote(){
   calcWordCount();
 }
 
-// ========== 同步表单数据到目标笔记对象（修复缺失函数） ==========
+// ========== 同步表单数据到目标笔记对象（核心修复） ==========
 function syncFormToNoteList() {
   if (!targetNote) return;
   
   targetNote.title = titleInput.value;
   targetNote.tags = getCurrentTags();
-  targetNote.tagColors = { ...tagColorMap }; // 浅拷贝
+  targetNote.tagColors = { ...tagColorMap };
   targetNote.private = document.getElementById("privateCheck").checked;
   targetNote.carousel = isCarouselOn;
   
@@ -500,7 +494,7 @@ function syncFormToNoteList() {
   if (currentEditMode === 'rich') {
     targetNote.content = richBox.innerHTML;
   } else {
-    targetNote.content = mdToHtml(mdBox.value); // 确保存储的是HTML格式，方便富文本读取
+    targetNote.content = mdToHtml(mdBox.value);
   }
   
   targetNote.date = getNowTimeStr();
@@ -509,9 +503,7 @@ function syncFormToNoteList() {
 // ========== 轮播开关监听 ==========
 carouselCheck.addEventListener('change', function(){
   isCarouselOn = this.checked;
-  // 切换开关立刻清空等待队列，防止跨笔记合并
   if (carouselImageQueue.length > 0) {
-    // 如果有关闭动作，且队列里有东西，可能需要提示或直接丢弃，这里选择清空
     carouselImageQueue = [];
     clearTimeout(carouselCloseTimer);
   }
@@ -544,9 +536,8 @@ function switchMode(m){
   calcWordCount();
 }
 
-//========== 转换（重写双向解析，支持::slide轮播标记） ==========
+//========== 转换 ==========
 function mdToHtml(s){
-  // Markdown 轮播标记转为横向滚动容器
   s = s.replace(/::slide\n([\s\S]*?)\n::end/g, (match, inner) => {
     const imgHtml = inner.replace(/!\[(.*?)\]\((https?:\/\/[^\s)]+)\)/g,
       `<figure class="carousel-item"><img src="$2" alt="$1" loading="lazy"><figcaption>$1</figcaption></figure>`
@@ -575,7 +566,6 @@ function mdToHtml(s){
 }
 
 function htmlToMd(s){
-  // 富文本轮播容器还原为 Markdown ::slide 标记
   s = s.replace(/<div class="carousel-container">([\s\S]*?)<\/div>/g, (match, inner) => {
     const imgMd = inner.replace(/<figure class="carousel-item"><img loading="lazy" src="([^"]+)" alt="([^"]+)"[\s\S]*?<figcaption>([^<]+)<\/figcaption><\/figure>/g,
       '![$2]($1)\n'
@@ -618,7 +608,6 @@ function checkFormatActive(){
     el=el.parentNode; if(el===richBox)break;
   }
 }
-// selectionchange 是 document 事件，必须挂在 document 上
 document.addEventListener('selectionchange',checkFormatActive);
 
 function calcWordCount(){
@@ -649,15 +638,12 @@ function insertLink(){
     richBox.focus();
     const sel = window.getSelection();
     if(sel.rangeCount && !sel.isCollapsed) {
-      // 如果有选中文字，包裹成链接
       document.execCommand('createLink', false, 'https://example.com');
-      // 调整光标到最后
       const range = sel.getRangeAt(0);
       range.collapse(false);
       sel.removeAllRanges();
       sel.addRange(range);
     } else {
-      // 否则插入一个默认链接
       document.execCommand('insertHTML', false, '<a href="https://example.com" target="_blank">链接</a>');
     }
     calcWordCount();
@@ -700,31 +686,28 @@ function insertTable(){
     tableHtml += '<tr>';
     for (let c = 0; c < cols; c++) {
       const tag = r === 0 ? 'th' : 'td';
-      tableHtml += `<$${tag} style="border:1px solid #999;padding:4px 6px;">$${r===0?'标题':'内容'}</${tag}>`;
+      tableHtml += `<${tag} style="border:1px solid #999;padding:4px 6px;">${r===0?'标题':'内容'}</${tag}>`;
     }
     tableHtml += '</tr>';
   }
   tableHtml += '</table>';
   if(currentEditMode==='rich'){ richBox.focus(); document.execCommand('insertHTML',false,tableHtml); calcWordCount(); }
-  else{ mdBox.value+=`\n|$${' 标题 |'.repeat(cols).slice(0,-2)}\n|$${' --- |'.repeat(cols).slice(0,-2)}\n`; for(let r=1;r<rows;r++){mdBox.value+=`|${' 内容 |'.repeat(cols).slice(0,-2)}\n`;} saveMdRecord(); renderMdPreview(); calcWordCount(); }
+  else{ mdBox.value+=`\n|${' 标题 |'.repeat(cols).slice(0,-2)}\n|${' --- |'.repeat(cols).slice(0,-2)}\n`; for(let r=1;r<rows;r++){mdBox.value+=`|${' 内容 |'.repeat(cols).slice(0,-2)}\n`;} saveMdRecord(); renderMdPreview(); calcWordCount(); }
 }
 function splitLine1(){ const t='---\n'; if(currentEditMode==='rich'){ document.execCommand('insertText',false,t); calcWordCount(); } else { mdBox.value+=t; saveMdRecord(); renderMdPreview(); calcWordCount(); } }
 function clearAllNotesContent(){ if(!confirm('清空全部内容？'))return; richBox.innerHTML=''; mdBox.value=''; renderMdPreview(); richRecordStack=['']; richRecordIndex=0; mdRecordStack=['']; mdRecordIndex=0; calcWordCount(); }
 
-//========== 图片上传核心（优化版） ==========
+//========== 图片上传核心 ==========
 function insertImageToEditor(url, alt) {
   if (!url) return;
-  const mdImgLine = `![$${alt}]($${url})\n`;
+  const mdImgLine = `![${alt}](${url})\n`;
 
-  // 如果轮播开启
   if (isCarouselOn) {
     carouselImageQueue.push(mdImgLine);
     clearTimeout(carouselCloseTimer);
 
     carouselCloseTimer = setTimeout(() => {
-      // 再次检查轮播是否仍开启，防止用户中途关闭
       if (!isCarouselOn) {
-        // 如果已关闭，直接作为普通图片插入
         processNormalImageInsert(mdImgLine);
         return;
       }
@@ -734,7 +717,6 @@ function insertImageToEditor(url, alt) {
       if (currentEditMode === 'rich') {
         richBox.focus();
         document.execCommand('insertHTML', false, mdToHtml(slideBlock));
-        // 更新撤销栈
         richRecordStack.splice(richRecordIndex+1);
         richRecordStack.push(richBox.innerHTML);
         if(richRecordStack.length>RICH_RECORD_MAX) richRecordStack.shift();
@@ -754,11 +736,9 @@ function insertImageToEditor(url, alt) {
   }
 }
 
-// 辅助函数：处理普通图片插入
 function processNormalImageInsert(mdLine) {
   if (currentEditMode === 'rich') {
-    // 如果是Markdown格式的行，先转HTML再插入
-    const htmlImg = mdToHtml(mdLine).replace(/<br\s*\/?>/gi, ''); // 去除末尾可能的<br>
+    const htmlImg = mdToHtml(mdLine).replace(/<br\s*\/?>/gi, '');
     richBox.focus();
     document.execCommand('insertHTML', false, htmlImg + '<br>');
     richRecordStack.splice(richRecordIndex+1);
@@ -794,7 +774,7 @@ function handleFileUpload(files){
     }
     const userSetPath = prompt(`确认图片源路径：\n${safeName}`, realFilePath);
     const finalPath = (userSetPath&&userSetPath.trim()) ? userSetPath.trim() : realFilePath;
-    const copyCmd = `cp "$${finalPath}" ~/storage/shared/notes/images/"$${safeName}"`;
+    const copyCmd = `cp "${finalPath}" ~/storage/shared/notes/images/"${safeName}"`;
     imgUploadList.push({
       name:safeName,
       originalName,
@@ -808,7 +788,7 @@ function handleFileUpload(files){
 document.getElementById('localImgBtn').onclick=()=>imgFileInput.click();
 imgFileInput.onchange=function(e){ handleFileUpload(e.target.files); this.value=''; };
 
-//========== 网络图床弹窗（描述留空则alt为空，不再强制配图） ==========
+//========== 网络图床弹窗 ==========
 function openNetImageModal(){
   if(document.getElementById('netImgModal')) return;
 
@@ -867,31 +847,23 @@ document.getElementById('batchImgBtn').onclick = function(){
   if(!imgUploadList.length){ alert('暂无新增图片记录'); return; }
   let out = "# 待上传图片列表\n";
   imgUploadList.forEach((item,idx)=>{
-    out += `$${idx+1}. https://cdn.jsdelivr.net/gh/sxgpyjg/notes@main/images/$${item.name}\n`;
+    out += `${idx+1}. https://cdn.jsdelivr.net/gh/sxgpyjg/notes@main/images/${item.name}\n`;
   });
   navigator.clipboard.writeText(out).then(()=>alert('已复制全部图片链接'));
 };
 
-//========== 生成推送命令（完整修复，不会失效） ==========
+//========== 生成推送命令（修复版） ==========
 document.getElementById('showTemplateBtn').onclick = async function(){
+  // 1. 同步当前编辑内容
   syncFormToNoteList();
-
+  
+  // 2. 获取最新笔记列表
   const currentNotes = list.filter(i => i && i.id);
-  let sourceNotes = [];
-  if (window.NOTE_DATA && Array.isArray(window.NOTE_DATA)) {
-    sourceNotes = window.NOTE_DATA;
-  } else {
-    sourceNotes = currentNotes;
-  }
-
-  const mergedNotes = sourceNotes.map(sn => {
-    const updated = currentNotes.find(cn => cn.id === sn.id);
-    return updated || sn;
-  });
-
+  
+  // 3. 去重
   const uniqueNotes = [];
   const idSet = new Set();
-  mergedNotes.forEach(note=>{
+  currentNotes.forEach(note=>{
     if(!idSet.has(note.id)){
       idSet.add(note.id);
       uniqueNotes.push(note);
@@ -904,9 +876,9 @@ document.getElementById('showTemplateBtn').onclick = async function(){
   let shellBatch = 'cd ~/storage/shared/notes || exit 1\nmkdir -p images\n\n';
   imgUploadList.forEach((item, idx) => {
     const safeFileName = item.name.replace(/"/g, '\\"');
-    shellBatch += `# $${idx+1}. $${item.originalName}\n`;
-    shellBatch += `SRC=$$(find /storage/emulated/0 -name "$${safeFileName}" 2>/dev/null | head -n1)\n`;
-    shellBatch += `[ -n "$$SRC" ] && cp "$$SRC" images/"$${safeFileName}" || echo "未找到文件：$${safeFileName}"\n\n`;
+    shellBatch += `# ${idx+1}. ${item.originalName}\n`;
+    shellBatch += `SRC=$(find /storage/emulated/0 -name "${safeFileName}" 2>/dev/null | head -n1)\n`;
+    shellBatch += `[ -n "$SRC" ] && cp "$SRC" images/"${safeFileName}" || echo "未找到文件：${safeFileName}"\n\n`;
   });
 
   const finalJson = JSON.stringify(uniqueNotes, null, 2);
@@ -933,11 +905,11 @@ document.getElementById('showTemplateBtn').onclick = async function(){
 
     const fullScript = shellBatch + '\n' + '# 替换仓库data.js\n' + 'cat > data.js << \'ENDOFFILE\'\n' + jsContent + '\nENDOFFILE\n\n' + gitCmd;
     await navigator.clipboard.writeText(fullScript);
-    alert('已下载 data_temp.js，完整部署脚本已复制剪贴板');
+    alert(`已下载 data_temp.js，完整部署脚本已复制剪贴板 (${uniqueNotes.length} 条笔记)`);
   } else {
     const fullScript = shellBatch + '\n' + 'cat > data.js << \'ENDOFFILE\'\n' + jsContent + '\nENDOFFILE\n\n' + gitCmd;
     await navigator.clipboard.writeText(fullScript);
-    alert('完整推送部署脚本已复制到剪贴板');
+    alert(`完整推送部署脚本已复制到剪贴板 (${uniqueNotes.length} 条笔记)`);
   }
 };
 
@@ -957,13 +929,20 @@ document.getElementById('downloadDataBtn').onclick = function(){
   URL.revokeObjectURL(url);
 };
 
-// 一键复制data.js内容
+// 一键复制data.js内容（修复版：显示数量）
 document.getElementById('copyJsonBtn').onclick = async function(){
   syncFormToNoteList();
-  const finalJson = JSON.stringify(list, null, 2);
+  const validNotes = list.filter(n => n && n.id);
+  const finalJson = JSON.stringify(validNotes, null, 2);
   const jsContent = `window.NOTE_DATA = ${finalJson};\n`;
-  await navigator.clipboard.writeText(jsContent);
-  alert('data.js 全部内容已复制');
+  
+  try {
+    await navigator.clipboard.writeText(jsContent);
+    alert(`成功复制 ${validNotes.length} 条笔记数据到剪贴板！`);
+  } catch (err) {
+    console.error('复制失败:', err);
+    alert('复制失败，请检查浏览器权限。');
+  }
 };
 
 //========== 拖拽光标模式 ==========
@@ -1050,7 +1029,7 @@ document.getElementById('findNextBtn').onclick = function(){
   }
   if(!matchList.length) return alert('未匹配到内容');
   if(searchIndex >= matchList.length) searchIndex = 0;
-  alert(`第 $${searchIndex+1}/$${matchList.length} 处匹配`);
+  alert(`第 ${searchIndex+1}/${matchList.length} 处匹配`);
   searchIndex++;
 };
 
@@ -1119,7 +1098,7 @@ window.addEventListener("DOMContentLoaded", ()=>{
         }
       },200);
     } else {
-            document.documentElement.style.setProperty('--keyboard-height','0px');
+      document.documentElement.style.setProperty('--keyboard-height','0px');
     }
   }
   if(window.visualViewport) window.visualViewport.addEventListener('resize',viewportResizeHandler);
