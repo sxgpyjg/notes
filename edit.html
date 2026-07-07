@@ -1043,18 +1043,63 @@ document.getElementById('showTemplateBtn').onclick = async function(){
   gitCmd += '  echo "无变更内容，跳过推送"\n';
   gitCmd += 'fi\n';
 
+  // 【修复】下载方式 = 只下载 data.js + 脚本不内嵌 data.js
+  // 关闭下载方式 = 脚本内嵌 data.js 到 shell 一并复制
   if (useDownloadMode) {
+    // 1. 下载文件：命名 data.js（下一步会覆盖临时到 /sdcard）
     const blob = new Blob([jsContent], {type: 'application/javascript'});
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'data_temp.js';
+    a.download = 'data.js';  // ⬅️ 直接用仓库文件名
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    const fullScript = shellBatch + '\n' + '# 替换仓库data.js\n' + 'cat > data.js << \'ENDOFFILE\'\n' + jsContent + '\nENDOFFILE\n\n' + gitCmd;
+
+    // 2. 脚本：
+    //   - Termux 的下载路径在 ~/storage/downloads/，是 /sdcard/Download 的软链
+    //   - notes 仓库路径在 ~/storage/shared/notes/
+    //   - 两者不同！脚本必须先 cd 去下载路径 + cp 进仓库，再 push
+    //   - 走到所有 *.js 都没找到时提供手动粘贴路径的兜底
+    const fullScript =
+      '#!/bin/bash\n' +
+      '#==================== 部署脚本·手动复贴板 ====================\n' +
+      '# 注意：浏览器下载的 data.js 不在仓库目录，要先把它拷过来\n' +
+      '# 手机默认下载路径：/sdcard/Download/  或  ~/storage/downloads/\n\n' +
+      shellBatch +
+      '\n' +
+      '#==================== 把 data.js 拷贝到仓库根 ====================\n' +
+      'DATA_SRC=""\n' +
+      '# 按优先级猜测下载位置\n' +
+      'for CANDIDATE in \\\n' +
+      '  ~/storage/downloads/data.js \\\n' +
+      '  ~/storage/shared/Download/data.js \\\n' +
+      '  /storage/emulated/0/Download/data.js \\\n' +
+      '  ~/downloads/data.js \\\n' +
+      '  ./data.js; do\n' +
+      '  if [ -f "$CANDIDATE" ]; then\n' +
+      '    DATA_SRC="$CANDIDATE"\n' +
+      '    echo "✅ 找到下载文件: $DATA_SRC"\n' +
+      '    break\n' +
+      '  fi\n' +
+      'done\n\n' +
+      '# 没自动找到，让用户手动粘路径\n' +
+      'if [ -z "$DATA_SRC" ]; then\n' +
+      '  echo "⚠️ 没自动找到下载的 data.js"\n' +
+      '  read -p "请粘贴 data.js 的完整路径（或直接拖入文件到此处）: " DATA_SRC\n' +
+      '  if [ ! -f "$DATA_SRC" ]; then\n' +
+      '    echo "❌ 路径无效: $DATA_SRC"\n' +
+      '    exit 1\n' +
+      '  fi\n' +
+      'fi\n\n' +
+      '# 覆盖仓库的 data.js\n' +
+      'cp -f "$DATA_SRC" ./data.js\n' +
+      'echo "✅ data.js 已更新"\n\n' +
+      gitCmd;
+
     await navigator.clipboard.writeText(fullScript);
-    alert(`已下载 data_temp.js，完整部署脚本已复制剪贴板 (${uniqueNotes.length} 条笔记)`);
+    alert(`已下载 data.js 到 Download/，智能部署脚本已复制剪贴板 (${uniqueNotes.length} 条笔记)\n执行提示：脚本会去 ~/storage/downloads/、/sdcard/Download/ 多位置找 data.js`);
   } else {
+    // 关闭下载方式：data.js 内嵌到 shell 脚本里
     const fullScript = shellBatch + '\n' + 'cat > data.js << \'ENDOFFILE\'\n' + jsContent + '\nENDOFFILE\n\n' + gitCmd;
     await navigator.clipboard.writeText(fullScript);
     alert(`完整推送部署脚本已复制到剪贴板 (${uniqueNotes.length} 条笔记)`);
