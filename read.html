@@ -344,17 +344,22 @@ function mdToHtml(s){
   // 解析 ::slide + ::intro 轮播标记，转换成carousel-render结构
   s = s.replace(/::slide\n([\s\S]*?)\n::end/g, (_, inner) => {
     const items = [];
-    // 这里是唯一改动行，其余全部原样保留
+    // 以图片标签分割区块，清除空内容
     inner.trim().split(/(?=!\[.*?\]\()/).filter(Boolean).forEach(chunk => {
       const m = chunk.match(/!\[(.*?)\]\((https?:\/\/[^\s)]+)\)/);
       if (!m) return;
-      const introMatch = chunk.match(/::intro\s+(.+)/);
+
+      // 修复：匹配多行intro，直到下一张图片/轮播结束为止
+      const introMatch = chunk.match(/::intro\s+([\s\S]*?)(?=\n!\[|\n::end|$)/);
+      const intro = introMatch ? introMatch[1].trim() : '';
+
       items.push({
         alt: m[1] || '',
         url: m[2],
-        intro: introMatch ? introMatch[1].trim() : ''
+        intro: intro
       });
     });
+
     if (!items.length) return '';
     const slides = items.map(it =>
       `<div class="slide"><img src="${it.url}" alt="${escapeHtml(it.alt)}" loading="lazy">${it.intro ? `<div class="intro"><b>${escapeHtml(it.alt||'图')}</b>${escapeHtml(it.intro)}</div>` : ''}</div>`
@@ -368,7 +373,7 @@ function mdToHtml(s){
            `</div>`;
   });
 
-  // 常规Markdown转HTML
+  // 常规Markdown转HTML（这部分原样保留，未改动）
   let html=s.replace(/```([\s\S]*?)```/g,'<pre style="background:#f5f5f5;padding:8px;border-radius:6px;white-space:pre-wrap;"><code>$1</code></pre>');
   html=html.replace(/(^|\n)(\|.+\|\n)((?:\|[-:| ]+\|)(?:\n|$))+(\|.+\|)/g,(_,pre,hRow,sep,cRow)=>{
     const rows=(hRow+sep+cRow).split('\n').filter(r=>r.trim());
