@@ -1,7 +1,7 @@
 window.NOTE_DATA = [
   {
-    "id": 1783400477010,
-    "title": "轮播图",
+    "id": 1783400666359,
+    "title": "轮播",
     "type": "",
     "tags": [
       "minimak"
@@ -9,25 +9,10 @@ window.NOTE_DATA = [
     "tagColors": {
       "minimak": "#6366F1"
     },
-    "content": "<div class=\"carousel-render\" data-idx=\"0\"><div class=\"counter\">2 / 8</div><div class=\"track\" style=\"transform: translateX(-100%);\"><div class=\"slide\"><img src=\"https://origin.picgo.net/2026/07/04/bilibili_2026_0704_141325dd46ac601aec5025.png\" alt=\"配图\" loading=\"lazy\"></div><div class=\"slide\"><img src=\"https://origin.picgo.net/2026/07/04/bilibili_2026_0704_1414179aec630d8e014843.png\" alt=\"配图\" loading=\"lazy\"></div><div class=\"slide\"><img src=\"https://origin.picgo.net/2026/07/04/bilibili_2026_0704_1413481ab2b508b213a28d.png\" alt=\"配图\" loading=\"lazy\"></div><div class=\"slide\"><img src=\"https://origin.picgo.net/2026/07/04/bilibili_2026_0704_14190564fc132f109c2646.png\" alt=\"配图\" loading=\"lazy\"></div><div class=\"slide\"><img src=\"https://origin.picgo.net/2026/07/04/bilibili_2026_0704_141608800efb9e25aa73eb.png\" alt=\"配图\" loading=\"lazy\"></div><div class=\"slide\"><img src=\"https://origin.picgo.net/2026/07/04/bilibili_2026_0704_1420529fde5466b381191b.png\" alt=\"配图\" loading=\"lazy\"></div><div class=\"slide\"><img src=\"https://origin.picgo.net/2026/07/04/bilibili_2026_0704_142023add84ffa16d89750.png\" alt=\"配图\" loading=\"lazy\"></div><div class=\"slide\"><img src=\"https://origin.picgo.net/2026/06/27/Screenshot_2026_0625_123600bc27a5939876102a.png\" alt=\"配图\" loading=\"lazy\"></div></div><button class=\"arrow prev\" aria-label=\"上一张\">‹</button><button class=\"arrow next\" aria-label=\"下一张\">›</button><div class=\"dots\"><button class=\"dot\" data-idx=\"0\" aria-label=\"第1张\"></button><button class=\"dot active\" data-idx=\"1\" aria-label=\"第2张\"></button><button class=\"dot\" data-idx=\"2\" aria-label=\"第3张\"></button><button class=\"dot\" data-idx=\"3\" aria-label=\"第4张\"></button><button class=\"dot\" data-idx=\"4\" aria-label=\"第5张\"></button><button class=\"dot\" data-idx=\"5\" aria-label=\"第6张\"></button><button class=\"dot\" data-idx=\"6\" aria-label=\"第7张\"></button><button class=\"dot\" data-idx=\"7\" aria-label=\"第8张\"></button></div></div><br>",
-    "date": "2026-07-07 13:02:55",
+    "content": "<div class=\"carousel-render\" data-idx=\"0\"><div class=\"counter\">4 / 8</div><div class=\"track\" style=\"transform: translateX(-300%);\"><div class=\"slide\"><img src=\"https://origin.picgo.net/2026/07/04/bilibili_2026_0704_141325dd46ac601aec5025.png\" alt=\"配图\" loading=\"lazy\"></div><div class=\"slide\"><img src=\"https://origin.picgo.net/2026/07/04/bilibili_2026_0704_1414179aec630d8e014843.png\" alt=\"配图\" loading=\"lazy\"></div><div class=\"slide\"><img src=\"https://origin.picgo.net/2026/07/04/bilibili_2026_0704_1413481ab2b508b213a28d.png\" alt=\"配图\" loading=\"lazy\"></div><div class=\"slide\"><img src=\"https://origin.picgo.net/2026/07/04/bilibili_2026_0704_14190564fc132f109c2646.png\" alt=\"配图\" loading=\"lazy\"></div><div class=\"slide\"><img src=\"https://origin.picgo.net/2026/07/04/bilibili_2026_0704_141608800efb9e25aa73eb.png\" alt=\"配图\" loading=\"lazy\"></div><div class=\"slide\"><img src=\"https://origin.picgo.net/2026/07/04/bilibili_2026_0704_1420529fde5466b381191b.png\" alt=\"配图\" loading=\"lazy\"></div><div class=\"slide\"><img src=\"https://origin.picgo.net/2026/07/04/bilibili_2026_0704_142023add84ffa16d89750.png\" alt=\"配图\" loading=\"lazy\"></div><div class=\"slide\"><img src=\"https://origin.picgo.net/2026/06/27/Screenshot_2026_0625_123600bc27a5939876102a.png\" alt=\"配图\" loading=\"lazy\"></div></div><button class=\"arrow prev\" aria-label=\"上一张\">‹</button><button class=\"arrow next\" aria-label=\"下一张\">›</button><div class=\"dots\"><button class=\"dot\" data-idx=\"0\" aria-label=\"第1张\"></button><button class=\"dot\" data-idx=\"1\" aria-label=\"第2张\"></button><button class=\"dot\" data-idx=\"2\" aria-label=\"第3张\"></button><button class=\"dot active\" data-idx=\"3\" aria-label=\"第4张\"></button><button class=\"dot\" data-idx=\"4\" aria-label=\"第5张\"></button><button class=\"dot\" data-idx=\"5\" aria-label=\"第6张\"></button><button class=\"dot\" data-idx=\"6\" aria-label=\"第7张\"></button><button class=\"dot\" data-idx=\"7\" aria-label=\"第8张\"></button></div></div><br>",
+    "date": "2026-07-07 13:06:12",
     "private": false,
     "carousel": true
-  },
-  {
-    "id": 1783234231328,
-    "title": "图片",
-    "type": "zhangyaning",
-    "tags": [
-      "zhangyaning"
-    ],
-    "tagColors": {
-      "zhangyaning": "#000000"
-    },
-    "content": "<img src=\"https://origin.picgo.net/2026/06/19/IMG_20260516_16460214da5fa640597dfc.jpg\" alt=\"配图\" style=\"max-width:100%;margin:6px 0;display:block;\"><br><br>",
-    "date": "2026-07-05 16:20:03",
-    "private": false,
-    "_preview": "<br><br>"
   },
   {
     "id": 1782518114416,
@@ -119,13 +104,13 @@ window.NOTE_DATA = [
     "tagColors": {
       "编程": "#099080"
     },
-    "content": "<pre style=\"background: rgb(245, 245, 245); padding: 8px; border-radius: 6px;\"><span style=\"text-wrap-mode: wrap;\">[\n    [\n        {key: \"ESC\",   popup: {macro: \"CTRL f d\", display: \"tmux exit\"}},\n        {key: '~', popup: '-'},\n        {key: LEFT,  popup: HOME},\n        {key: DOWN,  popup: PGDN},\n        {key: KEYBOARD, popup: {macro: \"CTRL d\", display: \"exit\"}},\n        {macro: \"ALT j\", display: \"A-j\", popup: {macro: \"ALT g\", display: \"%g\"}},\n        {key: HOME,  display: \"🏠\" , popup: {macro: \"CTRL d b\", display: \" \"}},\n        {key: UP,    popup: PGUP},\n        {key: END,   popup: HOME},\n        {\n            key: \"bc\\n\",\n            display: \"bc\",\n            popup: {\n                macro: \"bash SPACE ~/git-toolkit.sh ENTER\",\n                display: \"运行git工具箱\"\n            }\n        }\n    ],\n    [\n        {key: ' -a', popup: ' -A'},\n        {key: '(', popup: '&lt;'},\n        {key: ')', popup: '&gt;'},\n        {key: dd, popup: \"cd ~/gitdemo/_posts\\n\", display: \" 📲\"},\n        {key: '[', popup: '{'},\n        {key: ']', popup: '}'},\n        {key: LEFT, \"popup\": {\"macro\": \"cd SPACE ~/storage/shared/notes\\n\", display: \"📂笔记目录\"}},\n        {key: ENTER, display: \"✌\" , popup: {macro: \"CTRL u\", display: \"撤销\"}},\n        {key: RIGHT, popup: \"&gt;&gt;\"},\n        {key: BKSP, display: \"🔙\" , popup: \"yjg \", display: \"📝\"}\n    ],\n    [\n        \"TAB\",\n        {key: CTRL, popup: {macro: \"CTRL o ENTER CTRL x ENTER\", display: \"✋\"}},\n        {key: ALT,  popup: \"&amp;\"},\n        {key: \"i\", popup: \"|\"},\n        {key: \"'\",  popup: '\"'},\n        {key: '/', popup: \"history  -c\\n\", display: \"🗑️\"},\n        {key: PGUP, display: \"⇞ⓥ\" , popup: {macro: \"CTRL y\", display: \"页首\"}},\n        {key: DOWN,  popup: PGDN},\n        {key: PGDN, display: \"ⓥ⇟\" , popup: {macro: \"CTRL v\", display: \"页尾\"}},\n        {key: DEL, display: \"🔍\", popup: {macro: \"CTRL w\", display: \"查找\"}}\n    ]\n]</span>\n</pre><div><br></div>",
-    "date": "2026-07-05 11:25:59",
+    "content": "<pre style=\"background: rgb(245, 245, 245); padding: 8px; border-radius: 6px;\"><code style=\"\"><span style=\"white-space: pre-wrap;\">[\n    [\n        {key: \"ESC\",   popup: {macro: \"CTRL f d\", display: \"tmux exit\"}},\n        {key: '~', popup: '-'},\n        {key: LEFT,  popup: HOME},\n        {key: DOWN,  popup: PGDN},\n        {key: KEYBOARD, popup: {macro: \"CTRL d\", display: \"exit\"}},\n        {macro: \"ALT j\", display: \"A-j\", popup: {macro: \"ALT g\", display: \"%g\"}},\n        {key: HOME,  display: \"🏠\" , popup: {macro: \"CTRL d b\", display: \" \"}},\n        {key: UP,    popup: PGUP},\n        {key: END,   popup: HOME},\n        {key: \"bc\\n\", popup: {macro: \"CTRL x ENTER\", display: \"bc执行\"}}\n    ],\n    [\n        {key: ' -a', popup: ' -A'},\n        {key: '(', popup: '&lt;'},\n        {key: ')', popup: '&gt;'},\n        {key: dd, popup: \"cd ~/gitdemo/_posts\\n\", display: \" 📲\"},\n        {key: '[', popup: '{'},\n        {key: ']', popup: '}'},\n        {key: LEFT,  popup: HOME},\n        {key: ENTER, display: \"✌\" , popup: {macro: \"CTRL u\", display: \"撤销\"}},\n        {key: RIGHT, popup: \"&gt;&gt;\"},\n        {key: BKSP, display: \"🔙\" , popup: \"yjg \", display: \"📝\"}\n    ],\n    [\n        \"TAB\",\n        {key: CTRL, popup: {macro: \"CTRL o ENTER CTRL x ENTER\", display: \"✋\"}},\n        {key: ALT,  popup: \"&amp;\"},\n        {key: \"i\", popup: \"|\"},\n        {key: \"'\",  popup: '\"'},\n        {key: '/', popup: \"history  -c\\n\", display: \"🗑️\"},\n        {key: PGUP, display: \"⇞ⓥ\" , popup: {macro: \"CTRL y\", display: \"页首\"}},\n        {key: DOWN,  popup: PGDN},\n        {key: PGDN, display: \"ⓥ⇟\" , popup: {macro: \"CTRL v\", display: \"页尾\"}},\n        {key: DEL, display: \"🔍\", popup: {macro: \"CTRL w\", display: \"查找\"}}\n    ]\n]\n\n</span></code></pre><br>",
+    "date": "2026-06-30 10:31:10",
     "private": false,
-    "_preview": "<pre style=\"background: rgb(245, 245, 245); padding: 8px; border-radius: 6px;\"><span style=\"text-wrap-mode: wrap;\">[ [ {key: \"ESC\", popup: {macro: \"CTRL f d\", display: \"tmux exit\"}}, {key: '~', popup: '-'}, {key: LEFT, popup: HOME}, {key: DOWN, popup: PGDN}, {key: KEYBOARD, popup: {macro: \"CTRL d\", display: \"exit\"}}, {macro: \"ALT j\", display: \"A-j\", popup: {macro: \"ALT g\", display: \"%g\"}}, {key: HOME, display: \"🏠\" , popup: {macro: \"CTRL d b\", display: \" \"}}, {key: UP, popup: PGUP}, {key: END, popup: HOME}, { key: \"bc\\n\", display: \"bc\", popup: { macro: \"bash SPACE ~/git-toolkit.sh ENTER\", display: \"运行git工具箱\" } } ], [ {key: ' -a', popup: ' -A'}, {key: '(', popup: '&lt;'}, {key: ')', popup: '&gt;'}, {key: dd, popup: \"cd ~/gitdemo/_posts\\n\", display: \" 📲\"}, {key: '[', popup: '{'}, {key: ']', popup: '}'}, {key: LEFT, \"popup\": {\"macro\": \"cd SPACE ~/storage/shared/notes\\n\", display: \"📂笔记目录\"}}, {key: ENTER, display: \"✌\" , popup: {macro: \"CTRL u\", display: \"撤销\"}}, {key: RIGHT, popup: \"&gt;&gt;\"}, {key: BKSP, display: \"🔙\" , popup: \"yjg \", display: \"📝\"} ], [ \"TAB\", {key: CTRL, popup: {macro: \"CTRL o ENTER CTRL x ENTER\", display: \"✋\"}}, {key: ALT, popup: \"&amp;\"}, {key: \"i\", popup: \"|\"}, {key: \"'\", popup: '\"'}, {key: '/', popup: \"history -c\\n\", display: \"🗑️\"}, {key: PGUP, display: \"⇞ⓥ\" , popup: {macro: \"CTRL y\", display: \"页首\"}}, {key: DOWN, popup: PGDN}, {key: PGDN, display: \"ⓥ⇟\" , popup: {macro: \"CTRL v\", display: \"页尾\"}}, {key: DEL, display: \"🔍\", popup: {macro: \"CTRL w\", display: \"查找\"}} ] ]</span> </pre><div><br></div>"
+    "_preview": "<pre style=\"background: rgb(245, 245, 245); padding: 8px; border-radius: 6px;\"><code style=\"\"><span style=\"white-space: pre-wrap;\">[ [ {key: \"ESC\", popup: {macro: \"CTRL f d\", display: \"tmux exit\"}}, {key: '~', popup: '-'}, {key: LEFT, popup: HOME}, {key: DOWN, popup: PGDN}, {key: KEYBOARD, popup: {macro: \"CTRL d\", display: \"exit\"}}, {macro: \"ALT j\", display: \"A-j\", popup: {macro: \"ALT g\", display: \"%g\"}}, {key: HOME, display: \"🏠\" , popup: {macro: \"CTRL d b\", display: \" \"}}, {key: UP, popup: PGUP}, {key: END, popup: HOME}, {key: \"bc\\n\", popup: {macro: \"CTRL x ENTER\", display: \"bc执行\"}} ], [ {key: ' -a', popup: ' -A'}, {key: '(', popup: '&lt;'}, {key: ')', popup: '&gt;'}, {key: dd, popup: \"cd ~/gitdemo/_posts\\n\", display: \" 📲\"}, {key: '[', popup: '{'}, {key: ']', popup: '}'}, {key: LEFT, popup: HOME}, {key: ENTER, display: \"✌\" , popup: {macro: \"CTRL u\", display: \"撤销\"}}, {key: RIGHT, popup: \"&gt;&gt;\"}, {key: BKSP, display: \"🔙\" , popup: \"yjg \", display: \"📝\"} ], [ \"TAB\", {key: CTRL, popup: {macro: \"CTRL o ENTER CTRL x ENTER\", display: \"✋\"}}, {key: ALT, popup: \"&amp;\"}, {key: \"i\", popup: \"|\"}, {key: \"'\", popup: '\"'}, {key: '/', popup: \"history -c\\n\", display: \"🗑️\"}, {key: PGUP, display: \"⇞ⓥ\" , popup: {macro: \"CTRL y\", display: \"页首\"}}, {key: DOWN, popup: PGDN}, {key: PGDN, display: \"ⓥ⇟\" , popup: {macro: \"CTRL v\", display: \"页尾\"}}, {key: DEL, display: \"🔍\", popup: {macro: \"CTRL w\", display: \"查找\"}} ] ] </span></code></pre><br>"
   },
   {
-    "id": 1783166738494,
+    "id": 1783167587261,
     "title": "表格",
     "type": "编程",
     "tags": [
@@ -134,22 +119,10 @@ window.NOTE_DATA = [
     "tagColors": {
       "编程": "#6366F1"
     },
-    "content": "<table><tbody><tr><th>标题</th><th>标题</th><th>标题</th><th>标题</th><th>标题</th></tr><tr><td>内容</td><td>内容</td><td>内容</td><td>内容</td><td>内容</td></tr><tr><td>内容</td><td>内容</td><td>内容</td><td>内容</td><td>内容</td></tr></tbody></table>",
-    "date": "2026-07-04 20:06:46",
-    "private": true,
-    "_preview": "<table><tbody><tr><th>标题</th><th>标题</th><th>标题</th><th>标题</th><th>标题</th></tr><tr><td>内容</td><td>内容</td><td>内容</td><td>内容</td><td>内容</td></tr><tr><td>内容</td><td>内容</td><td>内容</td><td>内容</td><td>内容</td></tr></tbody></table>"
-  },
-  {
-    "id": 1783172165160,
-    "title": "黑神话",
-    "type": "",
-    "tags": [],
-    "tagColors": {},
-    "content": "<img loading=\"lazy\" src=\"https://origin.picgo.net/2026/07/04/IMG_20250330_2048012608b9b36a72fed4.jpg\" alt=\"配图\"><img loading=\"lazy\" src=\"https://origin.picgo.net/2026/07/04/IMG_20250330_203503c3c4324285168508.jpg\" alt=\"配图\"><br>",
-    "date": "2026-07-04 21:36:05",
-    "private": true,
+    "content": "<div><br></div><div><table><tbody><tr><th>标题</th><th>标题</th><th>标题</th><th>标题</th></tr><tr><td>内容</td><td>内容</td><td>内容</td><td>内容</td></tr><tr><td>内容</td><td>内容</td><td>内容</td><td>内容</td></tr></tbody></table></div>",
+    "date": "2026-07-04 20:19:47",
+    "private": false,
     "_isTempNew": true,
-    "_preview": "<br>"
+    "_preview": "<div><br></div><div><table><tbody><tr><th>标题</th><th>标题</th><th>标题</th><th>标题</th></tr><tr><td>内容</td><td>内容</td><td>内容</td><td>内容</td></tr><tr><td>内容</td><td>内容</td><td>内容</td><td>内容</td></tr></tbody></table></div>"
   }
 ];
-
