@@ -8,7 +8,8 @@ window.NOTE_DATA = [
     "content": "<br><div class=\"carousel-container\"><figure class=\"carousel-item\"><img src=\"https://origin.picgo.net/2026/07/04/bilibili_2026_0704_141325dd46ac601aec5025.png\" alt=\"\" loading=\"lazy\"><figcaption></figcaption></figure><br><figure class=\"carousel-item\"><img src=\"https://origin.picgo.net/2026/07/04/bilibili_2026_0704_14190564fc132f109c2646.png\" alt=\"\" loading=\"lazy\"><figcaption></figcaption></figure><br><figure class=\"carousel-item\"><img src=\"https://origin.picgo.net/2026/07/04/bilibili_2026_0704_141608800efb9e25aa73eb.png\" alt=\"\" loading=\"lazy\"><figcaption></figcaption></figure><br><figure class=\"carousel-item\"><img src=\"https://origin.picgo.net/2026/07/04/bilibili_2026_0704_1420529fde5466b381191b.png\" alt=\"\" loading=\"lazy\"><figcaption></figcaption></figure><br><figure class=\"carousel-item\"><img src=\"https://origin.picgo.net/2026/07/04/bilibili_2026_0704_142023add84ffa16d89750.png\" alt=\"\" loading=\"lazy\"><figcaption></figcaption></figure></div><br><br>",
     "date": "2026-07-07 09:06:49",
     "private": true,
-    "carousel": true
+    "carousel": true,
+    "_preview": "<br><div class=\"carousel-container\"><figure class=\"carousel-item\"><figcaption></figcaption></figure><br><figure class=\"carousel-item\"><figcaption></figcaption></figure><br><figure class=\"carousel-item\"><figcaption></figcaption></figure><br><figure class=\"carousel-item\"><figcaption></figcaption></figure><br><figure class=\"carousel-item\"><figcaption></figcaption></figure></div><br><br>"
   },
   {
     "id": 1783383962256,
@@ -159,4 +160,4 @@ window.NOTE_DATA = [
     "_isTempNew": true,
     "_preview": "<br>"
   }
-];
+]
