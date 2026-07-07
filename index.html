@@ -11,6 +11,24 @@
   box-sizing: border-box;
   font-family: system-ui, -apple-system, sans-serif;
 }
+/* ===== 屏蔽列表卡片中轮播的导航元素 ===== */
+.card-preview .carousel-render .dots,
+.card-preview .carousel-render .dot,
+.card-preview .carousel-render .counter,
+.card-preview .carousel-render .arrow,
+.card-preview .carousel-render .intro,
+.card-preview .carousel-render span {
+  display: none !important;
+}
+
+/* 兜底：防止第三方轮播库残留 */
+.card-preview .slick-dots,
+.card-preview .carousel-indicators,
+.card-preview *[class*="dot"],
+.card-preview *[class*="pagination"] {
+  display: none !important;
+}
+
 body{
   background: #ffffff;
   padding: 0 4px;
@@ -630,13 +648,23 @@ function getFirstImgFromHtml(html){
 // 清理HTML标签，保留表格结构用于列表预览
 function getPureTextPreview(html){
   return String(html)
-    .replace(/<img[^>]*>/g,'')
-    // 清除所有轮播DOM容器标签
-    .replace(/<\/?(div|track|slide|arrow|dots|dot|counter|intro|carousel-render)[^>]*>/gi,'')
-    // 清理箭头、页码、实心圆点、空心圆点、间隔点全部符号
-    .replace(/‹|›|\d+ \/ \d+|●|○|•|◯|○|∘/g,'')
-    .replace(/\s+/g,' ');
+    // 1️⃣ 移除图片（列表里已有封面图）
+    .replace(/<img[^>]*>/g, '')
+
+    // 2️⃣ 只清理轮播专用 class，不碰语义标签
+    .replace(
+      /<\/?(track|dots|dot|counter|intro|carousel-render)[^>]*>/gi,
+      ''
+    )
+
+    // 3️⃣ 清理导航符号 & 页码
+    .replace(/‹|›|\d+\s*\/\s*\d+|●|○|•|◯|∘/g, '')
+
+    // 4️⃣ 压缩空格
+    .replace(/\s+/g, ' ')
+    .trim();
 }
+
 
 
 function renderNotes(){
