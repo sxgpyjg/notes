@@ -634,10 +634,10 @@ function getPureTextPreview(html){
   text = text.replace(/<div class="carousel-render"[\s\S]*?<\/div>/gi, '');
   // 移除图片
   text = text.replace(/<img[^>]*>/g,'');
-  // 清理各类特殊符号
-  text = text.replace(/‹|›|\d+ \/ \d+|●|○|•|◯|∘/g,'');
-  // 压缩空格
-  text = text.replace(/\s+/g,' ');
+  // 全量清理所有圆圈/圆点/无穷符号（覆盖你截图里所有样式）
+  text = text.replace(/‹|›|\d+ \/ \d+|●|○|•|◯|∘|∞|∞∞|◎|◦|⚪/g,'');
+  // 压缩多余空白、换行
+  text = text.replace(/\s+/g,' ').trim();
   return text;
 }
 
