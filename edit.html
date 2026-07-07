@@ -950,58 +950,213 @@ document.getElementById('localImgBtn').onclick=()=>imgFileInput.click();
 imgFileInput.onchange=function(e){ handleFileUpload(e.target.files); this.value=''; };
 
 //========== 网络图床弹窗（带 intro 输入） ==========
+//========== 网络图床弹窗（升级：支持批量 + 每张图独立描述） ==========
 function openNetImageModal(){
   if(document.getElementById('netImgModal')) return;
   const mask = document.createElement("div");
   mask.id = 'netImgModal';
   mask.className = 'net-img-mask';
+
   const box = document.createElement("div");
   box.className = 'net-img-box';
+  // 表格化输入：每行三列 URL / alt / intro（intro 仅轮播用）
+  // 动态点 "+" 增加行，× 删除行。启能轮播后顶部会出现提示
   box.innerHTML =
     '<h2>插入网络图片</h2>' +
-    '<input id="imgLinkInput" placeholder="图片链接（https开头）" autocomplete="off">' +
-    '<input id="imgDescInput" placeholder="图片备注 / alt（选填）" autocomplete="off">' +
-    '<input id="imgIntroInput" placeholder="介绍文案（仅轮播用，选填）" autocomplete="off">' +
+    '<div id="netImgList" style="display:flex;flex-direction:column;gap:6px;max-height:300px;overflow-y:auto;margin-bottom:12px;"></div>' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:12px;">' +
+      '<button id="netAddRowBtn" type="button" style="background:#eef2ff;border:1px solid #6366F1;color:#6366F1;border-radius:6px;padding:6px 12px;cursor:pointer;font-size:12px;">+ 添加一行</button>' +
+      '<span id="netCarouselHint" style="display:none;font-size:11px;color:#b45309;background:#fef3c7;padding:4px 8px;border-radius:6px;">⓵ 已开启轮播 · 插入后会进轮播队列</span>' +
+      '<span id="netReadClipboard" style="font-size:11px;color:#94a3b8;cursor:pointer;background:#f1f5f9;padding:4px 8px;border-radius:6px;" title="从剪贴板读多条 URL">📋 从剪贴板读</span>' +
+    '</div>' +
     '<div class="net-img-actions">' +
       '<button id="cancelNetImg">取消</button>' +
       '<button id="confirmNetImg">确定插入</button>' +
     '</div>';
   mask.appendChild(box);
   document.body.appendChild(mask);
-  const linkInput = document.getElementById('imgLinkInput');
-  const descInput = document.getElementById('imgDescInput');
-  const introInput = document.getElementById('imgIntroInput');
-  const cancelBtn = document.getElementById('cancelNetImg');
+
+  // 弹窗样式扩：同上类名不够用，补几个微调
+  const style = document.createElement('style');
+  style.textContent = `
+    .net-row { display:grid; grid-template-columns:1fr 90px 14px; gap:4px; align-items:center; }
+    .net-row input { border:none; border-bottom:1px solid #ddd; padding:5px 0; font-size:13px; outline:none; background:transparent; }
+    .net-row input:focus { border-bottom-color:#6366F1; }
+    .net-row .net-del { background:transparent; border:none; color:#dc2626; cursor:pointer; font-size:14px; }
+    #netImgList label { font-size:10px; color:#94a3b8; display:block; margin-bottom:1px; padding-left:2px; }
+  `;
+  document.head.appendChild(style);
+
+  const listWrap = document.getElementById('netImgList');
   const confirmBtn = document.getElementById('confirmNetImg');
+  const cancelBtn = document.getElementById('cancelNetImg');
+  const addRowBtn = document.getElementById('netAddRowBtn');
+  const carouselHint = document.getElementById('netCarouselHint');
+  const readClipboardBtn = document.getElementById('netReadClipboard');
+
+  // 提示：开启轮播时闪亮一下、提示用户可批量
+  carouselHint.style.display = isCarouselOn ? 'inline-block' : 'none';
+
+  function buildRow(prefill){
+    const row = document.createElement('div');
+    row.className = 'net-row';
+    row.style.gridTemplateColumns = '1fr 90px 14px';
+    row.innerHTML =
+      '<div><label>图片URL（https 开头）</label><input class="net-url" type="url" placeholder="https://..." autocomplete="off"></div>' +
+      '<div><label>描述 (alt)</label><input class="net-alt" type="text" placeholder="说明" autocomplete="off"></div>' +
+      '<button type="button" class="net-del" title="删除">×</button>';
+    if (prefill){
+      row.querySelector('.net-url').value = prefill.url || '';
+      row.querySelector('.net-alt').value = prefill.alt || '';
+    }
+    row.querySelector('.net-del').onclick = ()=>{
+      if (listWrap.children.length <= 1){ alert('至少保留 1 行'); return; }
+      row.remove();
+    };
+    // Enter 跳到下行 URL 输入框
+    const inputs = row.querySelectorAll('input');
+    inputs.forEach((inp, i) => {
+      inp.addEventListener('keydown', e=>{
+        if (e.key === 'Enter'){
+          e.preventDefault();
+          if (i === inputs.length - 1){
+            // 最后一列聚焦后点确认
+            confirmBtn.click();
+          } else {
+            inputs[i + 1].focus();
+          }
+        }
+      });
+    });
+    return row;
+  }
+
+  // 初始化 1 行
+  listWrap.appendChild(buildRow());
+
+  // + 添加一行
+  addRowBtn.onclick = ()=>{
+    listWrap.appendChild(buildRow());
+    const rows = listWrap.querySelectorAll('.net-row');
+    rows[rows.length - 1].querySelector('.net-url').focus();
+  };
+
+  // 从剪贴板读
+  readClipboardBtn.onclick = async ()=>{
+    try{
+      const txt = await navigator.clipboard.readText();
+      if (!txt) { alert('剪贴板为空'); return; }
+      const lines = txt.split(/\r?\n/).map(s=>s.trim()).filter(s=>s.startsWith('http'));
+      if (!lines.length){ alert('剪贴板里没找到 http:// 开头的 URL'); return; }
+      // 先清空第一行，再 append 其他行
+      listWrap.innerHTML = '';
+      lines.forEach(url => listWrap.appendChild(buildRow({url})));
+      alert(`从剪贴板读取到 ${lines.length} 条 URL`);
+    } catch(e){
+      alert('读取剪贴板失败：' + e.message + '\n请手动检查浏览器权限');
+    }
+  };
 
   function closeModal(){ mask.remove(); }
-  function confirmInsert(){
-    const url = linkInput.value.trim();
-    const alt = descInput.value.trim();
-    const intro = introInput.value.trim();
-    if(!url){ alert('请填写图片地址'); return; }
-    if(!/^https?:\/\//i.test(url)){ alert('链接必须以 http/https 开头'); linkInput.focus(); return; }
-    insertImageToEditor(url, alt, intro);
+
+  confirmBtn.onclick = ()=>{
+    const rows = Array.from(listWrap.querySelectorAll('.net-row'));
+    const items = [];
+    rows.forEach(row => {
+      const url = row.querySelector('.net-url').value.trim();
+      const alt = row.querySelector('.net-alt').value.trim();
+      if (url && /^https?:\/\//i.test(url)) items.push({url, alt});
+    });
+    if (!items.length){ alert('请至少填一条 https 链接'); return; }
+
+    // 开启轮播：插入队列，插入完手动 flush
+    // 未开启：原样插入
+    if (isCarouselOn){
+      items.forEach(it => insertImageToEditor(it.url, it.alt));
+      if (carouselImageQueue.length){
+        clearTimeout(carouselCloseTimer);
+        flushCarousel();
+      }
+    } else {
+      items.forEach(it => insertImageToEditor(it.url, it.alt));
+    }
     closeModal();
-  }
+  };
+
   cancelBtn.onclick = closeModal;
-  confirmBtn.onclick = confirmInsert;
-  mask.onclick = function(e){ if(e.target === mask) closeModal(); };
-  linkInput.addEventListener('keydown', e=>{ if(e.key === 'Enter') confirmInsert(); });
-  descInput.addEventListener('keydown', e=>{ if(e.key === 'Enter') introInput.focus(); });
-  introInput.addEventListener('keydown', e=>{ if(e.key === 'Enter') confirmInsert(); });
-  setTimeout(()=>linkInput.focus(), 80);
+  mask.onclick = e=>{ if (e.target === mask) closeModal(); };
+
+  // 默认焦第一行 URL
+  setTimeout(()=> listWrap.querySelector('.net-url')?.focus(), 80);
 }
 netImgBtn.onclick = openNetImageModal;
 
-//========== 批量导出图床链接 ==========
+//========== 批量图床链接（恢复原版功能 + 走轮播逻辑） ==========
+// 点按钮 → 弹 prompt → 用户粘 N 条 URL（每行一条）→ 按当前模式批量插入编辑器
+// 增强项：
+//   1. 走 insertImageToEditor：勾上轮播后，会走轮播队列（不是独立5个轮播）
+//   2. 优先从剪贴板读
+//   3. 检查余额进队列后，主动 flushCarousel 保证立刻合并
+function batchInsertImagesByUrls(urls){
+  if(!urls.length) return 0;
+  let count = 0;
+  if (isCarouselOn) {
+    // 轮播模式：走队列，批量走的同一波传完不会拆
+    urls.forEach(url => {
+      if (!url || !url.startsWith('http')) return;
+      insertImageToEditor(url, '配图');
+      count++;
+    });
+    // 避免用户以为没有反馈，立刻 flush
+    if (carouselImageQueue.length) {
+      clearTimeout(carouselCloseTimer);
+      flushCarousel();
+    }
+  } else {
+    // 普通模式：原版逻辑
+    urls.forEach(url => {
+      if (!url || !url.startsWith('http')) return;
+      if(currentEditMode==='rich'){
+        richBox.focus();
+        const html = `<img loading="lazy" src="${url}" alt="配图" style="max-width:100%;margin:6px 0;display:block;" onerror="this.src='';this.alt='图片加载失败';"><br>`;
+        document.execCommand('insertHTML', false, html);
+      } else {
+        mdBox.value += `![配图](${url})\n\n`;
+      }
+      count++;
+    });
+    if(currentEditMode==='md') { saveMdRecord(); renderMdPreview(); calcWordCount(); }
+    if(currentEditMode==='rich' && richRecordStack){
+      richRecordStack.splice(richRecordIndex+1);
+      richRecordStack.push(richBox.innerHTML);
+      if(richRecordStack.length>RICH_RECORD_MAX) richRecordStack.shift();
+      richRecordIndex=richRecordStack.length-1;
+      calcWordCount();
+    }
+  }
+  return count;
+}
+
 document.getElementById('batchImgBtn').onclick = function(){
-  if(!imgUploadList.length){ alert('暂无新增图片记录'); return; }
-  let out = "# 待上传图片列表\n";
-  imgUploadList.forEach((item,idx)=>{
-    out += `${idx+1}. https://cdn.jsdelivr.net/gh/sxgpyjg/notes@main/images/${item.name}\n`;
+  // 优先从 clipboard 读取
+  navigator.clipboard.readText().then(clipText => {
+    if(clipText && /^https?:\/\/[\w\W]*\.(\w{2,5})/.test(clipText) && /\r?\n/.test(clipText)){
+      const arr = clipText.split(/\r?\n/).map(u=>u.trim()).filter(u=>u.startsWith('http'));
+      const n = batchInsertImagesByUrls(arr);
+      if(n>0) return alert(`从剪贴板批量插入了 ${n} 张图${isCarouselOn?'（轮播模式）':''}`);
+    }
+    askAndInsert();
+  }).catch(()=>{
+    askAndInsert();
   });
-  navigator.clipboard.writeText(out).then(()=>alert('已复制全部图片链接'));
+
+  function askAndInsert(){
+    const urls = prompt("批量粘贴图床链接，一行一张：", "");
+    if(!urls) return;
+    const arr = urls.split(/\r?\n/).map(u=>u.trim()).filter(u=>u.startsWith('http'));
+    const n = batchInsertImagesByUrls(arr);
+    alert(`插入了 ${n} 张图片${isCarouselOn?'（轮播模式）':''}`);
+  }
 };
 
 //========== 生成推送命令（修复 const → let） ==========

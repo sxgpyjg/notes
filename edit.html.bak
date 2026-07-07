@@ -994,14 +994,57 @@ function openNetImageModal(){
 }
 netImgBtn.onclick = openNetImageModal;
 
-//========== 批量导出图床链接 ==========
-document.getElementById('batchImgBtn').onclick = function(){
-  if(!imgUploadList.length){ alert('暂无新增图片记录'); return; }
-  let out = "# 待上传图片列表\n";
-  imgUploadList.forEach((item,idx)=>{
-    out += `${idx+1}. https://cdn.jsdelivr.net/gh/sxgpyjg/notes@main/images/${item.name}\n`;
+//========== 批量图床链接（恢复原版功能 + 优化） ==========
+// 点按钮 → 弹 prompt → 用户粘 N 条 URL（每行一条）→ 按当前模式批量插入编辑器
+// 增强项：顺带捡出 imgUploadList 中刚刚本地上传又还没填写 alt 的图，一并插到开头（按时间倒序的不会重复）
+function batchInsertImagesByUrls(urls){
+  if(!urls.length) return 0;
+  let count = 0;
+  urls.forEach(url => {
+    if (!url || !url.startsWith('http')) return;
+    if(currentEditMode==='rich'){
+      richBox.focus();
+      const html = `<img loading="lazy" src="${url}" alt="配图" style="max-width:100%;margin:6px 0;display:block;" onerror="this.src='';this.alt='图片加载失败';"><br>`;
+      document.execCommand('insertHTML', false, html);
+    } else {
+      mdBox.value += `![配图](${url})\n\n`;
+    }
+    count++;
   });
-  navigator.clipboard.writeText(out).then(()=>alert('已复制全部图片链接'));
+  if(currentEditMode==='md') { saveMdRecord(); renderMdPreview(); calcWordCount(); }
+  if(currentEditMode==='rich' && richRecordStack){
+    richRecordStack.splice(richRecordIndex+1);
+    richRecordStack.push(richBox.innerHTML);
+    if(richRecordStack.length>RICH_RECORD_MAX) richRecordStack.shift();
+    richRecordIndex=richRecordStack.length-1;
+    calcWordCount();
+  }
+  return count;
+}
+
+document.getElementById('batchImgBtn').onclick = function(){
+  // 优先货声从 clipboard 读取，避免手动粘贴要双 Ctrl+C/V
+  navigator.clipboard.readText().then(clipText => {
+    if(clipText && /^https?:\/\/[\w\W]*\.(\w{2,5})/.test(clipText) && /\r?\n/.test(clipText)){
+      // 剪贴板看起来是多个 URL，直接用
+      const arr = clipText.split(/\r?\n/).map(u=>u.trim()).filter(u=>u.startsWith('http'));
+      const n = batchInsertImagesByUrls(arr);
+      if(n>0) return alert(`从剪贴板批量插入了 ${n} 张图`);
+    }
+    // 否则弹出 prompt
+    askAndInsert();
+  }).catch(()=>{
+    // 读不到剪贴板也不报错，提示下
+    askAndInsert();
+  });
+
+  function askAndInsert(){
+    const urls = prompt("批量粘贴图床链接，一行一张：", "");
+    if(!urls) return;
+    const arr = urls.split(/\r?\n/).map(u=>u.trim()).filter(u=>u.startsWith('http'));
+    const n = batchInsertImagesByUrls(arr);
+    alert(`插入了 ${n} 张图片`);
+  }
 };
 
 //========== 生成推送命令（修复 const → let） ==========
@@ -1043,18 +1086,63 @@ document.getElementById('showTemplateBtn').onclick = async function(){
   gitCmd += '  echo "无变更内容，跳过推送"\n';
   gitCmd += 'fi\n';
 
+  // 【修复】下载方式 = 只下载 data.js + 脚本不内嵌 data.js
+  // 关闭下载方式 = 脚本内嵌 data.js 到 shell 一并复制
   if (useDownloadMode) {
+    // 1. 下载文件：命名 data.js（下一步会覆盖临时到 /sdcard）
     const blob = new Blob([jsContent], {type: 'application/javascript'});
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'data_temp.js';
+    a.download = 'data.js';  // ⬅️ 直接用仓库文件名
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    const fullScript = shellBatch + '\n' + '# 替换仓库data.js\n' + 'cat > data.js << \'ENDOFFILE\'\n' + jsContent + '\nENDOFFILE\n\n' + gitCmd;
+
+    // 2. 脚本：
+    //   - Termux 的下载路径在 ~/storage/downloads/，是 /sdcard/Download 的软链
+    //   - notes 仓库路径在 ~/storage/shared/notes/
+    //   - 两者不同！脚本必须先 cd 去下载路径 + cp 进仓库，再 push
+    //   - 走到所有 *.js 都没找到时提供手动粘贴路径的兜底
+    const fullScript =
+      '#!/bin/bash\n' +
+      '#==================== 部署脚本·手动复贴板 ====================\n' +
+      '# 注意：浏览器下载的 data.js 不在仓库目录，要先把它拷过来\n' +
+      '# 手机默认下载路径：/sdcard/Download/  或  ~/storage/downloads/\n\n' +
+      shellBatch +
+      '\n' +
+      '#==================== 把 data.js 拷贝到仓库根 ====================\n' +
+      'DATA_SRC=""\n' +
+      '# 按优先级猜测下载位置\n' +
+      'for CANDIDATE in \\\n' +
+      '  ~/storage/downloads/data.js \\\n' +
+      '  ~/storage/shared/Download/data.js \\\n' +
+      '  /storage/emulated/0/Download/data.js \\\n' +
+      '  ~/downloads/data.js \\\n' +
+      '  ./data.js; do\n' +
+      '  if [ -f "$CANDIDATE" ]; then\n' +
+      '    DATA_SRC="$CANDIDATE"\n' +
+      '    echo "✅ 找到下载文件: $DATA_SRC"\n' +
+      '    break\n' +
+      '  fi\n' +
+      'done\n\n' +
+      '# 没自动找到，让用户手动粘路径\n' +
+      'if [ -z "$DATA_SRC" ]; then\n' +
+      '  echo "⚠️ 没自动找到下载的 data.js"\n' +
+      '  read -p "请粘贴 data.js 的完整路径（或直接拖入文件到此处）: " DATA_SRC\n' +
+      '  if [ ! -f "$DATA_SRC" ]; then\n' +
+      '    echo "❌ 路径无效: $DATA_SRC"\n' +
+      '    exit 1\n' +
+      '  fi\n' +
+      'fi\n\n' +
+      '# 覆盖仓库的 data.js\n' +
+      'cp -f "$DATA_SRC" ./data.js\n' +
+      'echo "✅ data.js 已更新"\n\n' +
+      gitCmd;
+
     await navigator.clipboard.writeText(fullScript);
-    alert(`已下载 data_temp.js，完整部署脚本已复制剪贴板 (${uniqueNotes.length} 条笔记)`);
+    alert(`已下载 data.js 到 Download/，智能部署脚本已复制剪贴板 (${uniqueNotes.length} 条笔记)\n执行提示：脚本会去 ~/storage/downloads/、/sdcard/Download/ 多位置找 data.js`);
   } else {
+    // 关闭下载方式：data.js 内嵌到 shell 脚本里
     const fullScript = shellBatch + '\n' + 'cat > data.js << \'ENDOFFILE\'\n' + jsContent + '\nENDOFFILE\n\n' + gitCmd;
     await navigator.clipboard.writeText(fullScript);
     alert(`完整推送部署脚本已复制到剪贴板 (${uniqueNotes.length} 条笔记)`);
