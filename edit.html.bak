@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
-<title>笔记编辑器（内联推送版）</title>
+<title>笔记编辑器（终极修复版）</title>
 <script src="./data.js?v=1"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:system-ui,-apple-system,sans-serif;}
@@ -125,7 +125,14 @@ body.keyboard-opened .edit-toolbar-wrap{position:fixed;bottom:var(--keyboard-hei
     <label class="switch"><input type="checkbox" id="privateCheck"><span class="slider"></span></label>
     <span class="switch-label private">设为私密</span>
   </div>
-  <span style="font-size:11px;color:#94a3b8;">（数据将直接内联至推送脚本）</span>
+  <div class="switch-wrap" style="margin-bottom:0;">
+    <label class="switch">
+      <input type="checkbox" id="useDownloadCheck">
+      <span class="slider"></span>
+    </label>
+    <span class="switch-label" style="font-size:13px;">下载方式</span>
+  </div>
+  <span style="font-size:11px;color:#94a3b8;">（仅管理员可见 | 关闭则内联data.js）</span>
 </div>
 
 <div class="mode-switch">
@@ -427,33 +434,6 @@ function initLoadNote(){
   calcWordCount();
 }
 
-//========== 同步表单 ==========
-function syncFormToNoteList(){
-  if(!targetNote) return;
-  const t=titleInput.value.trim();
-  const tags=getCurrentTags();
-  const finalType=tags.length?tags[0]:'';
-  const isPrivate=document.getElementById('privateCheck').checked;
-  const content=currentEditMode==='rich'?richBox.innerHTML.trim():mdToHtml(mdBox.value);
-  const now=getNowTimeStr();
-  const tagColors={}; tags.forEach(t=>{ const k=t.toLowerCase().trim(); if(tagColorMap[k]) tagColors[k]=tagColorMap[k]; });
-
-  if(targetNote){
-    const idx=list.findIndex(i=>i.id===targetNote.id);
-    if(idx>-1){
-      list[idx]={...list[idx],title:t,type:finalType,tags,tagColors,content,date:now,private:isPrivate};
-      delete list[idx]._isTempNew;
-    }
-  }else{
-    const newNote = {id:Date.now(),title:t,type:finalType,tags:tags,tagColors:tagColors,content:content,date:now,private:isPrivate,_isTempNew:true};
-    list.push(newNote);
-    targetNote = newNote;
-  }
-  saveLocalCache();
-  localStorage.setItem("notes",JSON.stringify(list));
-  window.NOTE_DATA=list;
-}
-
 //========== 模式切换 ==========
 function switchMode(m){
   currentEditMode=m;
@@ -610,13 +590,13 @@ function insertTable(){
     tableHtml += '<tr>';
     for (let c = 0; c < cols; c++) {
       const tag = r === 0 ? 'th' : 'td';
-      tableHtml += `<$${tag} style="border:1px solid #999;padding:4px 6px;">$${r===0?'标题':'内容'}</${tag}>`;
+      tableHtml += `<${tag} style="border:1px solid #999;padding:4px 6px;">${r===0?'标题':'内容'}</${tag}>`;
     }
     tableHtml += '</tr>';
   }
   tableHtml += '</table>';
   if(currentEditMode==='rich'){ richBox.focus(); document.execCommand('insertHTML',false,tableHtml); calcWordCount(); }
-  else{ mdBox.value+=`\n|$${' 标题 |'.repeat(cols).slice(0,-2)}\n|$${' --- |'.repeat(cols).slice(0,-2)}\n`; for(let r=1;r<rows;r++){mdBox.value+=`|${' 内容 |'.repeat(cols).slice(0,-2)}\n`;} saveMdRecord(); renderMdPreview(); calcWordCount(); }
+  else{ mdBox.value+=`\n|${' 标题 |'.repeat(cols).slice(0,-2)}\n|${' --- |'.repeat(cols).slice(0,-2)}\n`; for(let r=1;r<rows;r++){mdBox.value+=`|${' 内容 |'.repeat(cols).slice(0,-2)}\n`;} saveMdRecord(); renderMdPreview(); calcWordCount(); }
 }
 function splitLine1(){ const t='---\n'; if(currentEditMode==='rich'){ document.execCommand('insertText',false,t); calcWordCount(); } else { mdBox.value+=t; saveMdRecord(); renderMdPreview(); calcWordCount(); } }
 function clearAllNotesContent(){ if(!confirm('清空全部内容？'))return; richBox.innerHTML=''; mdBox.value=''; renderMdPreview(); richRecordStack=['']; richRecordIndex=0; mdRecordStack=['']; mdRecordIndex=0; calcWordCount(); }
@@ -693,12 +673,12 @@ function openNetImgModal(){
     if(currentEditMode === 'rich'){
       richBox.focus();
       // 修正插值语法，去掉多余$
-      const html = `<img loading="lazy" src="$${url}" alt="$${alt}" style="max-width:100%;margin:6px 0;display:block;" onerror="this.src='';this.alt='图片加载失败';"><br>`;
+      const html = `<img loading="lazy" src="${url}" alt="${alt}" style="max-width:100%;margin:6px 0;display:block;" onerror="this.src='';this.alt='图片加载失败';"><br>`;
       document.execCommand('insertHTML', false, html);
       calcWordCount();
     } else {
       // Markdown 修复插值，移除多余$
-      const mdText = `![$${alt}]($${url})\n\n`;
+      const mdText = `![${alt}](${url})\n\n`;
       const start = mdBox.selectionStart || 0;
       const end = mdBox.selectionEnd || 0;
       const before = mdBox.value.slice(0, start);
@@ -740,15 +720,26 @@ function openNetImgModal(){
 
 netImgBtn.onclick = openNetImgModal;
 
-//========== 生成推送命令（简化版：仅内联） ==========
+//========== 生成推送命令 ==========
 document.getElementById('showTemplateBtn').onclick = async function(){
   syncFormToNoteList();
 
   const currentNotes = list.filter(i => i && i.id);
-  
+  let sourceNotes = [];
+  if (window.NOTE_DATA && Array.isArray(window.NOTE_DATA)) {
+    sourceNotes = window.NOTE_DATA;
+  } else {
+    sourceNotes = currentNotes;
+  }
+
+  const mergedNotes = sourceNotes.map(sn => {
+    const updated = currentNotes.find(cn => cn.id === sn.id);
+    return updated || sn;
+  });
+
   const uniqueNotes = [];
   const seenIds = new Set();
-  currentNotes.forEach(note => {
+  mergedNotes.forEach(note => {
     if (note && !seenIds.has(note.id)) {
       seenIds.add(note.id);
       uniqueNotes.push(note);
@@ -756,16 +747,17 @@ document.getElementById('showTemplateBtn').onclick = async function(){
   });
 
   const now = getNowTimeStr();
-  
+  const useDownload = document.getElementById('useDownloadCheck').checked;
+
   let cmdBatch = 'cd ~/storage/shared/notes || exit 1\nmkdir -p images\n\n';
   imgUploadList.forEach((item, idx) => {
     const fileName = item.name.replace(/"/g, '\\"');
     cmdBatch += '# 图片 ' + (idx+1) + ': ' + fileName + '\n';
-    cmdBatch += 'SRC=$(find /storage/emulated/0/DCIM /storage/emulated/0/Download /storage/emulated/0/Pictures /storage/emulated/0/tencent -name "' + fileName + '" 2>/dev/null | head -1)\n';
+    cmdBatch += 'SRC=$' + '(find /storage/emulated/0/DCIM /storage/emulated/0/Download /storage/emulated/0/Pictures /storage/emulated/0/tencent -name "' + fileName + '" 2>/dev/null | head -1)\n';
     cmdBatch += 'if [ -n "$SRC" ]; then\n';
     cmdBatch += '  cp "$SRC" images/"' + fileName + '" && echo "已复制: ' + fileName + '"\n';
     cmdBatch += 'else\n';
-    cmdBatch += '  SRC=$(find /storage/emulated/0 -name "' + fileName + '" 2>/dev/null | head -1)\n';
+    cmdBatch += '  SRC=$' + '(find /storage/emulated/0 -name "' + fileName + '" 2>/dev/null | head -1)\n';
     cmdBatch += '  if [ -n "$SRC" ]; then\n';
     cmdBatch += '    cp "$SRC" images/"' + fileName + '" && echo "已复制(全盘): ' + fileName + '"\n';
     cmdBatch += '  else\n';
@@ -785,24 +777,57 @@ document.getElementById('showTemplateBtn').onclick = async function(){
   cmdGit += '  echo "无变化，跳过提交"\n';
   cmdGit += 'fi\n';
 
-  // 始终使用内联方式
-  let cmd = '# === 图片复制 + data.js 内联推送命令 (已格式化) ===\n';
-  cmd += cmdBatch;
-  cmd += 'rm -f data.js\n';
-  cmd += 'cat > data.js << \'ENDOFDATA\'\n';
-  cmd += jsContent;
-  cmd += 'ENDOFDATA\n\n';
-  cmd += cmdGit;
+  if (useDownload) {
+    const blob = new Blob([jsContent], {type: 'application/javascript'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'data_temp.js';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
 
-  await navigator.clipboard.writeText(cmd).catch(() => {
-    const t = document.createElement('textarea');
-    t.value = cmd;
-    document.body.appendChild(t);
-    t.select();
-    document.execCommand('copy');
-    document.body.removeChild(t);
-  });
-  alert('完整推送命令已复制（包含所有历史笔记，已格式化换行）。');
+    let cmd = '# === 图片复制 + 下载 data.js 推送命令 ===\n';
+    cmd += cmdBatch;
+    cmd += '# 复制 data_temp.js 到 data.js\n';
+    cmd += 'if [ -f /storage/emulated/0/Download/data_temp.js ]; then\n';
+    cmd += '  cp /storage/emulated/0/Download/data_temp.js data.js && echo "data.js 已更新"\n';
+    cmd += '  rm -f /storage/emulated/0/Download/data_temp.js\n';
+    cmd += 'else\n';
+    cmd += '  echo "未找到 data_temp.js，请手动复制"\n';
+    cmd += 'fi\n\n';
+    cmd += cmdGit;
+
+    await navigator.clipboard.writeText(cmd).catch(() => {
+      const t = document.createElement('textarea');
+      t.value = cmd;
+      document.body.appendChild(t);
+      t.select();
+      document.execCommand('copy');
+      document.body.removeChild(t);
+    });
+    alert('data_temp.js 已开始下载\n短命令已复制，请在下载完成后执行。');
+
+  } else {
+    let cmd = '# === 图片复制 + data.js 内联推送命令 (已格式化) ===\n';
+    cmd += cmdBatch;
+    cmd += 'rm -f data.js\n';
+    cmd += 'cat > data.js << \'ENDOFDATA\'\n';
+    cmd += jsContent;
+    cmd += 'ENDOFDATA\n\n';
+    cmd += cmdGit;
+
+    await navigator.clipboard.writeText(cmd).catch(() => {
+      const t = document.createElement('textarea');
+      t.value = cmd;
+      document.body.appendChild(t);
+      t.select();
+      document.execCommand('copy');
+      document.body.removeChild(t);
+    });
+    alert('完整推送命令已复制（包含所有历史笔记，已格式化换行）。');
+  }
 };
 
 // 批量图床链接
@@ -832,7 +857,6 @@ document.getElementById('downloadDataBtn').onclick = function(){
 
 //========== 一键复制 ==========
 document.getElementById('copyJsonBtn').onclick = async function(){
-  syncFormToNoteList();
   const valid = list.filter(i => i && i.id && i.content && i.content.trim());
   const json = "window.NOTE_DATA = " + JSON.stringify(valid, null, 2);
   await navigator.clipboard.writeText(json).catch(() => {
@@ -840,6 +864,32 @@ document.getElementById('copyJsonBtn').onclick = async function(){
   });
   alert(`复制完成，共 ${valid.length} 条`);
 };
+
+//========== 同步表单 ==========
+function syncFormToNoteList(){
+  const t=titleInput.value.trim();
+  const tags=getCurrentTags();
+  const finalType=tags.length?tags[0]:'';
+  const isPrivate=document.getElementById('privateCheck').checked;
+  const content=currentEditMode==='rich'?richBox.innerHTML.trim():mdToHtml(mdBox.value);
+  const now=getNowTimeStr();
+  const tagColors={}; tags.forEach(t=>{ const k=t.toLowerCase().trim(); if(tagColorMap[k]) tagColors[k]=tagColorMap[k]; });
+
+  if(targetNote){
+    const idx=list.findIndex(i=>i.id===targetNote.id);
+    if(idx>-1){
+      list[idx]={...list[idx],title:t,type:finalType,tags,tagColors,content,date:now,private:isPrivate};
+      delete list[idx]._isTempNew;
+    }
+  }else{
+    const newNote = {id:Date.now(),title:t,type:finalType,tags:tags,tagColors:tagColors,content:content,date:now,private:isPrivate,_isTempNew:true};
+    list.push(newNote);
+    targetNote = newNote;
+  }
+  saveLocalCache();
+  localStorage.setItem("notes",JSON.stringify(list));
+  window.NOTE_DATA=list;
+}
 
 //========== 查找替换 ==========
 const findReplaceBtn=document.getElementById('findReplaceBtn');
@@ -901,7 +951,7 @@ document.getElementById('findNextBtn').onclick=()=>{
   const reg=new RegExp(f,matchCase?'g':'gi'); matchList=[]; let m; while((m=reg.exec(text))!==null) matchList.push(m.index);
   if(!matchList.length)return alert('未找到');
   if(searchIndex>=matchList.length) searchIndex=0;
-  alert(`第 $${searchIndex+1}/$${matchList.length} 处`);
+  alert(`第 ${searchIndex+1}/${matchList.length} 处`);
   if(currentEditMode==='rich') selectRichText(matchList[searchIndex],f.length);
   searchIndex++;
 };
@@ -979,7 +1029,7 @@ function screenToEditorRange(x, y){
       const range = document.caretRangeFromPoint(x, y);
       if(range && range.startContainer){
         if(currentEditMode === 'rich' && !richBox.contains(range.startContainer)) return null;
-                if(currentEditMode === 'md' && range.startContainer !== mdBox) return null;
+        if(currentEditMode === 'md' && range.startContainer !== mdBox) return null;
         return range;
       }
     }catch(e){}
@@ -1165,3 +1215,4 @@ window.addEventListener("DOMContentLoaded",()=>{ renderMdPreview(); calcWordCoun
 </script>
 </body>
 </html>
+
