@@ -111,8 +111,8 @@ cursor: pointer;
 }
 .tag-note{background: #e8eaff;color:#3950cc;}
 .tag-doc{background:#e6f8ee;color:#148246;}
-.tag-custom{background:#fff0e6;color:#b8460c;}
 .tag-编程{background:#e1f5fe;color:#0277bd;}
+.tag-custom{background:#fff0e6;color:#b8460c;}
 .collapse-head-btn {
   width: 26px;height:26px;
   border-radius:50%;border:none;
@@ -238,134 +238,26 @@ cursor: pointer;
   -webkit-overflow-scrolling: touch;
 }
 
-/* 抖音式单页轮播样式（一屏只显示一张，滑动切页） */
-.slide-wrap {
-  width:100%;
-  overflow:hidden;
-  border-radius:10px;
-  position:relative;
-  margin:12px 0;
-  background:#f0f0f0;
-}
-.slide-box {
-  display:flex;
-  width: 100%;
-  transition:transform 0.3s cubic-bezier(0.25,0.46,0.45,0.94);
-  touch-action:pan-x;
-}
-.slide-item {
-  flex: 0 0 100%;
-  width:100%;
-  display:flex;
-  justify-content:center;
-  align-items:center;
-  padding:4px;
-}
-.slide-item img {
-  width:100%;
-  height:auto;
-  max-height:70vh;
-  object-fit:contain;
-  border-radius:8px;
-  loading:lazy;
-}
-/* 底部圆点指示器 */
-.slide-dot {
-  position:absolute;
-  bottom:10px;
-  left:50%;
-  transform: translateX(-50%);
-  display:flex;
-  gap:8px;
-  padding:4px 10px;
-  background:rgba(0,0,0,0.15);
-  border-radius:20px;
-}
-.dot {
-  width:8px;
-  height:8px;
-  border-radius:50%;
-  background:rgba(255,255,255,0.5);
-  transition: all 0.2s ease;
-}
-.dot.active {
-  background:#ffffff;
-  transform:scale(1.2);
-}
+/* ========== 和编辑器完全统一的轮播样式（核心保留） ========== */
+.carousel-render{position:relative;border-radius:12px;overflow:hidden;background:#0f172a;margin:12px 0;}
+.carousel-render .track{display:flex;width:100%;transition:transform .45s cubic-bezier(.22,.61,.36,1);will-change:transform;}
+.carousel-render .slide{flex:0 0 100%;min-width:100%;position:relative;background:#000;}
+.carousel-render .slide img{width:100%;height:auto;display:block;max-height:520px;object-fit:contain;background:#000;}
+.carousel-render .slide .intro{position:absolute;left:0;right:0;bottom:0;padding:16px 14px 18px;color:#fff;background:linear-gradient(to top,rgba(0,0,0,.75),transparent);font-size:14px;line-height:1.5;}
+.carousel-render .slide .intro b{font-size:15px;display:block;margin-bottom:2px;}
+.carousel-render .arrow{position:absolute;top:50%;transform:translateY(-50%);width:36px;height:36px;border-radius:50%;border:none;background:rgba(0,0,0,.45);color:#fff;font-size:22px;cursor:pointer;display:flex;align-items:center;justify-content:center;opacity:0;transition:opacity .25s;z-index:5;backdrop-filter:blur(6px);}
+.carousel-render:hover .arrow{opacity:1;}
+.carousel-render .arrow:hover{background:rgba(0,0,0,.7);}
+.carousel-render .arrow.prev{left:10px;}
+.carousel-render .arrow.next{right:10px;}
+.carousel-render .dots{position:absolute;left:0;right:0;bottom:8px;display:flex;justify-content:center;gap:6px;z-index:5;}
+.carousel-render .dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.5);cursor:pointer;transition:all .3s;border:none;padding:0;}
+.carousel-render .dot.active{width:22px;border-radius:3px;background:#fff;}
+.carousel-render .counter{position:absolute;top:10px;right:12px;background:rgba(0,0,0,.5);color:#fff;font-size:11px;padding:3px 9px;border-radius:99px;z-index:5;font-variant-numeric:tabular-nums;}
 
-/* ========== carousel-render 轮播专属样式（对接carousel-renderer.js） ========== */
-.carousel-render {
-  position: relative;
-  width: 100%;
-  overflow: hidden;
-  border-radius: 10px;
-  user-select: none;
-  margin: 12px 0;
-}
-.carousel-render .track {
-  display: flex;
-  width: 100%;
-  transition: transform 0.4s ease-out;
-}
-.carousel-render .slide {
-  flex: 0 0 100%;
-  width: 100%;
-}
-.carousel-render .slide img {
-  width: 100%;
-  display: block;
-  object-fit: contain;
-  border-radius: 8px;
-  loading: lazy;
-}
-.carousel-render .counter {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  background: rgba(0,0,0,0.55);
-  color: #fff;
-  padding: 3px 10px;
-  border-radius: 12px;
-  font-size: 12px;
-  z-index: 2;
-}
-.carousel-render .arrow {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 36px;
-  height: 36px;
-  border: none;
-  background: rgba(0,0,0,0.4);
-  color: #fff;
-  font-size: 20px;
-  cursor: pointer;
-  border-radius: 50%;
-  z-index: 2;
-}
-.carousel-render .arrow.prev { left: 10px; }
-.carousel-render .arrow.next { right: 10px; }
-.carousel-render .arrow:hover { background: rgba(0,0,0,0.7); }
-.carousel-render .dots {
-  position: absolute;
-  bottom: 12px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  gap: 6px;
-  z-index: 2;
-}
-.carousel-render .dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  border: none;
-  background: rgba(255,255,255,0.4);
-  padding: 0;
-  cursor: pointer;
-}
-.carousel-render .dot.active {
-  background: #ffffff;
+/* 删除旧slide-wrap废弃样式，不再使用 */
+.slide-wrap, .slide-box, .slide-item, .slide-dot, .dot {
+  display: none !important;
 }
 </style>
 </head>
@@ -385,9 +277,6 @@ cursor: pointer;
   </button>
 </header>
 <div class="content-wrap" id="readWrap"></div>
-
-<!-- 轮播脚本引入，确认路径正确 -->
-<script src="./notes/carousel-renderer.js"></script>
 
 <script>
 const dataList = window.NOTE_DATA || [];
@@ -446,21 +335,115 @@ function toggleCardHead(btn){
   btn.textContent = box.classList.contains('collapsed') ? "+" : "−";
 }
 
-// 解析 ::slide 标记，生成单页轮播结构
-function parseSlide(raw){
-  return raw.replace(/::slide\s*\n([\s\S]*?)\n\s*::end/g,(match,inner)=>{
-    const imgs = [];
-    const dots = [];
-    inner.replace(/!\[(.*?)\]\((https?:\/\/[^\s)]+)\)/g,(m,a,s)=>{
-      imgs.push(`<div class="slide-item"><img loading="lazy" src="${s}" alt="${a || '配图'}"></div>`);
-      dots.push(`<span class="dot"></span>`);
-    });
-    // 少于2张图，不生成轮播容器，保持单图展示
-    if(imgs.length < 2) return match;
-    dots[0] = `<span class="dot active"></span>`;
-    return `<div class="slide-wrap" data-total="${imgs.length}"><div class="slide-box">${imgs.join('')}</div><div class="slide-dot">${dots.join('')}</div></div>`;
-  });
+// ===================== 从编辑器完整复刻核心轮播解析函数（不要修改内部代码） =====================
+function escapeHtml(s){
+  return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
+
+function mdToHtml(s){
+  // 解析 ::slide + ::intro 轮播标记，转换成carousel-render结构
+  s = s.replace(/::slide\n([\s\S]*?)\n::end/g, (_, inner) => {
+    const items = [];
+    inner.split(/\n(?=!\[)/).forEach(chunk => {
+      const m = chunk.match(/!\[(.*?)\]\((https?:\/\/[^\s)]+)\)/);
+      if (!m) return;
+      const introMatch = chunk.match(/::intro\s+(.+)/);
+      items.push({
+        alt: m[1] || '',
+        url: m[2],
+        intro: introMatch ? introMatch[1].trim() : ''
+      });
+    });
+    if (!items.length) return '';
+    const slides = items.map(it =>
+      `<div class="slide"><img src="${it.url}" alt="${escapeHtml(it.alt)}" loading="lazy">${it.intro ? `<div class="intro"><b>${escapeHtml(it.alt||'图')}</b>${escapeHtml(it.intro)}</div>` : ''}</div>`
+    ).join('');
+    const dots = items.map((_, i) => `<button class="dot ${i===0?'active':''}" data-idx="${i}" aria-label="第${i+1}张"></button>`).join('');
+    return `<div class="carousel-render" data-idx="0">` +
+           `<div class="counter" style="display:${items.length>1?'block':'none'}">1 / ${items.length}</div>` +
+           `<div class="track">${slides}</div>` +
+           (items.length>1 ? `<button class="arrow prev" aria-label="上一张">‹</button><button class="arrow next" aria-label="下一张">›</button>` : '') +
+           (items.length>1 ? `<div class="dots">${dots}</div>` : '') +
+           `</div>`;
+  });
+
+  // 常规Markdown转HTML
+  let html=s.replace(/```([\s\S]*?)```/g,'<pre style="background:#f5f5f5;padding:8px;border-radius:6px;white-space:pre-wrap;"><code>$1</code></pre>');
+  html=html.replace(/(^|\n)(\|.+\|\n)((?:\|[-:| ]+\|)(?:\n|$))+(\|.+\|)/g,(_,pre,hRow,sep,cRow)=>{
+    const rows=(hRow+sep+cRow).split('\n').filter(r=>r.trim());
+    let table='<table style="width:100%;border-collapse:collapse;margin:6px 0;"><tr>';
+    rows[0].split('|').filter(s=>s.trim()).forEach(t=>table+=`<th style="border:1px solid #999;padding:4px 6px;">${t.trim()}</th>`);
+    table+='</tr>';
+    for(let i=1;i<rows.length;i++){
+      table+='<tr>';
+      rows[i].split('|').filter(s=>s.trim()).forEach(t=>table+=`<td style="border:1px solid #999;padding:4px 6px;">${t.trim()}</td>`);
+      table+='</tr>';
+    }
+    return pre+table+'</table>';
+  });
+  html=html.replace(/^### (.+)$/gm,'<h3>$1</h3>').replace(/^## (.+)$/gm,'<h2>$1</h2>').replace(/^# (.+)$/gm,'<h1>$1</h1>')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g,'<em>$1</em>')
+    .replace(/~~(.+?)~~/g,'<s>$1</s>').replace(/^\- (.+)$/gm,'<li>$1</li>')
+    .replace(/!\[(.*?)\]\((https?:\/\/[^\s)]+)\)/g,'<img src="$2" alt="$1" style="max-width:100%;margin:6px 0;display:block;">');
+  return html.replace(/\n/g,'<br>');
+}
+
+// 初始化单个轮播
+function initOneCarousel(el){
+  if (el.__inited) return;
+  el.__inited = true;
+  const track = el.querySelector('.track');
+  const slides = el.querySelectorAll('.slide');
+  const dots = el.querySelectorAll('.dot');
+  const prev = el.querySelector('.arrow.prev');
+  const next = el.querySelector('.arrow.next');
+  const counter = el.querySelector('.counter');
+  const total = slides.length;
+  if (total <= 1) return;
+
+  let idx = 0;
+  let autoplay = null;
+  const INTERVAL = 4500;
+
+  function show(i){
+    idx = (i + total) % total;
+    track.style.transform = `translateX(-${idx*100}%)`;
+    dots.forEach((d,j)=>d.classList.toggle('active', j===idx));
+    if (counter) counter.textContent = `${idx+1} / ${total}`;
+  }
+  function start(){ stop(); autoplay = setInterval(()=> show(idx+1), INTERVAL); }
+  function stop(){ if (autoplay){ clearInterval(autoplay); autoplay=null; } }
+
+  prev && (prev.onclick = ()=>{ show(idx-1); start(); });
+  next && (next.onclick = ()=>{ show(idx+1); start(); });
+  dots.forEach(d => d.onclick = ()=>{ show(+d.dataset.idx); start(); });
+  el.addEventListener('mouseenter', stop);
+  el.addEventListener('mouseleave', start);
+  el.addEventListener('click', e => {
+    if (e.target.closest('.arrow')||e.target.closest('.dot')) return;
+    show(idx+1); start();
+  });
+
+  // 移动端触摸左右滑动
+  let sx=0, dx=0, dragging=false;
+  el.addEventListener('touchstart', e=>{ sx=e.touches[0].clientX; dragging=true; stop(); }, {passive:true});
+  el.addEventListener('touchmove',  e=>{ if(!dragging) return; dx=e.touches[0].clientX - sx; }, {passive:true});
+  el.addEventListener('touchend',   ()=>{
+    if (!dragging) return;
+    dragging = false;
+    if (Math.abs(dx) > 50) show(idx + (dx<0?1:-1));
+    dx = 0;
+    start();
+  });
+
+  start();
+}
+
+// 批量初始化页面所有轮播
+function initAllCarousels(scope){
+  (scope||document).querySelectorAll('.carousel-render').forEach(el => initOneCarousel(el));
+}
+// ===================== 轮播代码结束 =====================
 
 /* ============ 代码块全屏(兼容手机+横屏) ============ */
 function createCodeToolbar(pre){
@@ -586,51 +569,6 @@ function injectCopyBtn(){
   document.querySelectorAll('.card-content pre').forEach(createCodeToolbar);
 }
 
-/* ============ 触摸滑动分页逻辑（和抖音完全一致） ============ */
-function initSlide(){
-  document.querySelectorAll('.slide-wrap').forEach(w=>{
-    const box = w.querySelector('.slide-box');
-    const dots = w.querySelectorAll('.dot');
-    const total = Number(w.dataset.total);
-    let cur = 0, startX=0, moveX=0, isDrag = false;
-
-    // 更新页面位移 + 激活圆点
-    function renderSlider(){
-      box.style.transform = `translateX(-${cur * 100}%)`;
-      dots.forEach((dot, idx)=> dot.classList.toggle('active', idx === cur));
-    }
-
-    // 触摸开始
-    w.addEventListener('touchstart', (e)=>{
-      isDrag = true;
-      startX = e.touches[0].clientX;
-      moveX = 0;
-    }, {passive:true});
-
-    // 拖动过程跟随偏移
-    w.addEventListener('touchmove', (e)=>{
-      if(!isDrag) return;
-      moveX = e.touches[0].clientX - startX;
-      // 边界阻尼，滑到首尾不会拉出容器
-      if( (cur === 0 && moveX > 0) || (cur === total-1 && moveX < 0) ) return;
-      box.style.transform = `translateX(calc(-${cur * 100}% + ${moveX}px))`;
-    }, {passive:true});
-
-    // 松手判断切换页面
-    w.addEventListener('touchend', ()=>{
-      if(!isDrag) return;
-      isDrag = false;
-      // 滑动超过60px判定翻页
-      if(moveX < -60) cur = Math.min(cur + 1, total - 1);
-      if(moveX > 60) cur = Math.max(cur - 1, 0);
-      renderSlider();
-    });
-
-    // 初始化渲染
-    renderSlider();
-  })
-}
-
 function getTagClassByName(name) {
   switch(name) {
     case 'note': return 'tag-note';
@@ -663,14 +601,13 @@ function render(){
     return `<span class="tag ${cls}" data-tag="${tag}" style="${getTagStyle(tag, item.tagColors)}">${tag}</span>`;
   }).join('');
 
-  // ========= 自动清洗旧轮播脏数据 =========
+  // 清理旧渲染残留样式
   let cleanContent = item.content
-  // 清除 track 上写死的 transform 位移样式
   .replace(/(<div class="track")\s+style="transform:[^"]*"/g, '$1')
-  // 清除所有 dot 标签里自带的 active 激活类
   .replace(/(<button class="dot)( active)/g, '$1');
 
-  const htmlStr = parseSlide(cleanContent);
+  // 关键：使用mdToHtml转换内容（解析::slide轮播标记）
+  const htmlStr = mdToHtml(cleanContent);
   wrap.innerHTML = `
     <div class="card-head">
       <div class="card-title">${item.title}</div>
@@ -683,15 +620,11 @@ function render(){
     <div class="card-content">${htmlStr}</div>
   `;
   injectCopyBtn();
-  initSlide();
 
-  // 清空旧初始化锁定标记，重新初始化轮播
-  document.querySelectorAll('.carousel-render').forEach(el => {
-    delete el.__inited;
-  });
-  if(window.NoteCarouselInit){
-    NoteCarouselInit();
-  }
+  // 初始化所有轮播组件
+  setTimeout(()=>{
+    initAllCarousels(document.body);
+  }, 120);
 }
 render();
 </script>
