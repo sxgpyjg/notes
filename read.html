@@ -614,6 +614,23 @@ function render(){
 
   // 关键：使用mdToHtml转换内容（解析::slide轮播标记）
   const htmlStr = mdToHtml(cleanContent);
+
+  // ========== 新增修复代码：自动给旧轮播补充intro容器（读取alt文案） ==========
+  htmlStr = htmlStr.replace(
+    /(<div class="slide">[\s\S]*?<img [^>]*alt="([^"]*)"[^>]*>)([\s\S]*?)(<\/div>)/g,
+    (match, start, altText, middle, end) => {
+      // 已经存在.intro的节点直接原样返回，不重复插入
+      if(match.includes('<div class="intro"')) return match;
+      if (!altText.trim()) return match;
+      return `${start}
+<div class="intro">
+  <b>${escapeHtml(altText)}</b>
+</div>
+${middle}${end}`;
+    }
+  );
+  // =======================================================================
+
   wrap.innerHTML = `
     <div class="card-head">
       <div class="card-title">${item.title}</div>
