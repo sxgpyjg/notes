@@ -149,7 +149,7 @@ h1#secretTrigger{
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  border: 1px solid #3950cc;  /* 添加边框 */
+  border: 1px solid #3950cc;
 }
 .tag-private {
   font-size: 10px;
@@ -174,7 +174,6 @@ h1#secretTrigger{
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
-/* 新增：预览内表格边框样式 */
 .card-preview table {
   border-collapse: collapse;
   width: 100%;
@@ -294,6 +293,59 @@ const filterHeader = document.getElementById('filterHeader');
 const filterBody = document.getElementById('filterBody');
 const filterArrow = document.getElementById('filterArrow');
 
+// ===================== 从编辑器原样复刻核心解析函数（和read.html完全统一） =====================
+function escapeHtml(s){
+  return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function mdToHtml(s){
+  // 解析 ::slide 轮播块
+  s = s.replace(/::slide\n([\s\S]*?)\n::end/g, (_, inner) => {
+    const items = [];
+    inner.split(/\n(?=!\[)/).forEach(chunk => {
+      const m = chunk.match(/!\[(.*?)\]\((https?:\/\/[^\s)]+)\)/);
+      if (!m) return;
+      const introMatch = chunk.match(/::intro\s+(.+)/);
+      items.push({
+        alt: m[1] || '',
+        url: m[2],
+        intro: introMatch ? introMatch[1].trim() : ''
+      });
+    });
+    if (!items.length) return '';
+    const slides = items.map(it =>
+      `<div class="slide"><img src="${it.url}" alt="${escapeHtml(it.alt)}" loading="lazy">${it.intro ? `<div class="intro"><b>${escapeHtml(it.alt||'图')}</b>${escapeHtml(it.intro)}</div>` : ''}</div>`
+    ).join('');
+    const dots = items.map((_, i) => `<button class="dot ${i===0?'active':''}" data-idx="${i}" aria-label="第${i+1}张"></button>`).join('');
+    return `<div class="carousel-render" data-idx="0">` +
+           `<div class="counter" style="display:${items.length>1?'block':'none'}">1 / ${items.length}</div>` +
+           `<div class="track">${slides}</div>` +
+           (items.length>1 ? `<button class="arrow prev" aria-label="上一张">‹</button><button class="arrow next" aria-label="下一张">›</button>` : '') +
+           (items.length>1 ? `<div class="dots">${dots}</div>` : '') +
+           `</div>`;
+  });
+
+  // 常规markdown转html
+  let html=s.replace(/```([\s\S]*?)```/g,'<pre style="background:#f5f5f5;padding:8px;border-radius:6px;white-space:pre-wrap;"><code>$1</code></pre>');
+  html=html.replace(/(^|\n)(\|.+\|\n)((?:\|[-:| ]+\|)(?:\n|$))+(\|.+\|)/g,(_,pre,hRow,sep,cRow)=>{
+    const rows=(hRow+sep+cRow).split('\n').filter(r=>r.trim());
+    let table='<table style="width:100%;border-collapse:collapse;margin:6px 0;"><tr>';
+    rows[0].split('|').filter(s=>s.trim()).forEach(t=>table+=`<th style="border:1px solid #999;padding:4px 6px;">${t.trim()}</th>`);
+    table+='</tr>';
+    for(let i=1;i<rows.length;i++){
+      table+='<tr>';
+      rows[i].split('|').filter(s=>s.trim()).forEach(t=>table+=`<td style="border:1px solid #999;padding:4px 6px;">${t.trim()}</td>`);
+      table+='</tr>';
+    }
+    return pre+table+'</table>';
+  });
+  html=html.replace(/^### (.+)$/gm,'<h3>$1</h3>').replace(/^## (.+)$/gm,'<h2>$1</h2>').replace(/^# (.+)$/gm,'<h1>$1</h1>')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)/g,'<em>$1</em>')
+    .replace(/~~(.+?)~~/g,'<s>$1</s>').replace(/^\- (.+)$/gm,'<li>$1</li>')
+    .replace(/!\[(.*?)\]\((https?:\/\/[^\s)]+)\)/g,'<img src="$2" alt="$1" style="max-width:100%;margin:6px 0;display:block;">');
+  return html.replace(/\n/g,'<br>');
+}
+
 /* ========== 工具 ========== */
 function isAdminLoggedIn(){
   const pwd = localStorage.getItem(PWD_STORE_KEY);
@@ -315,7 +367,7 @@ function openAdminPage(){
   const pwd = prompt('请输入管理员密码：');
   if(pwd === ADMIN_PWD){
     saveLoginState();
-    location.href = 'admin-list.html';
+    location.href = 'edit.html';
   }else if(pwd !== null){
     alert('密码错误');
   }
@@ -512,8 +564,10 @@ function loadNoteData(){
       if (!Array.isArray(item.tags) && item.type) {
         item.tags = [item.type];
       }
-      // 缓存预览文本，仅移除图片标签，保留表格结构
-      item._preview = getPureTextPreview(item.content);
+      // 先转译完整HTML，再提取首图+纯文本预览
+      const fullRenderHtml = mdToHtml(item.content);
+      item._renderHtml = fullRenderHtml;
+      item._preview = getPureTextPreview(fullRenderHtml);
     });
     localStorage.setItem(LOCAL_NOTE_KEY, JSON.stringify(dataList));
   }else{
@@ -525,7 +579,6 @@ function loadNoteData(){
     return;
   }
   renderFilter();
-  // 使用 requestAnimationFrame 延迟渲染，不阻塞主线程
   requestAnimationFrame(() => {
     renderNotes();
   });
@@ -545,7 +598,7 @@ function getTagStyle(tagName, colorMap) {
     const b = parseInt(color.slice(5,7), 16) / 255;
     const brightness = 0.299 * r + 0.587 * g + 0.114 * b;
     const textColor = brightness > 0.5 ? '#222' : '#fff';
-    return `background-color:${color};color:${textColor};border:1px solid ${color};`; // 添加边框
+    return `background-color:${color};color:${textColor};border:1px solid ${color};`;
   }
   return '';
 }
@@ -568,25 +621,18 @@ function filterByTag(tagVal){
   renderNotes();
 }
 
+// 从已经mdToHtml转译后的内容里提取第一张图片（兼容carousel-render轮播图）
 function getFirstImgFromHtml(html){
   const m = String(html).match(/<img[^>]+src=["']([^"']+)["']/);
   return m ? m[1] : '';
 }
 
-// 修改：仅移除图片标签，保留table/tr/td/th等结构标签，让边框样式生效
+// 清理HTML标签，保留表格结构用于列表预览
 function getPureTextPreview(html){
   return String(html)
     .replace(/<img[^>]*>/g,'')
+    .replace(/<\/?(div|section|article|track|slide|arrow|dots|dot|counter|intro)[^>]*>/gi,'')
     .replace(/\s+/g,' ');
-}
-
-function escapeHtml(s){
-  return String(s)
-    .replace(/&/g,'&amp;')
-    .replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;')
-    .replace(/"/g,'&quot;')
-    .replace(/'/g,'&#039;');
 }
 
 function renderNotes(){
@@ -599,12 +645,12 @@ function renderNotes(){
     wrap.innerHTML = '<div class="empty-tip">暂无笔记</div>';
     return;
   }
-  // 使用文档片段构建 DOM，减少重排
   const fragment = document.createDocumentFragment();
   list.forEach(item => {
-    const img = item.cover || getFirstImgFromHtml(item.content);
+    // 优先自定义封面，其次从解析后的HTML拿首图（轮播第一张也会被正常抓取）
+    const img = item.cover || getFirstImgFromHtml(item._renderHtml || '');
     const imgHtml = img ? `<div class="card-img-box"><img loading="lazy" src="${img}" alt=""></div>` : '';
-    const previewContent = item._preview; // 使用缓存
+    const previewContent = item._preview;
     const tagHtml = (item.tags || []).map(tag =>
       `<span class="tag-multi" data-tag="${escapeHtml(tag)}" style="${getTagStyle(tag, item.tagColors)}">${escapeHtml(tag)}</span>`
     ).join('');
@@ -628,7 +674,6 @@ function renderNotes(){
   });
   wrap.innerHTML = '';
   wrap.appendChild(fragment);
-  // 绑定长按事件
   document.querySelectorAll('.note-card').forEach(card=>{
     bindLongPress(
       card,
