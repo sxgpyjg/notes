@@ -1636,19 +1636,6 @@ if(aiMainBtn){
     adjustAiMenuPos();
   });
 }
-
-// ========== 就粘贴在这里 ==========
-if(aiMenu){
-  aiMenu.addEventListener('click',(e)=>{
-    e.stopPropagation(); // 点击菜单内部任何区域，都不会关闭面板
-    const item = e.target.closest('.ai-menu-item');
-    if(!item) return;
-    const type = item.getAttribute('onclick')?.match(/aiRun\('(\w+)'\)/)?.[1];
-    if(type) aiRun(type);
-  });
-}
-// ==================================
-
 // 全局点击空白关闭AI菜单（修复整合版）
 document.addEventListener('click', function(e){
   const btn = document.getElementById('aiMainBtn');
@@ -1903,6 +1890,7 @@ window.addEventListener("DOMContentLoaded", ()=>{
   document.addEventListener('touchend', dragEnd);
   document.addEventListener('touchcancel', dragEnd);
 
+})();
 
 // 暴露给阅读端
 window.NoteCarousel = { initAll: initAllCarousels, initOne: initOneCarousel };
