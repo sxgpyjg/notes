@@ -646,12 +646,7 @@ aiQuickToggle.addEventListener('click', function(e){
   }
 });
 
-// 重新打开AI面板时，自动折叠收起
-aiMainBtn.addEventListener('click', function(){
-  aiQuickOpen = false;
-  aiQuickWrap.style.maxHeight = '0px';
-  aiArrow.textContent = '▼';
-});
+
 
 // ========== 新增按钮绑定代码 ==========
 if (aiCancelConf) {
@@ -1639,23 +1634,30 @@ if(aiMainBtn){
     if(aiMenu) aiMenu.classList.toggle('show');
   });
 }
-// 点击内部不会关闭
+
+// ========== 就粘贴在这里 ==========
 if(aiMenu){
   aiMenu.addEventListener('click',(e)=>{
-    e.stopPropagation();
+    e.stopPropagation(); // 点击菜单内部任何区域，都不会关闭面板
     const item = e.target.closest('.ai-menu-item');
     if(!item) return;
     const type = item.getAttribute('onclick')?.match(/aiRun\('(\w+)'\)/)?.[1];
     if(type) aiRun(type);
   });
 }
-// 全局点击空白关闭AI菜单
+// ==================================
+
+// 全局点击空白关闭AI菜单（这里已经改好带折叠重置的版本）
 document.addEventListener('click', function(e){
   const btn = document.getElementById('aiMainBtn');
   const menu = document.getElementById('aiMenu');
   if(!btn || !menu) return;
   if(!btn.contains(e.target) && !menu.contains(e.target)){
     menu.classList.remove('show');
+    // 面板关闭时，重置快捷折叠栏
+    aiQuickOpen = false;
+    aiQuickWrap.style.maxHeight = '0px';
+    aiArrow.textContent = '▼';
   }
 });
 

@@ -317,9 +317,10 @@ body.keyboard-opened .edit-toolbar-wrap{position:fixed;bottom:var(--keyboard-hei
     </div>
     <div class="ai-divider"></div>
     <!-- 折叠开关按钮 -->
-    <div class="ai-menu-item" id="aiQuickToggle" style="background:#f7f8ff;opacity:0.8;">
-      📋 快捷工具 <span id="aiArrow">▼</span>
-    </div>
+    <div class="ai-menu-item" id="aiQuickToggle" style="background:#f7f8ff;opacity:0.8;display:flex;justify-content:space-between;align-items:center;">
+  📋 快捷工具 <span id="aiArrow">▼</span>
+</div>
+
     <!-- 可折叠容器 -->
     <div id="aiQuickWrap" style="max-height:0;overflow:hidden;transition:max-height 0.25s ease;">
       <div class="ai-menu-item" onclick="aiRun('polish')">✨ 润色优化</div>
