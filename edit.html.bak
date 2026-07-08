@@ -321,19 +321,18 @@ body.keyboard-opened .edit-toolbar-wrap{position:fixed;bottom:var(--keyboard-hei
   📋 快捷工具 <span id="aiArrow">▼</span>
 </div>
 
-        <!-- 可折叠容器 -->
+    <!-- 可折叠容器 -->
     <div id="aiQuickWrap" style="max-height:0;overflow:hidden;transition:max-height 0.25s ease;">
-      <div class="ai-menu-item" data-action="polish">✨ 润色优化</div>
-      <div class="ai-menu-item" data-action="expand">📝 扩写续写</div>
-      <div class="ai-menu-item" data-action="short">✂ 精简压缩</div>
-      <div class="ai-menu-item" data-action="translate">🌐 中英互译</div>
-      <div class="ai-menu-item" data-action="fix">🔧 纠错修正</div>
+      <div class="ai-menu-item" onclick="aiRun('polish')">✨ 润色优化</div>
+      <div class="ai-menu-item" onclick="aiRun('expand')">📝 扩写续写</div>
+      <div class="ai-menu-item" onclick="aiRun('short')">✂ 精简压缩</div>
+      <div class="ai-menu-item" onclick="aiRun('translate')">🌐 中英互译</div>
+      <div class="ai-menu-item" onclick="aiRun('fix')">🔧 纠错修正</div>
       <div class="ai-divider"></div>
-      <div class="ai-menu-item" data-action="title">📌 生成标题</div>
-      <div class="ai-menu-item" data-action="summary">📄 全文总结</div>
-      <div class="ai-menu-item" data-action="code">💻 代码优化</div>
+      <div class="ai-menu-item" onclick="aiRun('title')">📌 生成标题</div>
+      <div class="ai-menu-item" onclick="aiRun('summary')">📄 全文总结</div>
+      <div class="ai-menu-item" onclick="aiRun('code')">💻 代码优化</div>
     </div>
-
   </div>
 </div>
 
@@ -442,101 +441,212 @@ const carouselQueueCount = document.getElementById("carouselQueueCount");
 const AI_CONFIG_KEY = "note_ai_config";
 let aiConfig = JSON.parse(localStorage.getItem(AI_CONFIG_KEY) || '{"key":"","url":"https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions","model":"qwen-turbo"}');
 const aiMenu = document.getElementById('aiMenu');
-// ... 前面的代码保持不变 ...
-
-// ========== AI 菜单绑定与交互 ==========
 const aiMainBtn = document.getElementById('aiMainBtn');
-const aiMenu = document.getElementById('aiMenu');
+const aiSettingMask = document.getElementById('aiSettingMask');
+const aiApiKey = document.getElementById('aiApiKey');
+const aiBaseUrl = document.getElementById('aiBaseUrl');
+const aiModelName = document.getElementById('aiModelName');
+const aiSaveConf = document.getElementById('aiSaveConf');
+const aiCancelConf = document.getElementById('aiCancelConf');
+const aiLoadingToast = document.getElementById('aiLoadingToast');
+const aiChatInput = document.getElementById('aiChatInput');
+let aiAbortController = null;
+// 新增：对话上下文历史数组
+let aiChatHistory = [];
+// 系统固定人设
+const AI_SYSTEM_PROMPT = "你是专属笔记编辑助手，记住我们全程对话上下文，回答精简实用，输出内容可以直接粘贴进笔记，不要多余开场白和解释。";
+
+// AI指令预设Prompt（一次性任务，不存入对话历史）
+const aiPromptMap = {
+  polish: "优化下面这段文字，理顺语句、提升文笔，只返回优化后的原文，不要多余解释：",
+  expand: "基于下面内容合理扩写续写，保持原有文风，仅返回结果：",
+  short: "精简压缩文字，保留全部核心信息，篇幅减半，只输出文本：",
+  translate: "自动识别语种，做中英互译，排版清晰整洁：",
+  fix: "修正文本错别字、语病、标点问题，只返回修改完成内容：",
+  title: "根据全文生成3个适配笔记的标题，分行罗列：",
+  summary: "对全文做精简总结，提炼关键要点：",
+  code: "优化代码，修复漏洞、规范格式并添加注释，只输出代码本体："
+};
+
+// 打开AI设置弹窗
+function openAiSetting(){
+  aiApiKey.value = aiConfig.key;
+  aiBaseUrl.value = aiConfig.url;
+  aiModelName.value = aiConfig.model;
+  aiSettingMask.classList.add('show');
+}
+
+// 清空对话上下文记忆
+function clearAiHistory(){
+  aiChatHistory = [];
+  aiChatInput.value = "";
+  alert("已清除全部对话历史，开启新会话");
+}
+
+// 显示/隐藏加载提示
+function showAiLoading(){ aiLoadingToast.classList.add('show'); }
+function hideAiLoading(){ aiLoadingToast.classList.remove('show'); }
+
+// 获取选中内容 / 全文内容
+function getAiInputText(type){
+  const sel = window.getSelection().toString().trim();
+  if(type !== 'summary' && sel) return sel;
+  // 全文
+  if(currentEditMode === 'rich') return richBox.innerText;
+  return mdBox.value;
+}
+
+// 通用流式请求核心函数（区分一次性任务 / 连续对话）
+async function aiRequest(messages, isChatMode = false){
+// aiMenu.classList.remove('show');
+  if(!aiConfig.key) return alert("请先点击 ⚙ AI配置 填入API Key");
+
+  // 终止上一次请求
+  if(aiAbortController) aiAbortController.abort();
+  aiAbortController = new AbortController();
+  showAiLoading();
+
+  try{
+    const res = await fetch(aiConfig.url,{
+      method:"POST",
+      headers:{
+        "Content-Type":"application/json",
+        "Authorization":`Bearer ${aiConfig.key}`
+      },
+      body:JSON.stringify({
+        model: aiConfig.model,
+        stream: true,
+        messages: messages
+      }),
+      signal: aiAbortController.signal
+    });
+
+    if(!res.ok) throw new Error("接口请求失败，请检查Key、接口地址是否正确");
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let resultText = '';
+
+    // 定位光标插入位置
+    if(currentEditMode === 'rich'){
+      richBox.focus();
+      const sel = window.getSelection();
+      if(!sel.rangeCount || sel.isCollapsed){
+        const range = document.createRange();
+        range.selectNodeContents(richBox);
+        range.collapse(false);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+    }
+
+    // SSE流式逐字输出
+    while(true){
+      const {done,value} = await reader.read();
+      if(done) break;
+      const chunk = decoder.decode(value, {stream:true});
+      const lines = chunk.split('\n').filter(line=>line.startsWith('data: '));
+      for(const line of lines){
+        const jsonStr = line.replace('data: ','').trim();
+        if(jsonStr === '[DONE]') continue;
+        try{
+          const data = JSON.parse(jsonStr);
+          const delta = data.choices?.[0]?.delta?.content || '';
+          if(!delta) continue;
+          resultText += delta;
+          // 实时写入编辑器
+          if(currentEditMode === 'rich'){
+            document.execCommand('insertText', false, delta);
+          }else{
+            mdBox.value += delta;
+            mdBox.scrollTop = mdBox.scrollHeight;
+          }
+        }catch(e){}
+      }
+    }
+
+    // 对话模式：把问答存入历史，实现上下文记忆
+    if(isChatMode){
+      aiChatHistory.push({role:"assistant", content: resultText});
+    }
+
+    // 更新编辑器历史记录
+    if(currentEditMode === 'md'){
+      saveMdRecord();
+      renderMdPreview();
+    }else{
+      richRecordStack.splice(richRecordIndex+1);
+      richRecordStack.push(richBox.innerHTML);
+      if(richRecordStack.length>RICH_RECORD_MAX) richRecordStack.shift();
+      richRecordIndex=richRecordStack.length-1;
+    }
+    calcWordCount();
+    return resultText;
+  }catch(err){
+    if(err.name !== 'AbortError') alert("AI生成失败："+err.message);
+    return null;
+  }finally{
+    hideAiLoading();
+  }
+}
+
+// 原有一键功能入口（一次性任务，不保存对话历史）
+async function aiRun(type){
+  const prompt = aiPromptMap[type];
+  const content = getAiInputText(type);
+  if(!content) return alert("请先选中需要处理的文字");
+  const msgList = [
+    {role:"system",content:AI_SYSTEM_PROMPT},
+    {role:"user",content:`${prompt}\n${content}`}
+  ];
+  await aiRequest(msgList, false);
+}
+
+// 新增：自由连续对话发送函数
+async function sendAiChat(){
+  const userMsg = aiChatInput.value.trim();
+  if(!userMsg) return alert("请输入对话内容");
+  // 将用户提问加入历史
+  aiChatHistory.push({role:"user", content: userMsg});
+  // 拼接完整消息链：系统设定 + 全部历史对话
+  const fullMessages = [
+    {role:"system",content:AI_SYSTEM_PROMPT},
+    ...aiChatHistory
+  ];
+  await aiRequest(fullMessages, true);
+  // 清空输入框，准备下一轮提问
+  aiChatInput.value = "";
+  aiChatInput.focus();
+}
+
+// ========== AI对话输入框快捷键：回车发送，Shift+回车换行 ==========
+aiChatInput.addEventListener('keydown', function(e) {
+  if (e.isComposing) return;
+  if (e.key === 'Enter') {
+    if (e.shiftKey) return;
+    e.preventDefault();
+    sendAiChat();
+  }
+});
+
+// AI快捷工具折叠展开
 const aiQuickToggle = document.getElementById('aiQuickToggle');
 const aiQuickWrap = document.getElementById('aiQuickWrap');
 const aiArrow = document.getElementById('aiArrow');
+let aiQuickOpen = false;
 
-// 确保元素存在
-if (aiMainBtn && aiMenu) {
-  // 1. AI 按钮点击：切换菜单显示
-  aiMainBtn.addEventListener('click', (e) => {
-    e.stopPropagation(); // 阻止冒泡到 document
-    const isShow = aiMenu.classList.contains('show');
-    if (isShow) {
-      aiMenu.classList.remove('show');
-    } else {
-      aiMenu.classList.add('show');
-      // 调整位置
-      adjustAiMenuPos();
-    }
-  });
+aiQuickToggle.addEventListener('click', function(e){
+  e.stopPropagation();
+  aiQuickOpen = !aiQuickOpen;
+  if(aiQuickOpen){
+    aiQuickWrap.style.maxHeight = '400px';
+    aiArrow.textContent = '▲';
+  }else{
+    aiQuickWrap.style.maxHeight = '0px';
+    aiArrow.textContent = '▼';
+  }
+});
 
-  // 2. AI 菜单内部点击：处理菜单项和阻止冒泡
-  aiMenu.addEventListener('click', (e) => {
-    e.stopPropagation(); // 阻止冒泡到 document，避免点击菜单内部时关闭
 
-    // 处理快捷工具折叠
-    if (e.target === aiQuickToggle || aiQuickToggle.contains(e.target)) {
-      if (aiQuickToggle && aiQuickWrap && aiArrow) {
-        aiQuickOpen = !aiQuickOpen;
-        if (aiQuickOpen) {
-          aiQuickWrap.style.maxHeight = '400px';
-          aiArrow.textContent = '▲';
-        } else {
-          aiQuickWrap.style.maxHeight = '0px';
-          aiArrow.textContent = '▼';
-        }
-      }
-      return;
-    }
-
-    // 处理 AI 功能菜单项 (通过 data-action 属性识别)
-    const menuItem = e.target.closest('.ai-menu-item[data-action]');
-    if (menuItem) {
-      const action = menuItem.dataset.action;
-      if (action && aiRun) {
-        aiRun(action);
-      }
-      return;
-    }
-
-    // 处理发送对话和清空历史按钮
-    if (e.target.tagName === 'BUTTON') {
-      if (e.target.textContent.includes('发送对话')) {
-        sendAiChat();
-      } else if (e.target.textContent.includes('清空上下文')) {
-        clearAiHistory();
-      }
-      return;
-    }
-  });
-
-  // 3. 全局点击：关闭 AI 菜单
-  document.addEventListener('click', (e) => {
-    // 如果点击的是 AI 按钮或 AI 菜单内部，则不关闭
-    if (!aiMainBtn.contains(e.target) && !aiMenu.contains(e.target)) {
-      aiMenu.classList.remove('show');
-      // 可选：关闭时重置折叠状态
-      // aiQuickOpen = false;
-      // if(aiQuickWrap && aiArrow) {
-      //   aiQuickWrap.style.maxHeight = '0px';
-      //   aiArrow.textContent = '▼';
-      // }
-    }
-  });
-}
-
-// 快捷工具折叠逻辑 (如果上面没处理)
-if (aiQuickToggle && aiQuickWrap && aiArrow) {
-  aiQuickToggle.addEventListener('click', function(e){
-    e.stopPropagation();
-    aiQuickOpen = !aiQuickOpen;
-    if(aiQuickOpen){
-      aiQuickWrap.style.maxHeight = '400px';
-      aiArrow.textContent = '▲';
-    }else{
-      aiQuickWrap.style.maxHeight = '0px';
-      aiArrow.textContent = '▼';
-    }
-  });
-}
-
-// ... 后面的代码保持不变 ...
 
 // ========== 新增按钮绑定代码 ==========
 if (aiCancelConf) {
@@ -1544,7 +1654,27 @@ document.addEventListener('click', function(e){
   if(!btn || !menu) return;
   if(!btn.contains(e.target) && !menu.contains(e.target)){
     menu.classList.remove('show');
+    // 面板关闭时，重document.addEventListener('click', function(e){
+  const btn = document.getElementById('aiMainBtn');
+  const menu = document.getElementById('aiMenu');
+  const richEditor = document.getElementById('richEditor');
+  const mdEditor = document.getElementById('mdEditor');
+  if(!btn || !menu) return;
+
+  // 如果点击的是富文本编辑器或者markdown输入框，直接放行，不关闭AI面板
+  if(richEditor.contains(e.target) || mdEditor.contains(e.target)){
+    return;
+  }
+
+  if(!btn.contains(e.target) && !menu.contains(e.target)){
+    menu.classList.remove('show');
     // 面板关闭时，重置快捷折叠栏
+    aiQuickOpen = false;
+    aiQuickWrap.style.maxHeight = '0px';
+    aiArrow.textContent = '▼';
+  }
+});
+快捷折叠栏
     aiQuickOpen = false;
     aiQuickWrap.style.maxHeight = '0px';
     aiArrow.textContent = '▼';
