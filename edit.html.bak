@@ -365,7 +365,7 @@ body.keyboard-opened .edit-toolbar-wrap{position:fixed;bottom:var(--keyboard-hei
   </div>
 </div>
 
-<div classai-loading-toast" id="aiLoadingToast">AI正在生成内容...</div>
+<div class="ai-loading-toast" id="aiLoadingToast">AI正在生成内容...</div>
 
 
 <div class="find-replace-mask" id="findReplaceMask">
@@ -508,6 +508,8 @@ function getAiInputText(type){
 // 通用流式请求核心函数（区分一次性任务 / 连续对话）
 async function aiRequest(messages, isChatMode = false){
   if(!aiConfig.key) return alert("请先点击 ⚙ AI配置 填入API Key");
+  if(!aiMenu) aiMenu = document.getElementById('aiMenu'); // 确保获取
+  aiMenu.classList.remove('show'); // 此时 aiMenu 不为 null
 
   // 终止上一次请求
   if(aiAbortController) aiAbortController.abort();
@@ -1659,6 +1661,7 @@ const aiMenu = document.getElementById('aiMenu');
 
 // 统一AI面板位置自适应（键盘弹出向下展开）
 function adjustAiMenuPos() {
+if (!aiMenu) return;
   const nowHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
   const keyboardShow = viewportOriginHeight - nowHeight > 150;
   aiMenu.classList.toggle('keyboard-open', keyboardShow);
@@ -1666,6 +1669,7 @@ function adjustAiMenuPos() {
 
 // AI菜单开关核心函数
 function toggleAiMenu() {
+if (!aiMenu) return;
   const isShow = aiMenu.classList.contains('show');
   // 关闭时强制重置所有拖拽偏移、折叠状态
   aiMenu.style.position = '';
