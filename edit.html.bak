@@ -138,12 +138,20 @@ body.keyboard-opened .edit-toolbar-wrap{position:fixed;bottom:var(--keyboard-hei
   border:1px solid #e2e8f0;
   border-radius:8px;
   box-shadow:0 4px 12px rgba(0,0,0,0.1);
-  min-width:240px; /* 加宽，适配textarea */
+  min-width:240px;
   padding:10px;
   display:none;
   z-index:99999;
   pointer-events: auto !important;
+  max-height: 60vh;
+  overflow-y: auto;
 }
+/* 键盘唤起后，切换为向下弹出 */
+.ai-dropdown-menu.keyboard-open {
+  bottom: auto;
+  top: 100%;
+}
+
 .ai-dropdown-menu.show{
   display:block;
 }
@@ -198,7 +206,10 @@ body.keyboard-opened .edit-toolbar-wrap{position:fixed;bottom:var(--keyboard-hei
   outline:none;
   cursor: text;
   pointer-events: auto !important;
+  max-height: 120px;
+  overflow-y: auto;
 }
+
 
 </style>
 
@@ -1749,6 +1760,27 @@ window.addEventListener("DOMContentLoaded", ()=>{
   }
   if(window.visualViewport) window.visualViewport.addEventListener('resize',viewportResizeHandler);
   else window.addEventListener('resize',viewportResizeHandler);
+})();
+
+// 软键盘监听，自动切换AI下拉弹出方向
+(function(){
+  const aiMenu = document.getElementById('aiMenu');
+  const originHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+
+  function adjustAiMenuPos(){
+    const nowHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+    // 高度缩小超过150px，判定键盘弹出
+    const keyboardShow = originHeight - nowHeight > 150;
+    aiMenu.classList.toggle('keyboard-open', keyboardShow);
+  }
+
+  if(window.visualViewport){
+    window.visualViewport.addEventListener('resize', adjustAiMenuPos);
+  }else{
+    window.addEventListener('resize', adjustAiMenuPos);
+  }
+  // 点击AI按钮时同步检测位置
+  aiMainBtn.addEventListener('click', adjustAiMenuPos);
 })();
 
 // 暴露给阅读端

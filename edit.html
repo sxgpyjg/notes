@@ -485,7 +485,7 @@ function getAiInputText(type){
 }
 
 // 通用流式请求核心函数（区分一次性任务 / 连续对话）
-async function aiRequest(messages, isChatMode = false){
+// async function aiRequest(messages, isChatMode = false){
   aiMenu.classList.remove('show');
   if(!aiConfig.key) return alert("请先点击 ⚙ AI配置 填入API Key");
 
