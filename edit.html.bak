@@ -756,15 +756,22 @@ if(tagChipInput){
 function saveLocalCache() { localStorage.setItem(CACHE_KEY,JSON.stringify({list,targetId:targetNote?.id,imgUploadList,serial:globalImgSerial})); }
 function loadLocalCache() {
   let raw = null;
-  try { raw = localStorage.getItem("notes"); } catch(e) { console.warn("读取 localStorage 失败",e); }
+  try { raw = localStorage.getItem(CACHE_KEY); } catch(e) { console.warn("读取 localStorage 失败",e); }
   if (raw) {
     try {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
+      // 兼容旧key数据
+      if (parsed.list) {
+        list = parsed.list;
+        targetNote = parsed.targetId ? list.find(n=>n.id === Number(parsed.targetId)) : null;
+        imgUploadList = parsed.imgUploadList || [];
+        globalImgSerial = Number(parsed.serial || 0);
+        localStorage.setItem("img_serial", globalImgSerial);
+      } else if(Array.isArray(parsed)) {
         list = parsed;
-        list.forEach(item => { if (!Array.isArray(item.tags) && item.type) item.tags = [item.type]; });
-        console.log("✅ loadLocalCache: 从 localStorage 加载了",list.length,"条笔记");
-      } else { throw new Error("localStorage 数据为空或无效"); }
+      }
+      list.forEach(item => { if (!Array.isArray(item.tags) && item.type) item.tags = [item.type]; });
+      console.log("✅ loadLocalCache: 从 localStorage 加载缓存数据",list.length,"条笔记");
     } catch(e) { console.warn("回退到 window.NOTE_DATA",e); fallbackToWindowData(); }
   } else { console.warn("localStorage 无数据，回退到 window.NOTE_DATA"); fallbackToWindowData(); }
   if (!list || !Array.isArray(list)) { console.error("list 初始化失败，强制设为空数组"); list = []; }
@@ -1110,12 +1117,16 @@ richBox.addEventListener('input',()=>{
   checkFormatActive();
   if (mdRenderTimer) clearTimeout(mdRenderTimer);
   mdRenderTimer = setTimeout(()=>{ calcWordCount(); if(typeof initAllCarousels==='function') initAllCarousels(richBox); }, 250);
+  saveLocalCache(); // 新增这一行
 });
+
 mdBox.addEventListener('input',()=>{
   saveMdRecord();
   if (mdRenderTimer) clearTimeout(mdRenderTimer);
   mdRenderTimer = setTimeout(()=>{ renderMdPreview(); calcWordCount(); }, 250);
+  saveLocalCache(); // 新增这一行
 });
+
 
 function checkFormatActive(){
   document.querySelectorAll('.icon-btn').forEach(b=>b.classList.remove('active-format'));
@@ -1627,30 +1638,52 @@ document.getElementById('copyJsonBtn').onclick = async function(){
 };
 
 
-// AI 菜单绑定 + 点击空白关闭下拉面板
-if(aiMainBtn){
-  aiMainBtn.addEventListener('click',(e)=>{
-    e.stopPropagation();
-    if(aiMenu) aiMenu.classList.toggle('show');
-    // 打开面板时自动检测键盘，切换上下弹出方向
+// AI菜单开关 + 阻止冒泡冲突（核心修复）
+function toggleAiMenu() {
+  const isShow = aiMenu.classList.contains('show');
+  // 先统一重置拖拽位置和折叠状态
+  aiMenu.style.position = '';
+  aiMenu.style.left = '';
+  aiMenu.style.top = '';
+  aiQuickOpen = false;
+  aiQuickWrap.style.maxHeight = '0px';
+  aiArrow.textContent = '▼';
+
+  if (!isShow) {
+    aiMenu.classList.add('show');
     adjustAiMenuPos();
+  } else {
+    aiMenu.classList.remove('show');
+  }
+}
+
+if (aiMainBtn) {
+  aiMainBtn.addEventListener('click', (e) => {
+    e.stopPropagation(); // 阻断冒泡，不会被document监听立刻关闭
+    toggleAiMenu();
   });
 }
-// 全局点击空白关闭AI菜单（修复整合版）
-document.addEventListener('click', function(e){
-  const btn = document.getElementById('aiMainBtn');
-  const menu = document.getElementById('aiMenu');
-  if(!btn || !menu) return;
-  if(!btn.contains(e.target) && !menu.contains(e.target)){
-    menu.classList.remove('show');
-    // 1.重置快捷折叠栏
+
+// 菜单内部点击阻止冒泡，防止关闭
+if (aiMenu) {
+  aiMenu.addEventListener('click', (e) => {
+    e.stopPropagation();
+  });
+}
+
+// 空白处点击关闭菜单
+document.addEventListener('click', function (e) {
+  if (!aiMainBtn || !aiMenu) return;
+  // 点击不在按钮、菜单内部，才关闭
+  if (!aiMainBtn.contains(e.target) && !aiMenu.contains(e.target)) {
+    aiMenu.classList.remove('show');
+    // 重置所有状态
+    aiMenu.style.position = '';
+    aiMenu.style.left = '';
+    aiMenu.style.top = '';
     aiQuickOpen = false;
     aiQuickWrap.style.maxHeight = '0px';
     aiArrow.textContent = '▼';
-    // 2.关闭面板同时重置拖拽定位，完美替代之前多余的按钮监听
-    menu.style.position = '';
-    menu.style.left = '';
-    menu.style.top = '';
   }
 });
 

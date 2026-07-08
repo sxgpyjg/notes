@@ -1638,10 +1638,21 @@ document.getElementById('copyJsonBtn').onclick = async function(){
 };
 
 
-// AI菜单开关 + 阻止冒泡冲突（核心修复）
+// ===================== 整合修复：AI菜单开关 + 键盘监听 + 拖拽隔离 =====================
+let viewportOriginHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+const aiMenu = document.getElementById('aiMenu');
+
+// 统一AI面板位置自适应（键盘弹出向下展开）
+function adjustAiMenuPos() {
+  const nowHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+  const keyboardShow = viewportOriginHeight - nowHeight > 150;
+  aiMenu.classList.toggle('keyboard-open', keyboardShow);
+}
+
+// AI菜单开关核心函数
 function toggleAiMenu() {
   const isShow = aiMenu.classList.contains('show');
-  // 先统一重置拖拽位置和折叠状态
+  // 关闭时强制重置所有拖拽偏移、折叠状态
   aiMenu.style.position = '';
   aiMenu.style.left = '';
   aiMenu.style.top = '';
@@ -1657,27 +1668,30 @@ function toggleAiMenu() {
   }
 }
 
+// 按钮点击切换菜单
 if (aiMainBtn) {
   aiMainBtn.addEventListener('click', (e) => {
-    e.stopPropagation(); // 阻断冒泡，不会被document监听立刻关闭
+    e.stopPropagation();
     toggleAiMenu();
   });
 }
 
-// 菜单内部点击阻止冒泡，防止关闭
+// 菜单内部阻止冒泡，同时屏蔽内部元素触发拖拽
 if (aiMenu) {
-  aiMenu.addEventListener('click', (e) => {
-    e.stopPropagation();
+  aiMenu.addEventListener('click', e => e.stopPropagation());
+  // 给内部交互元素拦截拖拽触发
+  const innerElements = aiMenu.querySelectorAll('textarea, button, .ai-menu-item, #aiQuickToggle');
+  innerElements.forEach(el => {
+    el.addEventListener('mousedown', e => e.stopPropagation());
+    el.addEventListener('touchstart', e => e.stopPropagation());
   });
 }
 
-// 空白处点击关闭菜单
+// 空白区域点击关闭菜单
 document.addEventListener('click', function (e) {
   if (!aiMainBtn || !aiMenu) return;
-  // 点击不在按钮、菜单内部，才关闭
   if (!aiMainBtn.contains(e.target) && !aiMenu.contains(e.target)) {
     aiMenu.classList.remove('show');
-    // 重置所有状态
     aiMenu.style.position = '';
     aiMenu.style.left = '';
     aiMenu.style.top = '';
@@ -1686,6 +1700,89 @@ document.addEventListener('click', function (e) {
     aiArrow.textContent = '▼';
   }
 });
+
+// ========== AI面板拖拽（仅空白区域可拖动，按钮/输入框完全隔离拖拽） ==========
+(function(){
+  const dragBox = aiMenu;
+  let dragStartX, dragStartY, boxOriginLeft, boxOriginTop, isDragging = false;
+
+  function getPoint(e) {
+    return e.touches ? e.touches[0] : e;
+  }
+
+  function dragStart(e) {
+    // 内部控件已经拦截冒泡，只有空白区域才会执行拖拽
+    isDragging = true;
+    const point = getPoint(e);
+    dragStartX = point.clientX;
+    dragStartY = point.clientY;
+    const rect = dragBox.getBoundingClientRect();
+    boxOriginLeft = rect.left;
+    boxOriginTop = rect.top;
+
+    dragBox.style.position = 'fixed';
+    dragBox.style.bottom = 'auto';
+    dragBox.style.left = boxOriginLeft + 'px';
+    dragBox.style.top = boxOriginTop + 'px';
+  }
+
+  function dragMove(e) {
+    if(!isDragging) return;
+    e.preventDefault();
+    const point = getPoint(e);
+    const moveX = point.clientX - dragStartX;
+    const moveY = point.clientY - dragStartY;
+
+    const maxLeft = window.innerWidth - dragBox.offsetWidth;
+    const maxTop = window.innerHeight - dragBox.offsetHeight;
+    dragBox.style.left = Math.max(0, Math.min(maxLeft, boxOriginLeft + moveX)) + 'px';
+    dragBox.style.top = Math.max(0, Math.min(maxTop, boxOriginTop + moveY)) + 'px';
+  }
+
+  function dragEnd() {
+    isDragging = false;
+  }
+
+  dragBox.addEventListener('mousedown', dragStart);
+  dragBox.addEventListener('touchstart', dragStart, { passive:false });
+
+  document.addEventListener('mousemove', dragMove);
+  document.addEventListener('touchmove', dragMove, { passive:false });
+
+  document.addEventListener('mouseup', dragEnd);
+  document.addEventListener('touchend', dragEnd);
+  document.addEventListener('touchcancel', dragEnd);
+})();
+
+// ========== 全局视口监听（键盘高度 + AI位置自适应合并为一处） ==========
+(function(){
+  const keyboardOffset = -20;
+  function viewportResizeHandler(){
+    const currentH = window.visualViewport ? window.visualViewport.height : window.innerHeight;
+    const keyboardHeight = viewportOriginHeight - currentH;
+    const isKeyboardOpen = keyboardHeight > 100;
+
+    document.body.classList.toggle('keyboard-opened', isKeyboardOpen);
+    if(isKeyboardOpen){
+      document.documentElement.style.setProperty('--keyboard-height', (keyboardHeight + keyboardOffset) + 'px');
+      setTimeout(()=>{
+        const activeEl = document.activeElement;
+        if(activeEl&&(activeEl.id==='richEditor'||activeEl.id==='mdEditor')){
+          activeEl.scrollIntoView({behavior:'smooth',block:'end'});
+        }
+      },200);
+    } else {
+      document.documentElement.style.setProperty('--keyboard-height','0px');
+    }
+    adjustAiMenuPos();
+  }
+
+  if(window.visualViewport){
+    window.visualViewport.addEventListener('resize', viewportResizeHandler);
+  }else{
+    window.addEventListener('resize', viewportResizeHandler);
+  }
+})();
 
 //========== 拖拽光标模式 ==========
 const dragToggleBtn = document.getElementById('dragModeToggle');
@@ -1812,121 +1909,9 @@ window.addEventListener("DOMContentLoaded", ()=>{
   calcWordCount();
 });
 
-//========== 移动端键盘高度适配 ==========
-(function(){
-  let initViewportHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-  const keyboardOffset = -20;
-  function viewportResizeHandler(){
-    const currentH = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-    const keyboardHeight = initViewportHeight - currentH;
-    const isKeyboardOpen = keyboardHeight > 100;
-    document.body.classList.toggle('keyboard-opened', isKeyboardOpen);
-    if(isKeyboardOpen){
-      document.documentElement.style.setProperty('--keyboard-height', (keyboardHeight + keyboardOffset) + 'px');
-      setTimeout(()=>{
-        const activeEl = document.activeElement;
-        if(activeEl&&(activeEl.id==='richEditor'||activeEl.id==='mdEditor')){
-          activeEl.scrollIntoView({behavior:'smooth',block:'end'});
-        }
-      },200);
-    } else {
-      document.documentElement.style.setProperty('--keyboard-height','0px');
-    }
-  }
-  if(window.visualViewport) window.visualViewport.addEventListener('resize',viewportResizeHandler);
-  else window.addEventListener('resize',viewportResizeHandler);
-})();
-
-// 软键盘监听，自动切换AI下拉弹出方向
-(function(){
-  const aiMenu = document.getElementById('aiMenu');
-  const originHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-
-  function adjustAiMenuPos(){
-    const nowHeight = window.visualViewport ? window.visualViewport.height : window.innerHeight;
-    // 高度缩小超过150px，判定键盘弹出
-    const keyboardShow = originHeight - nowHeight > 150;
-    aiMenu.classList.toggle('keyboard-open', keyboardShow);
-  }
-
-  if(window.visualViewport){
-    window.visualViewport.addEventListener('resize', adjustAiMenuPos);
-  }else{
-    window.addEventListener('resize', adjustAiMenuPos);
-  }
-
-})();
-
-// ========== AI面板拖拽（手机触屏 + 电脑鼠标双适配） ==========
-(function(){
-  const dragBox = document.getElementById('aiMenu');
-  let dragStartX, dragStartY, boxOriginLeft, boxOriginTop, isDragging = false;
-
-  // 统一获取触点坐标（兼容touch和mouse）
-  function getPoint(e) {
-    return e.touches ? e.touches[0] : e;
-  }
-
-  // 开始拖拽
-  function dragStart(e) {
-    // 点击输入框、按钮不触发拖拽
-    const target = e.target;
-    if(target.tagName === 'TEXTAREA' || target.tagName === 'BUTTON') return;
-
-    isDragging = true;
-    const point = getPoint(e);
-    dragStartX = point.clientX;
-    dragStartY = point.clientY;
-
-    const rect = dragBox.getBoundingClientRect();
-    boxOriginLeft = rect.left;
-    boxOriginTop = rect.top;
-
-    // 改成固定悬浮
-    dragBox.style.position = 'fixed';
-    dragBox.style.bottom = 'auto';
-    dragBox.style.left = boxOriginLeft + 'px';
-    dragBox.style.top = boxOriginTop + 'px';
-  }
-
-  // 拖动移动
-  function dragMove(e) {
-    if(!isDragging) return;
-    e.preventDefault(); // 阻止页面滚动
-    const point = getPoint(e);
-    const moveX = point.clientX - dragStartX;
-    const moveY = point.clientY - dragStartY;
-
-    // 限制不拖出屏幕外
-    const maxLeft = window.innerWidth - dragBox.offsetWidth;
-    const maxTop = window.innerHeight - dragBox.offsetHeight;
-    const newLeft = Math.max(0, Math.min(maxLeft, boxOriginLeft + moveX));
-    const newTop = Math.max(0, Math.min(maxTop, boxOriginTop + moveY));
-
-    dragBox.style.left = newLeft + 'px';
-    dragBox.style.top = newTop + 'px';
-  }
-
-  // 结束拖拽
-  function dragEnd() {
-    isDragging = false;
-  }
-
-  // 同时绑定鼠标 + 触摸事件
-  dragBox.addEventListener('mousedown', dragStart);
-  dragBox.addEventListener('touchstart', dragStart, { passive:false });
-
-  document.addEventListener('mousemove', dragMove);
-  document.addEventListener('touchmove', dragMove, { passive:false });
-
-  document.addEventListener('mouseup', dragEnd);
-  document.addEventListener('touchend', dragEnd);
-  document.addEventListener('touchcancel', dragEnd);
-
-})();
-
 // 暴露给阅读端
 window.NoteCarousel = { initAll: initAllCarousels, initOne: initOneCarousel };
+
 </script>
 </body>
 </html>
