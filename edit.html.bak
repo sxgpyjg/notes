@@ -316,16 +316,22 @@ body.keyboard-opened .edit-toolbar-wrap{position:fixed;bottom:var(--keyboard-hei
       <button onclick="clearAiHistory()" style="flex:1;background:#f1f5f9;border:none;border-radius:4px;padding:4px 0;font-size:12px;">清空上下文</button>
     </div>
     <div class="ai-divider"></div>
-    <!-- 原有一键功能保留 -->
-    <div class="ai-menu-item" onclick="aiRun('polish')">✨ 润色优化</div>
-    <div class="ai-menu-item" onclick="aiRun('expand')">📝 扩写续写</div>
-    <div class="ai-menu-item" onclick="aiRun('short')">✂ 精简压缩</div>
-    <div class="ai-menu-item" onclick="aiRun('translate')">🌐 中英互译</div>
-    <div class="ai-menu-item" onclick="aiRun('fix')">🔧 纠错修正</div>
-    <div class="ai-divider"></div>
-    <div class="ai-menu-item" onclick="aiRun('title')">📌 生成标题</div>
-    <div class="ai-menu-item" onclick="aiRun('summary')">📄 全文总结</div>
-    <div class="ai-menu-item" onclick="aiRun('code')">💻 代码优化</div>
+    <!-- 折叠开关按钮 -->
+    <div class="ai-menu-item" id="aiQuickToggle" style="background:#f7f8ff;opacity:0.8;">
+      📋 快捷工具 <span id="aiArrow">▼</span>
+    </div>
+    <!-- 可折叠容器 -->
+    <div id="aiQuickWrap" style="max-height:0;overflow:hidden;transition:max-height 0.25s ease;">
+      <div class="ai-menu-item" onclick="aiRun('polish')">✨ 润色优化</div>
+      <div class="ai-menu-item" onclick="aiRun('expand')">📝 扩写续写</div>
+      <div class="ai-menu-item" onclick="aiRun('short')">✂ 精简压缩</div>
+      <div class="ai-menu-item" onclick="aiRun('translate')">🌐 中英互译</div>
+      <div class="ai-menu-item" onclick="aiRun('fix')">🔧 纠错修正</div>
+      <div class="ai-divider"></div>
+      <div class="ai-menu-item" onclick="aiRun('title')">📌 生成标题</div>
+      <div class="ai-menu-item" onclick="aiRun('summary')">📄 全文总结</div>
+      <div class="ai-menu-item" onclick="aiRun('code')">💻 代码优化</div>
+    </div>
   </div>
 </div>
 
@@ -611,6 +617,40 @@ async function sendAiChat(){
   aiChatInput.focus();
 }
 
+// ========== AI对话输入框快捷键：回车发送，Shift+回车换行 ==========
+aiChatInput.addEventListener('keydown', function(e) {
+  if (e.isComposing) return;
+  if (e.key === 'Enter') {
+    if (e.shiftKey) return;
+    e.preventDefault();
+    sendAiChat();
+  }
+});
+
+// AI快捷工具折叠展开
+const aiQuickToggle = document.getElementById('aiQuickToggle');
+const aiQuickWrap = document.getElementById('aiQuickWrap');
+const aiArrow = document.getElementById('aiArrow');
+let aiQuickOpen = false;
+
+aiQuickToggle.addEventListener('click', function(e){
+  e.stopPropagation();
+  aiQuickOpen = !aiQuickOpen;
+  if(aiQuickOpen){
+    aiQuickWrap.style.maxHeight = '400px';
+    aiArrow.textContent = '▲';
+  }else{
+    aiQuickWrap.style.maxHeight = '0px';
+    aiArrow.textContent = '▼';
+  }
+});
+
+// 重新打开AI面板时，自动折叠收起
+aiMainBtn.addEventListener('click', function(){
+  aiQuickOpen = false;
+  aiQuickWrap.style.maxHeight = '0px';
+  aiArrow.textContent = '▼';
+});
 
 // ========== 新增按钮绑定代码 ==========
 if (aiCancelConf) {
@@ -1789,42 +1829,73 @@ window.addEventListener("DOMContentLoaded", ()=>{
   aiMainBtn.addEventListener('click', adjustAiMenuPos);
 })();
 
-// ========== AI面板拖拽功能 ==========
+// ========== AI面板拖拽（手机触屏 + 电脑鼠标双适配） ==========
 (function(){
   const dragBox = document.getElementById('aiMenu');
   let dragStartX, dragStartY, boxOriginLeft, boxOriginTop, isDragging = false;
 
-  dragBox.addEventListener('mousedown', function(e){
-    // 点击输入框、按钮时不触发拖拽
-    if(e.target.tagName === 'TEXTAREA' || e.target.tagName === 'BUTTON') return;
+  // 统一获取触点坐标（兼容touch和mouse）
+  function getPoint(e) {
+    return e.touches ? e.touches[0] : e;
+  }
+
+  // 开始拖拽
+  function dragStart(e) {
+    // 点击输入框、按钮不触发拖拽
+    const target = e.target;
+    if(target.tagName === 'TEXTAREA' || target.tagName === 'BUTTON') return;
+
     isDragging = true;
-    dragStartX = e.clientX;
-    dragStartY = e.clientY;
-    // 获取面板当前位置
+    const point = getPoint(e);
+    dragStartX = point.clientX;
+    dragStartY = point.clientY;
+
     const rect = dragBox.getBoundingClientRect();
     boxOriginLeft = rect.left;
     boxOriginTop = rect.top;
-    // 切换为固定定位，实现自由拖动
+
+    // 改成固定悬浮
     dragBox.style.position = 'fixed';
     dragBox.style.bottom = 'auto';
     dragBox.style.left = boxOriginLeft + 'px';
     dragBox.style.top = boxOriginTop + 'px';
-  });
+  }
 
-  document.addEventListener('mousemove', function(e){
+  // 拖动移动
+  function dragMove(e) {
     if(!isDragging) return;
-    // 计算拖动偏移量
-    const moveX = e.clientX - dragStartX;
-    const moveY = e.clientY - dragStartY;
-    dragBox.style.left = (boxOriginLeft + moveX) + 'px';
-    dragBox.style.top = (boxOriginTop + moveY) + 'px';
-  });
+    e.preventDefault(); // 阻止页面滚动
+    const point = getPoint(e);
+    const moveX = point.clientX - dragStartX;
+    const moveY = point.clientY - dragStartY;
 
-  document.addEventListener('mouseup', function(){
+    // 限制不拖出屏幕外
+    const maxLeft = window.innerWidth - dragBox.offsetWidth;
+    const maxTop = window.innerHeight - dragBox.offsetHeight;
+    const newLeft = Math.max(0, Math.min(maxLeft, boxOriginLeft + moveX));
+    const newTop = Math.max(0, Math.min(maxTop, boxOriginTop + moveY));
+
+    dragBox.style.left = newLeft + 'px';
+    dragBox.style.top = newTop + 'px';
+  }
+
+  // 结束拖拽
+  function dragEnd() {
     isDragging = false;
-  });
+  }
 
-  // 重置位置：重新打开面板时恢复原始吸附位置
+  // 同时绑定鼠标 + 触摸事件
+  dragBox.addEventListener('mousedown', dragStart);
+  dragBox.addEventListener('touchstart', dragStart, { passive:false });
+
+  document.addEventListener('mousemove', dragMove);
+  document.addEventListener('touchmove', dragMove, { passive:false });
+
+  document.addEventListener('mouseup', dragEnd);
+  document.addEventListener('touchend', dragEnd);
+  document.addEventListener('touchcancel', dragEnd);
+
+  // 重新点开AI按钮，复位回原来位置
   aiMainBtn.addEventListener('click', function(){
     dragBox.style.position = '';
     dragBox.style.left = '';

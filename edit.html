@@ -316,16 +316,23 @@ body.keyboard-opened .edit-toolbar-wrap{position:fixed;bottom:var(--keyboard-hei
       <button onclick="clearAiHistory()" style="flex:1;background:#f1f5f9;border:none;border-radius:4px;padding:4px 0;font-size:12px;">清空上下文</button>
     </div>
     <div class="ai-divider"></div>
-    <!-- 原有一键功能保留 -->
-    <div class="ai-menu-item" onclick="aiRun('polish')">✨ 润色优化</div>
-    <div class="ai-menu-item" onclick="aiRun('expand')">📝 扩写续写</div>
-    <div class="ai-menu-item" onclick="aiRun('short')">✂ 精简压缩</div>
-    <div class="ai-menu-item" onclick="aiRun('translate')">🌐 中英互译</div>
-    <div class="ai-menu-item" onclick="aiRun('fix')">🔧 纠错修正</div>
-    <div class="ai-divider"></div>
-    <div class="ai-menu-item" onclick="aiRun('title')">📌 生成标题</div>
-    <div class="ai-menu-item" onclick="aiRun('summary')">📄 全文总结</div>
-    <div class="ai-menu-item" onclick="aiRun('code')">💻 代码优化</div>
+    <!-- 折叠开关按钮 -->
+    <div class="ai-menu-item" id="aiQuickToggle" style="background:#f7f8ff;opacity:0.8;display:flex;justify-content:space-between;align-items:center;">
+  📋 快捷工具 <span id="aiArrow">▼</span>
+</div>
+
+    <!-- 可折叠容器 -->
+    <div id="aiQuickWrap" style="max-height:0;overflow:hidden;transition:max-height 0.25s ease;">
+      <div class="ai-menu-item" onclick="aiRun('polish')">✨ 润色优化</div>
+      <div class="ai-menu-item" onclick="aiRun('expand')">📝 扩写续写</div>
+      <div class="ai-menu-item" onclick="aiRun('short')">✂ 精简压缩</div>
+      <div class="ai-menu-item" onclick="aiRun('translate')">🌐 中英互译</div>
+      <div class="ai-menu-item" onclick="aiRun('fix')">🔧 纠错修正</div>
+      <div class="ai-divider"></div>
+      <div class="ai-menu-item" onclick="aiRun('title')">📌 生成标题</div>
+      <div class="ai-menu-item" onclick="aiRun('summary')">📄 全文总结</div>
+      <div class="ai-menu-item" onclick="aiRun('code')">💻 代码优化</div>
+    </div>
   </div>
 </div>
 
@@ -611,6 +618,40 @@ async function sendAiChat(){
   aiChatInput.focus();
 }
 
+// ========== AI对话输入框快捷键：回车发送，Shift+回车换行 ==========
+aiChatInput.addEventListener('keydown', function(e) {
+  if (e.isComposing) return;
+  if (e.key === 'Enter') {
+    if (e.shiftKey) return;
+    e.preventDefault();
+    sendAiChat();
+  }
+});
+
+// AI快捷工具折叠展开
+const aiQuickToggle = document.getElementById('aiQuickToggle');
+const aiQuickWrap = document.getElementById('aiQuickWrap');
+const aiArrow = document.getElementById('aiArrow');
+let aiQuickOpen = false;
+
+aiQuickToggle.addEventListener('click', function(e){
+  e.stopPropagation();
+  aiQuickOpen = !aiQuickOpen;
+  if(aiQuickOpen){
+    aiQuickWrap.style.maxHeight = '400px';
+    aiArrow.textContent = '▲';
+  }else{
+    aiQuickWrap.style.maxHeight = '0px';
+    aiArrow.textContent = '▼';
+  }
+});
+
+// 重新打开AI面板时，自动折叠收起
+aiMainBtn.addEventListener('click', function(){
+  aiQuickOpen = false;
+  aiQuickWrap.style.maxHeight = '0px';
+  aiArrow.textContent = '▼';
+});
 
 // ========== 新增按钮绑定代码 ==========
 if (aiCancelConf) {
