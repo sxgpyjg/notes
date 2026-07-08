@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
-<title>笔记编辑器（终极修复版）</title>
+<title>笔记编辑器（终极修复版 + AI增强）</title>
 <script src="./data.js?v=1"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:system-ui,-apple-system,sans-serif;}
@@ -11,7 +11,7 @@ body{background:linear-gradient(135deg,#f5f7fe,#eef2ff);padding:10px 10px 60px;o
 body.keyboard-opened{padding-bottom:60px!important;}
 .lock-scroll{overflow:hidden!important;touch-action:none!important;}
 .tool-box{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0 10px;}
-.tool-bar{display:flex;gap:8px;margin-bottom:10px;}
+.tool-bar{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap;}
 .tool-btn{background:#fff;border:1px solid #e8ecf4;border-radius:8px;padding:8px 10px;font-size:13px;color:#333;box-shadow:0 1px 3px rgba(99,102,241,.06);cursor:pointer;transition:all .15s;}
 .tool-btn:hover{background:#f0f3ff;border-color:#6366F1;}
 .tool-btn:active{background:#e0e7ff;}
@@ -128,6 +128,31 @@ body.keyboard-opened .edit-toolbar-wrap{position:fixed;bottom:var(--keyboard-hei
 .carousel-render .dot{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.5);cursor:pointer;transition:all .3s;border:none;padding:0;}
 .carousel-render .dot.active{width:22px;border-radius:3px;background:#fff;}
 .carousel-render .counter{position:absolute;top:10px;right:12px;background:rgba(0,0,0,.5);color:#fff;font-size:11px;padding:3px 9px;border-radius:99px;z-index:5;font-variant-numeric:tabular-nums;}
+
+/* ================= AI 新增样式 ================= */
+.ai-dropdown-wrap{position:relative;display:inline-block;}
+.ai-dropdown-menu{position:absolute;bottom:100%;left:0;background:#fff;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.1);min-width:160px;padding:6px;display:none;z-index:99999;}
+.ai-dropdown-menu.show{display:block;}
+.ai-menu-item{padding:6px 10px;cursor:pointer;font-size:13px;border-radius:4px;transition:background 0.15s;}
+.ai-menu-item:hover{background:#f0f3ff;color:#6366F1;}
+.ai-divider{height:1px;background:#eee;margin:4px 0;}
+
+/* AI配置弹窗 */
+.ai-setting-mask{position:fixed;inset:0;background:rgba(0,0,0,0.4);display:none;align-items:center;justify-content:center;z-index:999999;}
+.ai-setting-mask.show{display:flex;}
+.ai-set-box{width:min(92%,420px);background:#fff;border-radius:12px;padding:20px;box-shadow:0 10px 40px rgba(0,0,0,0.15);}
+.ai-set-box h3{margin-bottom:16px;color:#1e293b;}
+.ai-set-box label{display:block;margin:10px 0 4px;font-size:13px;color:#475569;}
+.ai-set-box input{width:100%;padding:9px 12px;border:1px solid #ddd;border-radius:6px;outline:none;}
+.ai-set-box input:focus{border-color:#6366F1;}
+.ai-btn-group{display:flex;gap:10px;margin-top:20px;justify-content:flex-end;}
+.ai-btn-group button{padding:8px 16px;border-radius:6px;border:none;cursor:pointer;}
+#aiSaveConf{background:#6366F1;color:#fff;}
+#aiCancelConf{background:#f1f5f9;color:#333;}
+
+/* AI加载提示 */
+.ai-loading-toast{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:8px 16px;border-radius:99px;font-size:13px;z-index:9999999;display:none;}
+.ai-loading-toast.show{display:block;}
 </style>
 </head>
 <body>
@@ -143,6 +168,8 @@ body.keyboard-opened .edit-toolbar-wrap{position:fixed;bottom:var(--keyboard-hei
   <button class="tool-btn" onclick="location.href='index.html'">主页</button>
   <button class="tool-btn" onclick="location.href='admin-list.html'">管理页</button>
   <button class="tool-btn" onclick="logoutAdmin()">退出登录</button>
+  <!-- AI设置按钮 -->
+  <button class="tool-btn" onclick="openAiSetting()">⚙ AI配置</button>
 </div>
 <div class="tip-green" id="wordCountTip">纯文字数：0 | 总字符：0</div>
 <div class="tool-box">
@@ -216,6 +243,23 @@ body.keyboard-opened .edit-toolbar-wrap{position:fixed;bottom:var(--keyboard-hei
     <button class="icon-btn" data-tip="链接" onclick="insertLink()">[]()</button>
     <button class="icon-btn" data-tip="本地图片" id="localImgBtn">🖼</button>
     <button class="icon-btn" data-tip="网络图床" id="netImgBtn">🌐</button>
+
+    <!-- AI下拉菜单按钮 -->
+    <div class="ai-dropdown-wrap">
+      <button class="icon-btn" id="aiMainBtn" title="AI智能助手">✨</button>
+      <div class="ai-dropdown-menu" id="aiMenu">
+        <div class="ai-menu-item" onclick="aiRun('polish')">✨ 润色优化</div>
+        <div class="ai-menu-item" onclick="aiRun('expand')">📝 扩写续写</div>
+        <div class="ai-menu-item" onclick="aiRun('short')">✂ 精简压缩</div>
+        <div class="ai-menu-item" onclick="aiRun('translate')">🌐 中英互译</div>
+        <div class="ai-menu-item" onclick="aiRun('fix')">🔧 纠错修正</div>
+        <div class="ai-divider"></div>
+        <div class="ai-menu-item" onclick="aiRun('title')">📌 生成标题</div>
+        <div class="ai-menu-item" onclick="aiRun('summary')">📄 全文总结</div>
+        <div class="ai-menu-item" onclick="aiRun('code')">💻 代码优化</div>
+      </div>
+    </div>
+
     <button class="icon-btn" data-tip="清空" onclick="clearAllNotesContent()">🗑️</button>
     <button class="icon-btn" data-tip="查找" id="findReplaceBtn">🔍</button>
     <button class="icon-btn" data-tip="分割线" onclick="splitLine1()">—</button>
@@ -228,6 +272,27 @@ body.keyboard-opened .edit-toolbar-wrap{position:fixed;bottom:var(--keyboard-hei
   <div class="md-preview" id="mdPreview" style="display:none"></div>
 </div>
 </div>
+
+<!-- AI配置弹窗 -->
+<div class="ai-setting-mask" id="aiSettingMask">
+  <div class="ai-set-box">
+    <h3>AI接口配置（OpenAI兼容）</h3>
+    <label>API Key</label>
+    <input type="password" id="aiApiKey" placeholder="sk-xxxxxxxx">
+    <label>接口地址</label>
+    <input type="text" id="aiBaseUrl" value="https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions" placeholder="API地址">
+    <label>模型名称</label>
+    <input type="text" id="aiModelName" value="qwen-turbo" placeholder="model名称">
+    <div class="ai-btn-group">
+      <button id="aiCancelConf">取消</button>
+      <button id="aiSaveConf">保存配置</button>
+    </div>
+  </div>
+</div>
+
+<!-- AI加载提示 -->
+<div class="ai-loading-toast" id="aiLoadingToast">AI正在生成内容...</div>
+
 <div class="find-replace-mask" id="findReplaceMask">
   <div class="find-replace-box" id="findReplaceBox">
     <div style="display:flex;justify-content:space-between;margin-bottom:6px;">
@@ -269,6 +334,163 @@ let currentTags = [], tagColorMap = {};
 let globalImgSerial = Number(localStorage.getItem("img_serial")||0);
 let searchIndex = 0, matchList = [], matchCase = false;
 let dragActive = false;
+
+// ================= AI 全局配置 =================
+const AI_CONFIG_KEY = "note_ai_config";
+let aiConfig = JSON.parse(localStorage.getItem(AI_CONFIG_KEY) || '{"key":"","url":"https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions","model":"qwen-turbo"}');
+const aiMenu = document.getElementById('aiMenu');
+const aiMainBtn = document.getElementById('aiMainBtn');
+const aiSettingMask = document.getElementById('aiSettingMask');
+const aiApiKey = document.getElementById('aiApiKey');
+const aiBaseUrl = document.getElementById('aiBaseUrl');
+const aiModelName = document.getElementById('aiModelName');
+const aiLoadingToast = document.getElementById('aiLoadingToast');
+let aiAbortController = null;
+
+// AI指令预设Prompt
+const aiPromptMap = {
+  polish: "你是专业文案优化师，优化下面这段文字，理顺语句、提升文笔，只返回优化后的原文，不要多余解释：",
+  expand: "基于下面内容进行合理扩写续写，保持原有风格，只返回结果：",
+  short: "精简压缩下面文字，保留核心信息，字数减半，只返回结果：",
+  translate: "自动识别语言，互相翻译成中英双语，格式清晰输出：",
+  fix: "修正下面文本的错别字、语病、标点错误，只返回修正后内容：",
+  title: "根据全文内容生成3个合适的标题，分行列出：",
+  summary: "对全文进行简洁总结，提炼核心要点：",
+  code: "优化下面代码，修复bug、规范格式并添加注释，只输出代码内容："
+};
+
+// AI下拉菜单展开收起
+aiMainBtn.addEventListener('click',(e)=>{
+  e.stopPropagation();
+  aiMenu.classList.toggle('show');
+});
+document.addEventListener('click',()=>aiMenu.classList.remove('show'));
+
+// 打开AI设置弹窗
+function openAiSetting(){
+  aiApiKey.value = aiConfig.key;
+  aiBaseUrl.value = aiConfig.url;
+  aiModelName.value = aiConfig.model;
+  aiSettingMask.classList.add('show');
+}
+document.getElementById('aiCancelConf').onclick = ()=> aiSettingMask.classList.remove('show');
+document.getElementById('aiSaveConf').onclick = ()=>{
+  aiConfig = {
+    key: aiApiKey.value.trim(),
+    url: aiBaseUrl.value.trim(),
+    model: aiModelName.value.trim()
+  };
+  localStorage.setItem(AI_CONFIG_KEY, JSON.stringify(aiConfig));
+  aiSettingMask.classList.remove('show');
+  alert("AI配置保存成功");
+};
+
+// 显示/隐藏加载提示
+function showAiLoading(){ aiLoadingToast.classList.add('show'); }
+function hideAiLoading(){ aiLoadingToast.classList.remove('show'); }
+
+// 获取选中内容 / 全文内容
+function getAiInputText(type){
+  const sel = window.getSelection().toString().trim();
+  if(type !== 'summary' && sel) return sel;
+  // 全文
+  if(currentEditMode === 'rich') return richEditor.innerText;
+  return mdEditor.value;
+}
+
+// AI核心请求函数（SSE流式输出）
+async function aiRun(type){
+  aiMenu.classList.remove('show');
+  if(!aiConfig.key) return alert("请先点击 ⚙ AI配置 填入API Key");
+  const prompt = aiPromptMap[type];
+  const content = getAiInputText(type);
+  if(!content) return alert("请先选中需要处理的文字");
+
+  // 终止上一次请求
+  if(aiAbortController) aiAbortController.abort();
+  aiAbortController = new AbortController();
+  showAiLoading();
+
+  try{
+    const res = await fetch(aiConfig.url,{
+      method:"POST",
+      headers:{
+        "Content-Type":"application/json",
+        "Authorization":`Bearer ${aiConfig.key}`
+      },
+      body:JSON.stringify({
+        model: aiConfig.model,
+        stream: true,
+        messages:[
+          {role:"system",content:"你是笔记编辑助手，输出简洁干净，不要额外说明、开场白"},
+          {role:"user",content:`${prompt}\n${content}`}
+        ]
+      }),
+      signal: aiAbortController.signal
+    });
+
+    if(!res.ok) throw new Error("接口请求失败，请检查Key和地址");
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let resultText = '';
+
+    // 初始化插入位置
+    if(currentEditMode === 'rich'){
+      richEditor.focus();
+      const sel = window.getSelection();
+      if(!sel.rangeCount || sel.isCollapsed){
+        // 无选中，末尾追加
+        const range = document.createRange();
+        range.selectNodeContents(richEditor);
+        range.collapse(false);
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+    }
+
+    // 流式逐字写入
+    while(true){
+      const {done,value} = await reader.read();
+      if(done) break;
+      const chunk = decoder.decode(value, {stream:true});
+      const lines = chunk.split('\n').filter(line=>line.startsWith('data: '));
+      for(const line of lines){
+        const jsonStr = line.replace('data: ','').trim();
+        if(jsonStr === '[DONE]') continue;
+        try{
+          const data = JSON.parse(jsonStr);
+          const delta = data.choices?.[0]?.delta?.content || '';
+          if(!delta) continue;
+          resultText += delta;
+          // 实时插入
+          if(currentEditMode === 'rich'){
+            document.execCommand('insertText', false, delta);
+          }else{
+            mdEditor.value += delta;
+            mdEditor.scrollTop = mdEditor.scrollHeight;
+          }
+        }catch(e){}
+      }
+    }
+
+    // 刷新预览与历史记录
+    if(currentEditMode === 'md'){
+      saveMdRecord();
+      renderMdPreview();
+    }else{
+      richRecordStack.splice(richRecordIndex+1);
+      richRecordStack.push(richEditor.innerHTML);
+      if(richRecordStack.length>RICH_RECORD_MAX) richRecordStack.shift();
+      richRecordIndex=richRecordStack.length-1;
+    }
+    calcWordCount();
+  }catch(err){
+    if(err.name !== 'AbortError') alert("AI生成失败："+err.message);
+  }finally{
+    hideAiLoading();
+  }
+}
+
 // 全局安全读取剪贴板（必须在用户点击事件内调用）
 async function safeReadClipboard(){
   try{
@@ -472,7 +694,7 @@ function initLoadNote(){
   let tags = Array.isArray(targetNote.tags) ? targetNote.tags.slice() : [];
   if(!tags.length && targetNote.type) tags = [targetNote.type];
   setCurrentTags(tags, targetNote.tagColors || {});
-  document.getElementById("privateCheck").checked = !!targetNote.private;
+  document.getElementById("privateCheck").checked = !!targetNote.private = document.getElementById("privateCheck").checked;
   isCarouselOn = !!targetNote.carousel;
   carouselCheck.checked = isCarouselOn;
 
@@ -1451,3 +1673,4 @@ window.NoteCarousel = { initAll: initAllCarousels, initOne: initOneCarousel };
 </script>
 </body>
 </html>
+

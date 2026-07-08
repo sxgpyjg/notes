@@ -269,6 +269,14 @@ let currentTags = [], tagColorMap = {};
 let globalImgSerial = Number(localStorage.getItem("img_serial")||0);
 let searchIndex = 0, matchList = [], matchCase = false;
 let dragActive = false;
+// 全局安全读取剪贴板（必须在用户点击事件内调用）
+async function safeReadClipboard(){
+  try{
+    return await navigator.clipboard.readText();
+  }catch(e){
+    return null;
+  }
+}
 
 // ========== 轮播全局变量 ==========
 const carouselCheck = document.getElementById('carouselCheck');
@@ -1046,16 +1054,16 @@ function openNetImageModal(){
     try{
       const txt = await navigator.clipboard.readText();
       if (!txt) { alert('剪贴板为空'); return; }
-      const lines = txt.split(/\r?\n/).map(s=>s.trim()).filter(s=>s.startsWith('http'));
+      // 修改这里的分割正则
+      const lines = txt.split(/[\r\n]+/).map(s=>s.trim()).filter(s=>s.startsWith('http'));
       if (!lines.length){ alert('剪贴板里没找到 http:// 开头的 URL'); return; }
-      // 先清空第一行，再 append 其他行
       listWrap.innerHTML = '';
       lines.forEach(url => listWrap.appendChild(buildRow({url})));
       alert(`从剪贴板读取到 ${lines.length} 条 URL`);
     } catch(e){
       alert('读取剪贴板失败：' + e.message + '\n请手动检查浏览器权限');
     }
-  };
+};
 
   function closeModal(){ mask.remove(); }
 
@@ -1140,10 +1148,13 @@ function batchInsertImagesByUrls(urls){
 document.getElementById('batchImgBtn').onclick = function(){
   // 优先从 clipboard 读取
   navigator.clipboard.readText().then(clipText => {
-    if(clipText && /^https?:\/\/[\w\W]*\.(\w{2,5})/.test(clipText) && /\r?\n/.test(clipText)){
-      const arr = clipText.split(/\r?\n/).map(u=>u.trim()).filter(u=>u.startsWith('http'));
-      const n = batchInsertImagesByUrls(arr);
-      if(n>0) return alert(`从剪贴板批量插入了 ${n} 张图${isCarouselOn?'（轮播模式）':''}`);
+    if(clipText){
+      // 兼容所有换行符 \r \n \r\n
+      const arr = clipText.split(/[\r\n]+/).map(u=>u.trim()).filter(u=>u.startsWith('http'));
+      if(arr.length > 0){
+        const n = batchInsertImagesByUrls(arr);
+        return alert(`从剪贴板批量插入了 ${n} 张图${isCarouselOn?'（轮播模式）':''}`);
+      }
     }
     askAndInsert();
   }).catch(()=>{
@@ -1153,7 +1164,7 @@ document.getElementById('batchImgBtn').onclick = function(){
   function askAndInsert(){
     const urls = prompt("批量粘贴图床链接，一行一张：", "");
     if(!urls) return;
-    const arr = urls.split(/\r?\n/).map(u=>u.trim()).filter(u=>u.startsWith('http'));
+    const arr = urls.split(/[\r\n]+/).map(u=>u.trim()).filter(u=>u.startsWith('http'));
     const n = batchInsertImagesByUrls(arr);
     alert(`插入了 ${n} 张图片${isCarouselOn?'（轮播模式）':''}`);
   }
