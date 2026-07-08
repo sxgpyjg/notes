@@ -1888,11 +1888,16 @@ window.addEventListener("DOMContentLoaded", ()=>{
   document.addEventListener('touchend', dragEnd);
   document.addEventListener('touchcancel', dragEnd);
 
-  // 重新点开AI按钮，复位回原来位置
-  aiMainBtn.addEventListener('click', function(){
+  // 重新点开AI按钮，复位回原来位置 + 切换显示状态
+  aiMainBtn.addEventListener('click', function(e){
+    e.stopPropagation();
     dragBox.style.position = '';
     dragBox.style.left = '';
     dragBox.style.top = '';
+    aiQuickOpen = false;
+    aiQuickWrap.style.maxHeight = '0px';
+    aiArrow.textContent = '▼';
+    aiMenu.classList.toggle('show');
   });
 })();
 
