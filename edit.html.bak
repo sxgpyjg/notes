@@ -1638,47 +1638,17 @@ if(aiMainBtn){
 // ========== 就粘贴在这里 ==========
 if(aiMenu){
   aiMenu.addEventListener('click',(e)=>{
-    e.stopPropagation(); // 点击菜单内部任何区域，都不会关闭面板
+    e.stopPropagation(); // 阻止事件冒泡，内部点击不会关闭面板
     const item = e.target.closest('.ai-menu-item');
     if(!item) return;
     const type = item.getAttribute('onclick')?.match(/aiRun\('(\w+)'\)/)?.[1];
     if(type) aiRun(type);
   });
 }
-// ==================================
 
 // 全局点击空白关闭AI菜单（这里已经改好带折叠重置的版本）
 document.addEventListener('click', function(e){
-  const btn = document.getElementById('aiMainBtn');
-  const menu = document.getElementById('aiMenu');
-  if(!btn || !menu) return;
-  if(!btn.contains(e.target) && !menu.contains(e.target)){
-    menu.classList.remove('show');
-    // 面板关闭时，重document.addEventListener('click', function(e){
-  const btn = document.getElementById('aiMainBtn');
-  const menu = document.getElementById('aiMenu');
-  const richEditor = document.getElementById('richEditor');
-  const mdEditor = document.getElementById('mdEditor');
-  if(!btn || !menu) return;
-
-  // 如果点击的是富文本编辑器或者markdown输入框，直接放行，不关闭AI面板
-  if(richEditor.contains(e.target) || mdEditor.contains(e.target)){
-    return;
-  }
-
-  if(!btn.contains(e.target) && !menu.contains(e.target)){
-    menu.classList.remove('show');
-    // 面板关闭时，重置快捷折叠栏
-    aiQuickOpen = false;
-    aiQuickWrap.style.maxHeight = '0px';
-    aiArrow.textContent = '▼';
-  }
-});
-快捷折叠栏
-    aiQuickOpen = false;
-    aiQuickWrap.style.maxHeight = '0px';
-    aiArrow.textContent = '▼';
-  }
+  // 已禁用空白处自动关闭AI面板，只能点击✨按钮手动开合
 });
 
 //========== 拖拽光标模式 ==========

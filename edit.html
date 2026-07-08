@@ -1225,7 +1225,7 @@ function clearAllNotesContent(){ if(!confirm('清空全部内容？'))return; ri
 
 //========== 图片 / 轮播 核心 ==========
 function itemToMd(item){
-  let line = `![$${item.alt||''}]($${item.url})`;
+  let line = `![${item.alt||''}](${item.url})`;
   if (item.intro) line += `\n::intro ${item.intro}`;
   return line + '\n';
 }
