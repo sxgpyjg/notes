@@ -125,7 +125,7 @@ body.keyboard-opened .edit-toolbar-wrap{position:fixed;bottom:var(--keyboard-hei
 .carousel-render .dot.active{width:22px;border-radius:3px;background:#fff;}
 .carousel-render .counter{position:absolute;top:10px;right:12px;background:rgba(0,0,0,.5);color:#fff;font-size:11px;padding:3px 9px;border-radius:99px;z-index:5;font-variant-numeric:tabular-nums;}
 
-/* ================= AI 样式（修复：不再用 button 包 div） ================= */
+/* ================= AI 样式 ================= */
 .ai-dropdown-wrap{
   position:relative;
   display:inline-block;
@@ -134,13 +134,10 @@ body.keyboard-opened .edit-toolbar-wrap{position:fixed;bottom:var(--keyboard-hei
   position:absolute;
   bottom:100%;
   left:0;
-  /* 半透毛玻璃，最后数字0.8是透明度，越小越透 */
-  background:rgba(255,255,255,0.8);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background:rgba(255,255,255,0.95);
   border:1px solid rgba(226,232,240,0.6);
   border-radius:8px;
-  box-shadow:0 4px 12px rgba(0,0,0,0.08);
+  box-shadow:0 4px 12px rgba(0,0,0,0.1);
   min-width:240px;
   padding:10px;
   display:none;
@@ -148,16 +145,13 @@ body.keyboard-opened .edit-toolbar-wrap{position:fixed;bottom:var(--keyboard-hei
   pointer-events: auto !important;
   max-height: 60vh;
   overflow-y: auto;
-  /* 拖拽样式 */
   cursor: move;
   user-select: none;
 }
-/* 键盘唤起后，切换为向下弹出 */
 .ai-dropdown-menu.keyboard-open {
   bottom: auto;
   top: 100%;
 }
-
 .ai-dropdown-menu.show{
   display:block;
 }
@@ -193,14 +187,12 @@ body.keyboard-opened .edit-toolbar-wrap{position:fixed;bottom:var(--keyboard-hei
 .ai-loading-toast{position:fixed;top:16px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:8px 16px;border-radius:99px;font-size:13px;z-index:9999999;display:none;}
 .ai-loading-toast.show{display:block;}
 
-/* 网络图床弹窗内行布局 */
 .net-row { display:grid; grid-template-columns:1fr 90px 14px; gap:4px; align-items:center; }
 .net-row input { border:none; border-bottom:1px solid #ddd; padding:5px 0; font-size:13px; outline:none; background:transparent; }
 .net-row input:focus { border-bottom-color:#6366F1; }
 .net-row .net-del { background:transparent; border:none; color:#dc2626; cursor:pointer; font-size:14px; }
 #netImgList label { font-size:10px; color:#94a3b8; display:block; margin-bottom:1px; padding-left:2px; }
 
-/* AI对话输入框修复样式 */
 #aiChatInput {
   width: 100%;
   box-sizing: border-box;
@@ -214,10 +206,7 @@ body.keyboard-opened .edit-toolbar-wrap{position:fixed;bottom:var(--keyboard-hei
   max-height: 120px;
   overflow-y: auto;
 }
-
-
 </style>
-
 </head>
 <body>
 <div id="loginWrap" class="login-modal">
@@ -305,23 +294,19 @@ body.keyboard-opened .edit-toolbar-wrap{position:fixed;bottom:var(--keyboard-hei
     <button class="icon-btn" data-tip="本地图片" id="localImgBtn">🖼</button>
     <button class="icon-btn" data-tip="网络图床" id="netImgBtn">🌐</button>
 
-  <!-- AI下拉菜单按钮（升级对话版） -->
+  <!-- AI下拉菜单按钮 -->
 <div class="ai-dropdown-wrap">
   <button class="icon-btn" id="aiMainBtn" title="AI智能助手">✨</button>
   <div class="ai-dropdown-menu" id="aiMenu" style="width:220px;padding:10px;">
-    <!-- 自由对话输入区 -->
     <textarea id="aiChatInput" placeholder="输入问题，和AI连续对话..." style="width:100%;height:60px;padding:6px;border:1px solid #ddd;border-radius:6px;resize:none;font-size:12px;margin-bottom:6px;"></textarea>
     <div style="display:flex;gap:4px;margin-bottom:8px;">
       <button onclick="sendAiChat()" style="flex:1;background:#6366F1;color:#fff;border:none;border-radius:4px;padding:4px 0;font-size:12px;">发送对话</button>
       <button onclick="clearAiHistory()" style="flex:1;background:#f1f5f9;border:none;border-radius:4px;padding:4px 0;font-size:12px;">清空上下文</button>
     </div>
     <div class="ai-divider"></div>
-    <!-- 折叠开关按钮 -->
     <div class="ai-menu-item" id="aiQuickToggle" style="background:#f7f8ff;opacity:0.8;display:flex;justify-content:space-between;align-items:center;">
   📋 快捷工具 <span id="aiArrow">▼</span>
 </div>
-
-    <!-- 可折叠容器 -->
     <div id="aiQuickWrap" style="max-height:0;overflow:hidden;transition:max-height 0.25s ease;">
       <div class="ai-menu-item" onclick="aiRun('polish')">✨ 润色优化</div>
       <div class="ai-menu-item" onclick="aiRun('expand')">📝 扩写续写</div>
@@ -366,7 +351,6 @@ body.keyboard-opened .edit-toolbar-wrap{position:fixed;bottom:var(--keyboard-hei
 </div>
 
 <div class="ai-loading-toast" id="aiLoadingToast">AI正在生成内容...</div>
-
 
 <div class="find-replace-mask" id="findReplaceMask">
   <div class="find-replace-box" id="findReplaceBox">
@@ -415,7 +399,7 @@ let isCarouselOn = false;
 let carouselImageQueue = [];
 let carouselCloseTimer = null;
 
-// DOM元素获取增加存在性判断，防止null报错
+// DOM元素获取
 const titleInput = document.querySelector(".title-input");
 const tagChipInput = document.getElementById("tagChipInput");
 const tagsInputWrap = document.getElementById("tagsInputWrap");
@@ -439,7 +423,7 @@ const carouselCheck = document.getElementById("carouselCheck");
 const finishCarouselBtn = document.getElementById("finishCarouselBtn");
 const carouselQueueCount = document.getElementById("carouselQueueCount");
 
-// ================= AI 全局配置（升级对话上下文版） =================
+// ================= AI 全局配置 =================
 const AI_CONFIG_KEY = "note_ai_config";
 let aiConfig = {};
 try{
@@ -458,12 +442,9 @@ const aiCancelConf = document.getElementById('aiCancelConf');
 const aiLoadingToast = document.getElementById('aiLoadingToast');
 const aiChatInput = document.getElementById('aiChatInput');
 let aiAbortController = null;
-// 新增：对话上下文历史数组
 let aiChatHistory = [];
-// 系统固定人设
 const AI_SYSTEM_PROMPT = "你是专属笔记编辑助手，记住我们全程对话上下文，回答精简实用，输出内容可以直接粘贴进笔记，不要多余开场白和解释。";
 
-// AI指令预设Prompt（一次性任务，不存入对话历史）
 const aiPromptMap = {
   polish: "优化下面这段文字，理顺语句、提升文笔，只返回优化后的原文，不要多余解释：",
   expand: "基于下面内容合理扩写续写，保持原有文风，仅返回结果：",
@@ -481,42 +462,32 @@ function openAiSetting(){
   aiApiKey.value = aiConfig.key;
   aiBaseUrl.value = aiConfig.url;
   aiModelName.value = aiConfig.model;
-  aiSettingMask.classList.add('show');
+  if(aiSettingMask) aiSettingMask.classList.add('show');
 }
 
-// 清空对话上下文记忆
 function clearAiHistory(){
   aiChatHistory = [];
   if(aiChatInput) aiChatInput.value = "";
   alert("已清除全部对话历史，开启新会话");
 }
 
-// 显示/隐藏加载提示
 function showAiLoading(){ if(aiLoadingToast) aiLoadingToast.classList.add('show'); }
 function hideAiLoading(){ if(aiLoadingToast) aiLoadingToast.classList.remove('show'); }
 
-// 获取选中内容 / 全文内容
 function getAiInputText(type){
   const sel = window.getSelection().toString().trim();
   if(type !== 'summary' && sel) return sel;
-  // 全文
   if(currentEditMode === 'rich' && richBox) return richBox.innerText;
   if(mdBox) return mdBox.value;
   return '';
 }
 
-// 通用流式请求核心函数（区分一次性任务 / 连续对话）
 async function aiRequest(messages, isChatMode = false){
   if(!aiConfig.key) return alert("请先点击 ⚙ AI配置 填入API Key");
-
-  // 关闭 AI 菜单
   if(aiMenu) aiMenu.classList.remove('show');
-
-  // 终止上一次请求
   if(aiAbortController) aiAbortController.abort();
   aiAbortController = new AbortController();
   showAiLoading();
-
 
   try{
     const res = await fetch(aiConfig.url,{
@@ -538,7 +509,6 @@ async function aiRequest(messages, isChatMode = false){
     const decoder = new TextDecoder();
     let resultText = '';
 
-    // 定位光标插入位置
     if(currentEditMode === 'rich' && richBox){
       richBox.focus();
       const sel = window.getSelection();
@@ -551,7 +521,6 @@ async function aiRequest(messages, isChatMode = false){
       }
     }
 
-    // SSE流式逐字输出
     while(true){
       const {done,value} = await reader.read();
       if(done) break;
@@ -565,7 +534,6 @@ async function aiRequest(messages, isChatMode = false){
           const delta = data.choices?.[0]?.delta?.content || '';
           if(!delta) continue;
           resultText += delta;
-          // 实时写入编辑器
           if(currentEditMode === 'rich'){
             document.execCommand('insertText', false, delta);
           }else if(mdBox){
@@ -576,12 +544,10 @@ async function aiRequest(messages, isChatMode = false){
       }
     }
 
-    // 对话模式：把问答存入历史，实现上下文记忆
     if(isChatMode){
       aiChatHistory.push({role:"assistant", content: resultText});
     }
 
-    // 更新编辑器历史记录
     if(currentEditMode === 'md'){
       saveMdRecord();
       renderMdPreview();
@@ -601,7 +567,6 @@ async function aiRequest(messages, isChatMode = false){
   }
 }
 
-// 原有一键功能入口（一次性任务，不保存对话历史）
 async function aiRun(type){
   const prompt = aiPromptMap[type];
   const content = getAiInputText(type);
@@ -613,62 +578,53 @@ async function aiRun(type){
   await aiRequest(msgList, false);
 }
 
-// 新增：自由连续对话发送函数
 async function sendAiChat(){
   if(!aiChatInput) return;
   const userMsg = aiChatInput.value.trim();
   if(!userMsg) return alert("请输入对话内容");
-  // 将用户提问加入历史
   aiChatHistory.push({role:"user", content: userMsg});
-  // 拼接完整消息链：系统设定 + 全部历史对话
   const fullMessages = [
     {role:"system",content:AI_SYSTEM_PROMPT},
     ...aiChatHistory
   ];
   await aiRequest(fullMessages, true);
-  // 清空输入框，准备下一轮提问
   aiChatInput.value = "";
   aiChatInput.focus();
 }
 
-// ========== AI对话输入框快捷键：回车发送，Shift+回车换行 ==========
 if(aiChatInput){
-aiChatInput.addEventListener('keydown', function(e) {
-  if (e.isComposing) return;
-  if (e.key === 'Enter') {
-    if (e.shiftKey) return;
-    e.preventDefault();
-    sendAiChat();
-  }
-});
+  aiChatInput.addEventListener('keydown', function(e) {
+    if (e.isComposing) return;
+    if (e.key === 'Enter') {
+      if (e.shiftKey) return;
+      e.preventDefault();
+      sendAiChat();
+    }
+  });
 }
 
-// AI快捷工具折叠展开
 const aiQuickToggle = document.getElementById('aiQuickToggle');
 const aiQuickWrap = document.getElementById('aiQuickWrap');
 const aiArrow = document.getElementById('aiArrow');
 let aiQuickOpen = false;
 
-if(aiQuickToggle){
-aiQuickToggle.addEventListener('click', function(e){
-  e.stopPropagation();
-  aiQuickOpen = !aiQuickOpen;
-  if(aiQuickOpen){
-    aiQuickWrap.style.maxHeight = '400px';
-    aiArrow.textContent = '▲';
-  }else{
-    aiQuickWrap.style.maxHeight = '0px';
-    aiArrow.textContent = '▼';
-  }
-});
+if(aiQuickToggle && aiQuickWrap && aiArrow){
+  aiQuickToggle.addEventListener('click', function(e){
+    e.stopPropagation();
+    aiQuickOpen = !aiQuickOpen;
+    if(aiQuickOpen){
+      aiQuickWrap.style.maxHeight = '400px';
+      aiArrow.textContent = '▲';
+    }else{
+      aiQuickWrap.style.maxHeight = '0px';
+      aiArrow.textContent = '▼';
+    }
+  });
 }
 
-
-
-// ========== 新增按钮绑定代码 ==========
 if (aiCancelConf) {
   aiCancelConf.onclick = () => {
-    aiSettingMask.classList.remove('show');
+    if(aiSettingMask) aiSettingMask.classList.remove('show');
   };
 }
 
@@ -680,7 +636,7 @@ if (aiSaveConf) {
       model: aiModelName.value.trim()
     };
     localStorage.setItem(AI_CONFIG_KEY, JSON.stringify(aiConfig));
-    aiSettingMask.classList.remove('show');
+    if(aiSettingMask) aiSettingMask.classList.remove('show');
     alert("AI配置保存成功");
   };
 }
@@ -734,10 +690,9 @@ function renderTagsChips(){
     const txt=document.createElement('span'); txt.className='tag-chip-text'; txt.textContent=t;
     const rm=document.createElement('span'); rm.className='tag-chip-remove'; rm.style.cssText=`color:${textColor};background:${bgColor};`;
     rm.addEventListener('click',e=>{ e.stopPropagation(); removeTagAt(i); });
-chip.append(dot,txt,rm);
-tagsInputWrap.insertBefore(chip, tagChipInput);
-});
-
+    chip.append(dot,txt,rm);
+    tagsInputWrap.insertBefore(chip, tagChipInput);
+  });
 }
 function addTag(r){
   let s=String(r||'').trim(); if(!s||s.length>20)return;
@@ -779,7 +734,6 @@ function loadLocalCache() {
   if (raw) {
     try {
       const parsed = JSON.parse(raw);
-      // 兼容旧key数据
       if (parsed.list) {
         list = parsed.list;
         targetNote = parsed.targetId ? list.find(n=>n.id === Number(parsed.targetId)) : null;
@@ -810,7 +764,7 @@ function checkPwd(){
   document.getElementById("loginWrap").style.display="none";
   document.getElementById("mainWrap").style.display="block";
   loadLocalCache();
-  setTimeout(initLoadNote,100);
+  initLoadNote();
 }
 (function(){
   const saved=localStorage.getItem("admin_save_pwd");
@@ -819,7 +773,7 @@ function checkPwd(){
     document.getElementById("loginWrap").style.display="none";
     document.getElementById("mainWrap").style.display="block";
     loadLocalCache();
-    window.addEventListener("DOMContentLoaded",()=>setTimeout(initLoadNote,300));
+    initLoadNote();
   }
 })();
 function logoutAdmin(){ localStorage.removeItem("admin_save_pwd"); localStorage.removeItem("admin_login_expire"); location.reload(); }
@@ -859,7 +813,6 @@ function initLoadNote(){
   if(!tags.length && targetNote.type) tags = [targetNote.type];
   setCurrentTags(tags, targetNote.tagColors || {});
   
-  // 【修复】这里原来是错误的链式赋值，现在分开写
   const privateCheck = document.getElementById("privateCheck");
   if(privateCheck) {
     privateCheck.checked = !!targetNote.private;
@@ -880,7 +833,6 @@ function initLoadNote(){
   checkFormatActive();
   calcWordCount();
 }
-
 
 function syncFormToNoteList() {
   if (!targetNote) return;
@@ -999,11 +951,9 @@ function htmlToMd(s){
     return `\n::slide\n${mdLines.join('\n')}\n::end\n`;
   });
 
-  // 清除多余空白字符，避免排版挤压错乱
   s = s.replace(/\s+/g, ' ').trim();
 
   let md=s.replace(/<pre[^>]*><code>([\s\S]*?)<\/code><\/pre>/g,(_,code)=>{
-    // 代码块内 <br> 换回换行，HTML转义字符还原
     return '\n```\n' + code.replace(/<br\s*\/?>/g,'\n')
         .replace(/&lt;/g,'<')
         .replace(/&gt;/g,'>')
@@ -1019,22 +969,13 @@ function htmlToMd(s){
        .replace(/<u>(.*?)<\/u>/g,'<u>$1</u>');
 
   md=md.replace(/<li>(.*?)<\/li>/g,'- $1\n');
-
-  // 图片转换
-  md=md.replace(/<img[^>]*src="([^"]+)"[^>]*alt="([^"]*)"[^>]*>/g,'![$2]($1)');
-
-  // 所有换行标签统一转为换行符
+  md=md.replace(/<img[^>]*src="([^"]+)"[^>]*alt="([^"]*)"[^>]*>/g,'![$$2]($$1)');
   md = md.replace(/<br\s*\/?>/gi, '\n');
-
-  // 过滤掉不需要保留的HTML标签
   md = md.replace(/<(?!p style="text-align:center"|u|table|tr|th|td)[^>]+>/g,'');
-
-  // 把连续3行以上空行压缩为两行，解决大片空白问题
   md = md.replace(/\n{3,}/g, '\n\n');
 
   return md.trim();
 }
-
 
 function escapeHtml(s){
   return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -1070,7 +1011,7 @@ function initOneCarousel(el){
     idx = (i + total) % total;
     track.style.transform = `translateX(-${idx*100}%)`;
     dots.forEach((d,j)=>d.classList.toggle('active', j===idx));
-    if (counter) counter.textContent = `${idx+1} / ${total}`;
+    if (counter) counter.textContent = `$${idx+1} / $${total}`;
   }
   function start(){ stop(); autoplay = setInterval(()=> show(idx+1), INTERVAL); }
   function stop(){ if (autoplay){ clearInterval(autoplay); autoplay=null; } }
@@ -1136,16 +1077,15 @@ richBox.addEventListener('input',()=>{
   checkFormatActive();
   if (mdRenderTimer) clearTimeout(mdRenderTimer);
   mdRenderTimer = setTimeout(()=>{ calcWordCount(); if(typeof initAllCarousels==='function') initAllCarousels(richBox); }, 250);
-  saveLocalCache(); // 新增这一行
+  saveLocalCache();
 });
 
 mdBox.addEventListener('input',()=>{
   saveMdRecord();
   if (mdRenderTimer) clearTimeout(mdRenderTimer);
   mdRenderTimer = setTimeout(()=>{ renderMdPreview(); calcWordCount(); }, 250);
-  saveLocalCache(); // 新增这一行
+  saveLocalCache();
 });
-
 
 function checkFormatActive(){
   document.querySelectorAll('.icon-btn').forEach(b=>b.classList.remove('active-format'));
@@ -1241,13 +1181,13 @@ function insertTable(){
     tableHtml += '<tr>';
     for (let c = 0; c < cols; c++) {
       const tag = r === 0 ? 'th' : 'td';
-      tableHtml += `<${tag} style="border:1px solid #999;padding:4px 6px;">${r===0?'标题':'内容'}</${tag}>`;
+      tableHtml += `<$${tag} style="border:1px solid #999;padding:4px 6px;">$${r===0?'标题':'内容'}</${tag}>`;
     }
     tableHtml += '</tr>';
   }
   tableHtml += '</table>';
   if(currentEditMode==='rich'){ richBox.focus(); document.execCommand('insertHTML',false,tableHtml); calcWordCount(); }
-  else{ mdBox.value+=`\n|${' 标题 |'.repeat(cols).slice(0,-2)}\n|${' --- |'.repeat(cols).slice(0,-2)}\n`;
+  else{ mdBox.value+=`\n|$${' 标题 |'.repeat(cols).slice(0,-2)}\n|$${' --- |'.repeat(cols).slice(0,-2)}\n`;
  for(let r=1;r<rows;r++){mdBox.value+=`|${' 内容 |'.repeat(cols).slice(0,-2)}\n`;} saveMdRecord(); renderMdPreview(); calcWordCount(); }
 }
 function splitLine1(){ const t='---\n'; if(currentEditMode==='rich'){ document.execCommand('insertText',false,t); calcWordCount(); } else { mdBox.value+=t; saveMdRecord(); renderMdPreview(); calcWordCount(); } }
@@ -1357,7 +1297,7 @@ function handleFileUpload(files){
     }
     const userSetPath = prompt(`确认图片源路径：\n${safeName}`, realFilePath);
     const finalPath = (userSetPath&&userSetPath.trim()) ? userSetPath.trim() : realFilePath;
-    const copyCmd = `cp "${finalPath}" ~/storage/shared/notes/images/"${safeName}"`;
+    const copyCmd = `cp "$${finalPath}" ~/storage/shared/notes/images/"$${safeName}"`;
     imgUploadList.push({ name:safeName, originalName, src:finalPath, copyCmd:copyCmd });
     insertLocalImgRecord(safeName);
     addImgSerial();
@@ -1528,7 +1468,7 @@ document.getElementById('batchImgBtn').onclick = function(){
       const arr = clipText.split(/[\r\n]+/).map(u=>u.trim()).filter(u=>u.startsWith('http'));
       if(arr.length > 0){
         const n = batchInsertImagesByUrls(arr);
-        return alert(`从剪贴板批量插入了 ${n} 张图${isCarouselOn?'（轮播模式）':''}`);
+        return alert(`从剪贴板批量插入了 $${n} 张图$${isCarouselOn?'（轮播模式）':''}`);
       }
     }
     askAndInsert();
@@ -1541,7 +1481,7 @@ document.getElementById('batchImgBtn').onclick = function(){
     if(!urls) return;
     const arr = urls.split(/[\r\n]+/).map(u=>u.trim()).filter(u=>u.startsWith('http'));
     const n = batchInsertImagesByUrls(arr);
-    alert(`插入了 ${n} 张图片${isCarouselOn?'（轮播模式）':''}`);
+    alert(`插入了 $${n} 张图片$${isCarouselOn?'（轮播模式）':''}`);
   }
 };
 
@@ -1565,9 +1505,9 @@ document.getElementById('showTemplateBtn').onclick = async function(){
   let shellBatch = 'cd ~/storage/shared/notes || exit 1\nmkdir -p images\n\n';
   imgUploadList.forEach((item, idx) => {
     const safeFileName = item.name.replace(/"/g, '\\"');
-    shellBatch += `# ${idx+1}. ${item.originalName}\n`;
-    shellBatch += `SRC=$(find /storage/emulated/0 -name "${safeFileName}" 2>/dev/null | head -n1)\n`;
-    shellBatch += `[ -n "$SRC" ] && cp "$SRC" images/"${safeFileName}" || echo "未找到文件：${safeFileName}"\n\n`;
+    shellBatch += `# $${idx+1}. $${item.originalName}\n`;
+    shellBatch += `SRC=$$(find /storage/emulated/0 -name "$${safeFileName}" 2>/dev/null | head -n1)\n`;
+    shellBatch += `[ -n "$$SRC" ] && cp "$$SRC" images/"$${safeFileName}" || echo "未找到文件：$${safeFileName}"\n\n`;
   });
 
   const finalJson = JSON.stringify(uniqueNotes, null, 2);
@@ -1751,7 +1691,7 @@ document.addEventListener('click', function (e) {
     if(!isDragging) return;
     e.preventDefault();
     const point = getPoint(e);
-    const moveX = point.clientX - dragStartX;
+    const moveX = point.clientX -dragStartX;
     const moveY = point.clientY - dragStartY;
 
     const maxLeft = window.innerWidth - dragBox.offsetWidth;
@@ -1932,7 +1872,6 @@ window.addEventListener("DOMContentLoaded", ()=>{
 
 // 暴露给阅读端
 window.NoteCarousel = { initAll: initAllCarousels, initOne: initOneCarousel };
-
 </script>
 </body>
 </html>
