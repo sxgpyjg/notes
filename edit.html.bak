@@ -126,12 +126,44 @@ body.keyboard-opened .edit-toolbar-wrap{position:fixed;bottom:var(--keyboard-hei
 .carousel-render .counter{position:absolute;top:10px;right:12px;background:rgba(0,0,0,.5);color:#fff;font-size:11px;padding:3px 9px;border-radius:99px;z-index:5;font-variant-numeric:tabular-nums;}
 
 /* ================= AI 样式（修复：不再用 button 包 div） ================= */
-.ai-dropdown-wrap{position:relative;display:inline-block;}
-.ai-dropdown-menu{position:absolute;bottom:100%;left:0;background:#fff;border:1px solid #e2e8f0;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.1);min-width:160px;padding:6px;display:none;z-index:99999;}
-.ai-dropdown-menu.show{display:block;}
-.ai-menu-item{padding:6px 10px;cursor:pointer;font-size:13px;border-radius:4px;transition:background 0.15s;}
-.ai-menu-item:hover{background:#f0f3ff;color:#6366F1;}
-.ai-divider{height:1px;background:#eee;margin:4px 0;}
+.ai-dropdown-wrap{
+  position:relative;
+  display:inline-block;
+}
+.ai-dropdown-menu{
+  position:absolute;
+  bottom:100%;
+  left:0;
+  background:#fff;
+  border:1px solid #e2e8f0;
+  border-radius:8px;
+  box-shadow:0 4px 12px rgba(0,0,0,0.1);
+  min-width:240px; /* 加宽，适配textarea */
+  padding:10px;
+  display:none;
+  z-index:99999;
+  pointer-events: auto !important;
+}
+.ai-dropdown-menu.show{
+  display:block;
+}
+.ai-menu-item{
+  padding:6px 10px;
+  cursor:pointer;
+  font-size:13px;
+  border-radius:4px;
+  transition:background 0.15s;
+}
+.ai-menu-item:hover{
+  background:#f0f3ff;
+  color:#6366F1;
+}
+.ai-divider{
+  height:1px;
+  background:#eee;
+  margin:6px 0;
+}
+
 
 .ai-setting-mask{position:fixed;inset:0;background:rgba(0,0,0,0.4);display:none;align-items:center;justify-content:center;z-index:999999;}
 .ai-setting-mask.show{display:flex;}
@@ -154,7 +186,22 @@ body.keyboard-opened .edit-toolbar-wrap{position:fixed;bottom:var(--keyboard-hei
 .net-row input:focus { border-bottom-color:#6366F1; }
 .net-row .net-del { background:transparent; border:none; color:#dc2626; cursor:pointer; font-size:14px; }
 #netImgList label { font-size:10px; color:#94a3b8; display:block; margin-bottom:1px; padding-left:2px; }
+
+/* AI对话输入框修复样式 */
+#aiChatInput {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid #ddd;
+  border-radius:6px;
+  padding:6px;
+  resize:none;
+  outline:none;
+  cursor: text;
+  pointer-events: auto !important;
+}
+
 </style>
+
 </head>
 <body>
 <div id="loginWrap" class="login-modal">
@@ -545,7 +592,9 @@ async function sendAiChat(){
   await aiRequest(fullMessages, true);
   // 清空输入框，准备下一轮提问
   aiChatInput.value = "";
+  aiChatInput.focus();
 }
+
 
 // ========== 新增按钮绑定代码 ==========
 if (aiCancelConf) {
@@ -1496,22 +1545,32 @@ document.getElementById('copyJsonBtn').onclick = async function(){
 };
 
 
-// AI 菜单绑定 - 用事件委托避开每行写 onclick
+// AI 菜单绑定 + 点击空白关闭下拉面板
 if(aiMainBtn){
   aiMainBtn.addEventListener('click',(e)=>{
     e.stopPropagation();
     if(aiMenu) aiMenu.classList.toggle('show');
   });
 }
+// 点击内部不会关闭
 if(aiMenu){
   aiMenu.addEventListener('click',(e)=>{
+    e.stopPropagation();
     const item = e.target.closest('.ai-menu-item');
     if(!item) return;
-    const action = item.dataset.action;
-    if(action) aiRun(action);
+    const type = item.getAttribute('onclick')?.match(/aiRun\('(\w+)'\)/)?.[1];
+    if(type) aiRun(type);
   });
 }
-document.addEventListener('click',()=>{ if(aiMenu) aiMenu.classList.remove('show'); });
+// 全局点击空白关闭AI菜单
+document.addEventListener('click', function(e){
+  const btn = document.getElementById('aiMainBtn');
+  const menu = document.getElementById('aiMenu');
+  if(!btn || !menu) return;
+  if(!btn.contains(e.target) && !menu.contains(e.target)){
+    menu.classList.remove('show');
+  }
+});
 
 //========== 拖拽光标模式 ==========
 const dragToggleBtn = document.getElementById('dragModeToggle');
