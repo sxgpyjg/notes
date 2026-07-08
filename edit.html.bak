@@ -218,8 +218,8 @@ body.keyboard-opened .edit-toolbar-wrap{position:fixed;bottom:var(--keyboard-hei
   background-color: var(--highlight-color, #fff2cc);
   padding: 2px 4px;
   border-radius: 2px;
+  color: #000000 !important;
 }
-
 
 </style>
 
