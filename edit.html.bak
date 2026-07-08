@@ -339,203 +339,6 @@ let globalImgSerial = Number(localStorage.getItem("img_serial")||0);
 let searchIndex = 0, matchList = [], matchCase = false;
 let dragActive = false;
 
-// ================= AI 全局配置（升级对话上下文版） =================
-const AI_CONFIG_KEY = "note_ai_config";
-let aiConfig = JSON.parse(localStorage.getItem(AI_CONFIG_KEY) || '{"key":"","url":"https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions","model":"qwen-turbo"}');
-const aiMenu = document.getElementById('aiMenu');
-const aiMainBtn = document.getElementById('aiMainBtn');
-const aiSettingMask = document.getElementById('aiSettingMask');
-const aiApiKey = document.getElementById('aiApiKey');
-const aiBaseUrl = document.getElementById('aiBaseUrl');
-const aiModelName = document.getElementById('aiModelName');
-const aiLoadingToast = document.getElementById('aiLoadingToast');
-const aiChatInput = document.getElementById('aiChatInput');
-let aiAbortController = null;
-// 新增：对话上下文历史数组
-let aiChatHistory = [];
-// 系统固定人设
-const AI_SYSTEM_PROMPT = "你是专属笔记编辑助手，记住我们全程对话上下文，回答精简实用，输出内容可以直接粘贴进笔记，不要多余开场白和解释。";
-
-// AI指令预设Prompt（一次性任务，不存入对话历史）
-const aiPromptMap = {
-  polish: "优化下面这段文字，理顺语句、提升文笔，只返回优化后的原文，不要多余解释：",
-  expand: "基于下面内容合理扩写续写，保持原有文风，仅返回结果：",
-  short: "精简压缩文字，保留全部核心信息，篇幅减半，只输出文本：",
-  translate: "自动识别语种，做中英互译，排版清晰整洁：",
-  fix: "修正文本错别字、语病、标点问题，只返回修改完成内容：",
-  title: "根据全文生成3个适配笔记的标题，分行罗列：",
-  summary: "对全文做精简总结，提炼关键要点：",
-  code: "优化代码，修复漏洞、规范格式并添加注释，只输出代码本体："
-};
-
-// AI下拉菜单展开收起
-aiMainBtn.addEventListener('click',(e)=>{
-  e.stopPropagation();
-  aiMenu.classList.toggle('show');
-});
-document.addEventListener('click',()=>aiMenu.classList.remove('show'));
-
-// 打开AI设置弹窗
-function openAiSetting(){
-  aiApiKey.value = aiConfig.key;
-  aiBaseUrl.value = aiConfig.url;
-  aiModelName.value = aiConfig.model;
-  aiSettingMask.classList.add('show');
-}
-document.getElementById('aiCancelConf').onclick = ()=> aiSettingMask.classList.remove('show');
-document.getElementById('aiSaveConf').onclick = ()=>{
-  aiConfig = {
-    key: aiApiKey.value.trim(),
-    url: aiBaseUrl.value.trim(),
-    model: aiModelName.value.trim()
-  };
-  localStorage.setItem(AI_CONFIG_KEY, JSON.stringify(aiConfig));
-  aiSettingMask.classList.remove('show');
-  alert("AI配置保存成功");
-};
-
-// 清空对话上下文记忆
-function clearAiHistory(){
-  aiChatHistory = [];
-  aiChatInput.value = "";
-  alert("已清除全部对话历史，开启新会话");
-}
-
-// 显示/隐藏加载提示
-function showAiLoading(){ aiLoadingToast.classList.add('show'); }
-function hideAiLoading(){ aiLoadingToast.classList.remove('show'); }
-
-// 获取选中内容 / 全文内容
-function getAiInputText(type){
-  const sel = window.getSelection().toString().trim();
-  if(type !== 'summary' && sel) return sel;
-  // 全文
-  if(currentEditMode === 'rich') return richBox.innerText;
-  return mdEditor.value;
-}
-
-// 通用流式请求核心函数（区分一次性任务 / 连续对话）
-async function aiRequest(messages, isChatMode = false){
-  aiMenu.classList.remove('show');
-  if(!aiConfig.key) return alert("请先点击 ⚙ AI配置 填入API Key");
-
-  // 终止上一次请求
-  if(aiAbortController) aiAbortController.abort();
-  aiAbortController = new AbortController();
-  showAiLoading();
-
-  try{
-    const res = await fetch(aiConfig.url,{
-      method:"POST",
-      headers:{
-        "Content-Type":"application/json",
-        "Authorization":`Bearer ${aiConfig.key}`
-      },
-      body:JSON.stringify({
-        model: aiConfig.model,
-        stream: true,
-        messages: messages
-      }),
-      signal: aiAbortController.signal
-    });
-
-    if(!res.ok) throw new Error("接口请求失败，请检查Key、接口地址是否正确");
-    const reader = res.body.getReader();
-    const decoder = new TextDecoder();
-    let resultText = '';
-
-    // 定位光标插入位置
-    if(currentEditMode === 'rich'){
-      richBox.focus();
-      const sel = window.getSelection();
-      if(!sel.rangeCount || sel.isCollapsed){
-        const range = document.createRange();
-        range.selectNodeContents(richBox);
-        range.collapse(false);
-        sel.removeAllRanges();
-        sel.addRange(range);
-      }
-    }
-
-    // SSE流式逐字输出
-    while(true){
-      const {done,value} = await reader.read();
-      if(done) break;
-      const chunk = decoder.decode(value, {stream:true});
-      const lines = chunk.split('\n').filter(line=>line.startsWith('data: '));
-      for(const line of lines){
-        const jsonStr = line.replace('data: ','').trim();
-        if(jsonStr === '[DONE]') continue;
-        try{
-          const data = JSON.parse(jsonStr);
-          const delta = data.choices?.[0]?.delta?.content || '';
-          if(!delta) continue;
-          resultText += delta;
-          // 实时写入编辑器
-          if(currentEditMode === 'rich'){
-            document.execCommand('insertText', false, delta);
-          }else{
-            mdEditor.value += delta;
-            mdEditor.scrollTop = mdEditor.scrollHeight;
-          }
-        }catch(e){}
-      }
-    }
-
-    // 对话模式：把问答存入历史，实现上下文记忆
-    if(isChatMode){
-      aiChatHistory.push({role:"assistant", content: resultText});
-    }
-
-    // 更新编辑器历史记录
-    if(currentEditMode === 'md'){
-      saveMdRecord();
-      renderMdPreview();
-    }else{
-      richRecordStack.splice(richRecordIndex+1);
-      richRecordStack.push(richBox.innerHTML);
-      if(richRecordStack.length>RICH_RECORD_MAX) richRecordStack.shift();
-      richRecordIndex=richRecordStack.length-1;
-    }
-    calcWordCount();
-    return resultText;
-  }catch(err){
-    if(err.name !== 'AbortError') alert("AI生成失败："+err.message);
-    return null;
-  }finally{
-    hideAiLoading();
-  }
-}
-
-// 原有一键功能入口（一次性任务，不保存对话历史）
-async function aiRun(type){
-  const prompt = aiPromptMap[type];
-  const content = getAiInputText(type);
-  if(!content) return alert("请先选中需要处理的文字");
-  const msgList = [
-    {role:"system",content:AI_SYSTEM_PROMPT},
-    {role:"user",content:`${prompt}\n${content}`}
-  ];
-  await aiRequest(msgList, false);
-}
-
-// 新增：自由连续对话发送函数
-async function sendAiChat(){
-  const userMsg = aiChatInput.value.trim();
-  if(!userMsg) return alert("请输入对话内容");
-  // 将用户提问加入历史
-  aiChatHistory.push({role:"user", content: userMsg});
-  // 拼接完整消息链：系统设定 + 全部历史对话
-  const fullMessages = [
-    {role:"system",content:AI_SYSTEM_PROMPT},
-    ...aiChatHistory
-  ];
-  await aiRequest(fullMessages, true);
-  // 清空输入框，准备下一轮提问
-  aiChatInput.value = "";
-}
-
-
 // ========== 轮播全局变量 ==========
 let isCarouselOn = false;
 let carouselImageQueue = [];
@@ -563,15 +366,6 @@ const editToolbar = document.getElementById("editToolbar");
 const carouselCheck = document.getElementById("carouselCheck");
 const finishCarouselBtn = document.getElementById("finishCarouselBtn");
 const carouselQueueCount = document.getElementById("carouselQueueCount");
-
-// AI 元素
-const aiMenu = document.getElementById("aiMenu");
-const aiMainBtn = document.getElementById("aiMainBtn");
-const aiSettingMask = document.getElementById("aiSettingMask");
-const aiApiKey = document.getElementById("aiApiKey");
-const aiBaseUrl = document.getElementById("aiBaseUrl");
-const aiModelName = document.getElementById("aiModelName");
-const aiLoadingToast = document.getElementById("aiLoadingToast");
 
 //========== 工具函数 ==========
 function getNowTimeStr(){
@@ -1087,20 +881,20 @@ function insertTable(){
     tableHtml += '<tr>';
     for (let c = 0; c < cols; c++) {
       const tag = r === 0 ? 'th' : 'td';
-      tableHtml += `<${tag} style="border:1px solid #999;padding:4px 6px;">${r===0?'标题':'内容'}</${tag}>`;
+      tableHtml += `<$${tag} style="border:1px solid #999;padding:4px 6px;">$${r===0?'标题':'内容'}</${tag}>`;
     }
     tableHtml += '</tr>';
   }
   tableHtml += '</table>';
   if(currentEditMode==='rich'){ richBox.focus(); document.execCommand('insertHTML',false,tableHtml); calcWordCount(); }
-  else{ mdBox.value+=`\n|${' 标题 |'.repeat(cols).slice(0,-2)}\n|${' --- |'.repeat(cols).slice(0,-2)}\n`; for(let r=1;r<rows;r++){mdBox.value+=`|${' 内容 |'.repeat(cols).slice(0,-2)}\n`;} saveMdRecord(); renderMdPreview(); calcWordCount(); }
+  else{ mdBox.value+=`\n|$${' 标题 |'.repeat(cols).slice(0,-2)}\n|$${' --- |'.repeat(cols).slice(0,-2)}\n`; for(let r=1;r<rows;r++){mdBox.value+=`|${' 内容 |'.repeat(cols).slice(0,-2)}\n`;} saveMdRecord(); renderMdPreview(); calcWordCount(); }
 }
 function splitLine1(){ const t='---\n'; if(currentEditMode==='rich'){ document.execCommand('insertText',false,t); calcWordCount(); } else { mdBox.value+=t; saveMdRecord(); renderMdPreview(); calcWordCount(); } }
 function clearAllNotesContent(){ if(!confirm('清空全部内容？'))return; richBox.innerHTML=''; mdBox.value=''; renderMdPreview(); richRecordStack=['']; richRecordIndex=0; mdRecordStack=['']; mdRecordIndex=0; calcWordCount(); }
 
 //========== 图片 / 轮播 核心 ==========
 function itemToMd(item){
-  let line = `![${item.alt||''}](${item.url})`;
+  let line = `![$${item.alt||''}]($${item.url})`;
   if (item.intro) line += `\n::intro ${item.intro}`;
   return line + '\n';
 }
@@ -1791,3 +1585,4 @@ window.NoteCarousel = { initAll: initAllCarousels, initOne: initOneCarousel };
 </script>
 </body>
 </html>
+
