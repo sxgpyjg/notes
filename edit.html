@@ -505,8 +505,14 @@ function getAiInputText(type){
 }
 
 // 通用流式请求核心函数（区分一次性任务 / 连续对话）
+// 通用流式请求核心函数（区分一次性任务 / 连续对话）
 async function aiRequest(messages, isChatMode = false){
-// aiMenu.classList.remove('show');
+  // 复制消息数组，防止修改原始上下文
+  const sendMessages = messages.map(item => ({...item}));
+  // 插入真实北京时间
+  const nowBeijing = new Date().toLocaleString('zh-CN', {timeZone: 'Asia/Shanghai'});
+  sendMessages[0].content += `\n【当前真实北京时间：${nowBeijing}】`;
+
   if(!aiConfig.key) return alert("请先点击 ⚙ AI配置 填入API Key");
 
   // 终止上一次请求
@@ -519,22 +525,23 @@ async function aiRequest(messages, isChatMode = false){
       method:"POST",
       headers:{
         "Content-Type":"application/json",
-        "Authorization":`Bearer ${aiConfig.key}`
+        "Authorization":`Bearer ${aiConfig.key}`,
+        "Accept": "text/event-stream"
       },
       body:JSON.stringify({
-        model: aiConfig.model,
-        stream: true,
-        messages: messages
-      }),
-      signal: aiAbortController.signal
-    });
+    model: aiConfig.model,
+    stream: true,
+    messages: sendMessages
+}),
+signal: aiAbortController.signal
+});
 
     if(!res.ok) throw new Error("接口请求失败，请检查Key、接口地址是否正确");
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let resultText = '';
 
-    // 定位光标插入位置
+    // 定位光标插入位置（沿用你原本逻辑）
     if(currentEditMode === 'rich'){
       richBox.focus();
       const sel = window.getSelection();
@@ -561,7 +568,7 @@ async function aiRequest(messages, isChatMode = false){
           const delta = data.choices?.[0]?.delta?.content || '';
           if(!delta) continue;
           resultText += delta;
-          // 实时写入编辑器
+          // 实时写入编辑器（完全沿用你原来的渲染逻辑，无需改动）
           if(currentEditMode === 'rich'){
             document.execCommand('insertText', false, delta);
           }else{
