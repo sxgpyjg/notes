@@ -921,13 +921,42 @@ function htmlToMd(s){
     return `\n::slide\n${mdLines.join('\n')}\n::end\n`;
   });
 
-  let md=s.replace(/<pre[^>]*><code>([\s\S]*?)<\/code><\/pre>/g,'```\n$1\n```')
-    .replace(/<h1>(.*?)<\/h1>/g,'# $1').replace(/<h2>(.*?)<\/h2>/g,'## $1').replace(/<h3>(.*?)<\/h3>/g,'### $1')
-    .replace(/<strong>(.*?)<\/strong>/g,'**$1**').replace(/<em>(.*?)<\/em>/g,'*$1*').replace(/<s>(.*?)<\/s>/g,'~~$1~~')
-    .replace(/<li>(.*?)<\/li>/g,'- $1').replace(/<br>/g,'\n');
-  md=md.replace(/<(?!p style="text-align:center"|u|table|tr|th|td)[^>]+>/g,'');
-  return md.replace(/<img[^>]*src="([^"]+)"[^>]*alt="([^"]*)"[^>]*>/g,'![$2]($1)');
+  // 清除多余空白字符，避免排版挤压错乱
+  s = s.replace(/\s+/g, ' ').trim();
+
+  let md=s.replace(/<pre[^>]*><code>([\s\S]*?)<\/code><\/pre>/g,(_,code)=>{
+    // 代码块内 <br> 换回换行，HTML转义字符还原
+    return '\n```\n' + code.replace(/<br\s*\/?>/g,'\n')
+        .replace(/&lt;/g,'<')
+        .replace(/&gt;/g,'>')
+        .replace(/&amp;/g,'&') + '\n```\n'
+  });
+
+  md=md.replace(/<h1>(.*?)<\/h1>/g,'# $1')
+       .replace(/<h2>(.*?)<\/h2>/g,'## $1')
+       .replace(/<h3>(.*?)<\/h3>/g,'### $1')
+       .replace(/<strong>(.*?)<\/strong>/g,'**$1**')
+       .replace(/<em>(.*?)<\/em>/g,'*$1*')
+       .replace(/<s>(.*?)<\/s>/g,'~~$1~~')
+       .replace(/<u>(.*?)<\/u>/g,'<u>$1</u>');
+
+  md=md.replace(/<li>(.*?)<\/li>/g,'- $1\n');
+
+  // 图片转换
+  md=md.replace(/<img[^>]*src="([^"]+)"[^>]*alt="([^"]*)"[^>]*>/g,'![$2]($1)');
+
+  // 所有换行标签统一转为换行符
+  md = md.replace(/<br\s*\/?>/gi, '\n');
+
+  // 过滤掉不需要保留的HTML标签
+  md = md.replace(/<(?!p style="text-align:center"|u|table|tr|th|td)[^>]+>/g,'');
+
+  // 把连续3行以上空行压缩为两行，解决大片空白问题
+  md = md.replace(/\n{3,}/g, '\n\n');
+
+  return md.trim();
 }
+
 
 function escapeHtml(s){
   return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
