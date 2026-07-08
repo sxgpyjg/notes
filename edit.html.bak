@@ -376,6 +376,8 @@ const aiSettingMask = document.getElementById('aiSettingMask');
 const aiApiKey = document.getElementById('aiApiKey');
 const aiBaseUrl = document.getElementById('aiBaseUrl');
 const aiModelName = document.getElementById('aiModelName');
+const aiSaveConf = document.getElementById('aiSaveConf');
+const aiCancelConf = document.getElementById('aiCancelConf');
 const aiLoadingToast = document.getElementById('aiLoadingToast');
 const aiChatInput = document.getElementById('aiChatInput');
 let aiAbortController = null;
@@ -543,6 +545,26 @@ async function sendAiChat(){
   await aiRequest(fullMessages, true);
   // 清空输入框，准备下一轮提问
   aiChatInput.value = "";
+}
+
+// ========== 新增按钮绑定代码 ==========
+if (aiCancelConf) {
+  aiCancelConf.onclick = () => {
+    aiSettingMask.classList.remove('show');
+  };
+}
+
+if (aiSaveConf) {
+  aiSaveConf.onclick = () => {
+    aiConfig = {
+      key: aiApiKey.value.trim(),
+      url: aiBaseUrl.value.trim(),
+      model: aiModelName.value.trim()
+    };
+    localStorage.setItem(AI_CONFIG_KEY, JSON.stringify(aiConfig));
+    aiSettingMask.classList.remove('show');
+    alert("AI配置保存成功");
+  };
 }
 
 //========== 工具函数 ==========
