@@ -7,6 +7,39 @@
 <script>
 window.NOTE_DATA = [];
 </script>
+
+<!-- 在上面这个script的下方，新建下面这个标签，粘贴JS代码 -->
+<script>
+// 这里粘贴我上一条发给你的颜色高亮JS代码
+const colorPicker = document.getElementById('bgColor');
+
+colorPicker.addEventListener('input', function() {
+  const selection = window.getSelection();
+  if (!selection.rangeCount || selection.isCollapsed) {
+    return;
+  }
+  const range = selection.getRangeAt(0);
+  const highlightSpan = document.createElement('span');
+  highlightSpan.className = 'text-highlight';
+  highlightSpan.style.setProperty('--highlight-color', this.value);
+  try {
+    range.surroundContents(highlightSpan);
+    selection.removeAllRanges();
+  } catch (err) {
+    console.log('选中区域无法添加高亮，选小段文字重试');
+  }
+});
+
+// 可选：Ctrl+Shift+H 清除高亮
+document.addEventListener('keydown', e => {
+  if(e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'h'){
+    document.querySelectorAll('.text-highlight').forEach(span => {
+      span.replaceWith(...span.childNodes);
+    })
+  }
+})
+</script>
+
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:system-ui,-apple-system,sans-serif;}
 body{background:linear-gradient(135deg,#f5f7fe,#eef2ff);padding:10px 10px 60px;overflow-x:hidden;}
@@ -213,6 +246,11 @@ body.keyboard-opened .edit-toolbar-wrap{position:fixed;bottom:var(--keyboard-hei
   pointer-events: auto !important;
   max-height: 120px;
   overflow-y: auto;
+}
+.text-highlight {
+  background-color: var(--highlight-color, #fff2cc);
+  padding: 2px 4px;
+  border-radius: 2px;
 }
 
 
