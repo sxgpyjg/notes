@@ -134,10 +134,13 @@ body.keyboard-opened .edit-toolbar-wrap{position:fixed;bottom:var(--keyboard-hei
   position:absolute;
   bottom:100%;
   left:0;
-  background:#fff;
-  border:1px solid #e2e8f0;
+  /* 半透毛玻璃，最后数字0.8是透明度，越小越透 */
+  background:rgba(255,255,255,0.8);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border:1px solid rgba(226,232,240,0.6);
   border-radius:8px;
-  box-shadow:0 4px 12px rgba(0,0,0,0.1);
+  box-shadow:0 4px 12px rgba(0,0,0,0.08);
   min-width:240px;
   padding:10px;
   display:none;
@@ -145,6 +148,9 @@ body.keyboard-opened .edit-toolbar-wrap{position:fixed;bottom:var(--keyboard-hei
   pointer-events: auto !important;
   max-height: 60vh;
   overflow-y: auto;
+  /* 拖拽样式 */
+  cursor: move;
+  user-select: none;
 }
 /* 键盘唤起后，切换为向下弹出 */
 .ai-dropdown-menu.keyboard-open {
@@ -171,7 +177,6 @@ body.keyboard-opened .edit-toolbar-wrap{position:fixed;bottom:var(--keyboard-hei
   background:#eee;
   margin:6px 0;
 }
-
 
 .ai-setting-mask{position:fixed;inset:0;background:rgba(0,0,0,0.4);display:none;align-items:center;justify-content:center;z-index:999999;}
 .ai-setting-mask.show{display:flex;}
@@ -1781,6 +1786,49 @@ window.addEventListener("DOMContentLoaded", ()=>{
   }
   // 点击AI按钮时同步检测位置
   aiMainBtn.addEventListener('click', adjustAiMenuPos);
+})();
+
+// ========== AI面板拖拽功能 ==========
+(function(){
+  const dragBox = document.getElementById('aiMenu');
+  let dragStartX, dragStartY, boxOriginLeft, boxOriginTop, isDragging = false;
+
+  dragBox.addEventListener('mousedown', function(e){
+    // 点击输入框、按钮时不触发拖拽
+    if(e.target.tagName === 'TEXTAREA' || e.target.tagName === 'BUTTON') return;
+    isDragging = true;
+    dragStartX = e.clientX;
+    dragStartY = e.clientY;
+    // 获取面板当前位置
+    const rect = dragBox.getBoundingClientRect();
+    boxOriginLeft = rect.left;
+    boxOriginTop = rect.top;
+    // 切换为固定定位，实现自由拖动
+    dragBox.style.position = 'fixed';
+    dragBox.style.bottom = 'auto';
+    dragBox.style.left = boxOriginLeft + 'px';
+    dragBox.style.top = boxOriginTop + 'px';
+  });
+
+  document.addEventListener('mousemove', function(e){
+    if(!isDragging) return;
+    // 计算拖动偏移量
+    const moveX = e.clientX - dragStartX;
+    const moveY = e.clientY - dragStartY;
+    dragBox.style.left = (boxOriginLeft + moveX) + 'px';
+    dragBox.style.top = (boxOriginTop + moveY) + 'px';
+  });
+
+  document.addEventListener('mouseup', function(){
+    isDragging = false;
+  });
+
+  // 重置位置：重新打开面板时恢复原始吸附位置
+  aiMainBtn.addEventListener('click', function(){
+    dragBox.style.position = '';
+    dragBox.style.left = '';
+    dragBox.style.top = '';
+  });
 })();
 
 // 暴露给阅读端
