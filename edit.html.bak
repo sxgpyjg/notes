@@ -1901,6 +1901,62 @@ window.addEventListener("DOMContentLoaded", ()=>{
   });
 })();
 
+// ========== 文字底色高亮功能（修复版） ==========
+document.addEventListener('DOMContentLoaded', function () {
+  const bgColorPicker = document.getElementById('bgColor');
+  const richEditor = document.getElementById('richEditor');
+
+  if (!bgColorPicker || !richEditor) return;
+
+  // 选色后给选中文字添加背景高亮
+  bgColorPicker.addEventListener('input', function () {
+    const sel = window.getSelection();
+    // 无选中内容直接退出
+    if (!sel.rangeCount || sel.isCollapsed) return;
+
+    const range = sel.getRangeAt(0);
+    // 判断选中内容必须在富文本框内部，防止选中页面其他元素报错
+    if (!richEditor.contains(range.commonAncestorContainer)) return;
+
+    try {
+      // 使用原生跨标签高亮命令
+      document.execCommand('hiliteColor', false, this.value);
+      // 统一打上class方便一键清除
+      richEditor.querySelectorAll('span[style*="background-color"]').forEach(span => {
+        span.classList.add('text-highlight');
+      });
+
+      // 保存编辑历史，支持撤销
+      richRecordStack.splice(richRecordIndex + 1);
+      richRecordStack.push(richEditor.innerHTML);
+      if (richRecordStack.length > RICH_RECORD_MAX) richRecordStack.shift();
+      richRecordIndex = richRecordStack.length - 1;
+      calcWordCount();
+    } catch (err) {
+      console.log('高亮失败，请勿跨多层标签选中内容，拆分小段文字即可', err);
+    }
+  });
+
+  // Ctrl+Shift+H 一键清除页面所有高亮标记，仅编辑器激活时生效
+  document.addEventListener('keydown', function (e) {
+    if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'h') {
+      // 只有焦点在富文本内才执行清空
+      if (!richEditor.contains(document.activeElement)) return;
+      e.preventDefault();
+
+      document.querySelectorAll('.text-highlight').forEach(span => {
+        span.replaceWith(...span.childNodes);
+      });
+      // 更新历史记录
+      richRecordStack.splice(richRecordIndex + 1);
+      richRecordStack.push(richEditor.innerHTML);
+      if (richRecordStack.length > RICH_RECORD_MAX) richRecordStack.shift();
+      richRecordIndex = richRecordStack.length - 1;
+      calcWordCount();
+    }
+  });
+});
+
 // 暴露给阅读端
 window.NoteCarousel = { initAll: initAllCarousels, initOne: initOneCarousel };
 </script>
