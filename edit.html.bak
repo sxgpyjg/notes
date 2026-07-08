@@ -508,13 +508,15 @@ function getAiInputText(type){
 // 通用流式请求核心函数（区分一次性任务 / 连续对话）
 async function aiRequest(messages, isChatMode = false){
   if(!aiConfig.key) return alert("请先点击 ⚙ AI配置 填入API Key");
-  if(!aiMenu) aiMenu = document.getElementById('aiMenu'); // 确保获取
-  aiMenu.classList.remove('show'); // 此时 aiMenu 不为 null
+
+  // 关闭 AI 菜单
+  if(aiMenu) aiMenu.classList.remove('show');
 
   // 终止上一次请求
   if(aiAbortController) aiAbortController.abort();
   aiAbortController = new AbortController();
   showAiLoading();
+
 
   try{
     const res = await fetch(aiConfig.url,{
