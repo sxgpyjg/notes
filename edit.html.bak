@@ -546,9 +546,17 @@ function initLoadNote(){
   let tags = Array.isArray(targetNote.tags) ? targetNote.tags.slice() : [];
   if(!tags.length && targetNote.type) tags = [targetNote.type];
   setCurrentTags(tags, targetNote.tagColors || {});
-  document.getElementById("privateCheck").checked = !!targetNote.private = document.getElementById("privateCheck").checked;
+  
+  // 【修复】这里原来是错误的链式赋值，现在分开写
+  const privateCheck = document.getElementById("privateCheck");
+  if(privateCheck) {
+    privateCheck.checked = !!targetNote.private;
+  }
+  
   isCarouselOn = !!targetNote.carousel;
-  carouselCheck.checked = isCarouselOn;
+  if(carouselCheck) {
+    carouselCheck.checked = isCarouselOn;
+  }
 
   richBox.innerHTML = targetNote.content || "";
   richRecordStack = [richBox.innerHTML];
@@ -560,6 +568,7 @@ function initLoadNote(){
   checkFormatActive();
   calcWordCount();
 }
+
 
 function syncFormToNoteList() {
   if (!targetNote) return;
