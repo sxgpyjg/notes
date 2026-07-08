@@ -220,6 +220,10 @@ body.keyboard-opened .edit-toolbar-wrap{position:fixed;bottom:var(--keyboard-hei
   border-radius: 2px;
   color: #000000 !important;
 }
+/* 叠加标签选择器，权重更高 */
+span.text-highlight, div.text-highlight, p.text-highlight {
+  color: #000000 !important;
+}
 
 </style>
 
