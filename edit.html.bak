@@ -729,9 +729,10 @@ function renderTagsChips(){
     const txt=document.createElement('span'); txt.className='tag-chip-text'; txt.textContent=t;
     const rm=document.createElement('span'); rm.className='tag-chip-remove'; rm.style.cssText=`color:${textColor};background:${bgColor};`;
     rm.addEventListener('click',e=>{ e.stopPropagation(); removeTagAt(i); });
-    chip.append(dot,txt,rm);
-    tagsInputWrap.insertbefore(chip, tagChipInput);
-  });
+chip.append(dot,txt,rm);
+tagsInputWrap.insertBefore(chip, tagChipInput);
+});
+
 }
 function addTag(r){
   let s=String(r||'').trim(); if(!s||s.length>20)return;
