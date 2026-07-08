@@ -1901,85 +1901,8 @@ window.addEventListener("DOMContentLoaded", ()=>{
   });
 })();
 
-<script>
 // 暴露给阅读端
 window.NoteCarousel = { initAll: initAllCarousels, initOne: initOneCarousel };
-
-// ========== 全局撤销栈变量（必须提前定义） ==========
-const RICH_RECORD_MAX = 30; // 最大撤销步数
-let richRecordStack = [];
-let richRecordIndex = -1;
-
-// 字数统计函数（按你原有逻辑补齐空壳，自行填充内部逻辑）
-function calcWordCount() {
-  // 这里写入你的字数统计代码
-}
-
-// ========== 文字底色高亮功能（修复升级版） ==========
-document.addEventListener('DOMContentLoaded', function () {
-  const bgColorPicker = document.getElementById('bgColor');
-  const richEditor = document.getElementById('richEditor');
-
-  if (!bgColorPicker || !richEditor) return;
-
-  // 选色后给选中文字添加背景高亮（替换surroundContents，支持跨标签选中）
-  bgColorPicker.addEventListener('input', function () {
-    const sel = window.getSelection();
-    if (!sel.rangeCount || sel.isCollapsed) return;
-
-    const range = sel.getRangeAt(0);
-    // 限制选区只能在富文本内
-    if (!richEditor.contains(range.commonAncestorContainer)) return;
-
-    try {
-      // 改良方案：用 execCommand 兼容跨标签选中，比 surroundContents 稳定
-      document.execCommand('hiliteColor', false, this.value);
-      // 给生成的span统一加上class方便后续清除
-      richEditor.querySelectorAll('span[style*="background-color"]').forEach(span => {
-        span.classList.add('text-highlight');
-      });
-
-      // 写入撤销栈
-      richRecordStack.splice(richRecordIndex + 1);
-      richRecordStack.push(richEditor.innerHTML);
-      if (richRecordStack.length > RICH_RECORD_MAX) richRecordStack.shift();
-      richRecordIndex = richRecordStack.length - 1;
-      calcWordCount();
-    } catch (err) {
-      console.log('高亮标记失败', err);
-    }
-  });
-
-  // Ctrl+Shift+H 清除高亮，仅在富文本聚焦时生效，避免全局误触
-  document.addEventListener('keydown', function (e) {
-    if (!(e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'h')) return;
-    // 只有光标在编辑器内才执行清除
-    if (!richEditor.contains(document.activeElement)) return;
-
-    e.preventDefault();
-    // 剥离高亮span，保留内部文字
-    document.querySelectorAll('.text-highlight').forEach(span => {
-      span.replaceWith(...span.childNodes);
-    });
-
-    // 更新撤销记录
-    richRecordStack.splice(richRecordIndex + 1);
-    richRecordStack.push(richEditor.innerHTML);
-    if (richRecordStack.length > RICH_RECORD_MAX) richRecordStack.shift();
-    richRecordIndex = richRecordStack.length - 1;
-    calcWordCount();
-  });
-});
 </script>
-
-<!-- 配套CSS，保证高亮正常显示 -->
-<style>
-.text-highlight {
-  padding: 0 2px;
-  box-decoration-break: clone; /* 换行后高亮不会断开 */
-}
-</style>
-
 </body>
 </html>
-
