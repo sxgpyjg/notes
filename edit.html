@@ -1632,6 +1632,8 @@ if(aiMainBtn){
   aiMainBtn.addEventListener('click',(e)=>{
     e.stopPropagation();
     if(aiMenu) aiMenu.classList.toggle('show');
+    // 打开面板时自动检测键盘，切换上下弹出方向
+    adjustAiMenuPos();
   });
 }
 
@@ -1647,17 +1649,21 @@ if(aiMenu){
 }
 // ==================================
 
-// 全局点击空白关闭AI菜单（这里已经改好带折叠重置的版本）
+// 全局点击空白关闭AI菜单（修复整合版）
 document.addEventListener('click', function(e){
   const btn = document.getElementById('aiMainBtn');
   const menu = document.getElementById('aiMenu');
   if(!btn || !menu) return;
   if(!btn.contains(e.target) && !menu.contains(e.target)){
     menu.classList.remove('show');
-    // 面板关闭时，重置快捷折叠栏
+    // 1.重置快捷折叠栏
     aiQuickOpen = false;
     aiQuickWrap.style.maxHeight = '0px';
     aiArrow.textContent = '▼';
+    // 2.关闭面板同时重置拖拽定位，完美替代之前多余的按钮监听
+    menu.style.position = '';
+    menu.style.left = '';
+    menu.style.top = '';
   }
 });
 
@@ -1828,8 +1834,7 @@ window.addEventListener("DOMContentLoaded", ()=>{
   }else{
     window.addEventListener('resize', adjustAiMenuPos);
   }
-  // 点击AI按钮时同步检测位置
-  aiMainBtn.addEventListener('click', adjustAiMenuPos);
+
 })();
 
 // ========== AI面板拖拽（手机触屏 + 电脑鼠标双适配） ==========
@@ -1898,13 +1903,6 @@ window.addEventListener("DOMContentLoaded", ()=>{
   document.addEventListener('touchend', dragEnd);
   document.addEventListener('touchcancel', dragEnd);
 
-  // 重新点开AI按钮，复位回原来位置
-  aiMainBtn.addEventListener('click', function(){
-    dragBox.style.position = '';
-    dragBox.style.left = '';
-    dragBox.style.top = '';
-  });
-})();
 
 // 暴露给阅读端
 window.NoteCarousel = { initAll: initAllCarousels, initOne: initOneCarousel };
