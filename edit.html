@@ -365,7 +365,7 @@ body.keyboard-opened .edit-toolbar-wrap{position:fixed;bottom:var(--keyboard-hei
   </div>
 </div>
 
-<div class="ai-loading-toast" id="aiLoadingToast">AI正在生成内容...</div>
+<div classai-loading-toast" id="aiLoadingToast">AI正在生成内容...</div>
 
 <div class="find-replace-mask" id="findReplaceMask">
   <div class="find-replace-box" id="findReplaceBox">
@@ -414,6 +414,7 @@ let isCarouselOn = false;
 let carouselImageQueue = [];
 let carouselCloseTimer = null;
 
+// DOM元素获取增加存在性判断，防止null报错
 const titleInput = document.querySelector(".title-input");
 const tagChipInput = document.getElementById("tagChipInput");
 const tagsInputWrap = document.getElementById("tagsInputWrap");
@@ -439,7 +440,12 @@ const carouselQueueCount = document.getElementById("carouselQueueCount");
 
 // ================= AI 全局配置（升级对话上下文版） =================
 const AI_CONFIG_KEY = "note_ai_config";
-let aiConfig = JSON.parse(localStorage.getItem(AI_CONFIG_KEY) || '{"key":"","url":"https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions","model":"qwen-turbo"}');
+let aiConfig = {};
+try{
+  aiConfig = JSON.parse(localStorage.getItem(AI_CONFIG_KEY) || '{"key":"","url":"https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions","model":"qwen-turbo"}');
+}catch(e){
+  aiConfig = {"key":"","url":"https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions","model":"qwen-turbo"};
+}
 const aiMenu = document.getElementById('aiMenu');
 const aiMainBtn = document.getElementById('aiMainBtn');
 const aiSettingMask = document.getElementById('aiSettingMask');
@@ -470,6 +476,7 @@ const aiPromptMap = {
 
 // 打开AI设置弹窗
 function openAiSetting(){
+  if(!aiApiKey || !aiBaseUrl || !aiModelName) return;
   aiApiKey.value = aiConfig.key;
   aiBaseUrl.value = aiConfig.url;
   aiModelName.value = aiConfig.model;
@@ -479,26 +486,26 @@ function openAiSetting(){
 // 清空对话上下文记忆
 function clearAiHistory(){
   aiChatHistory = [];
-  aiChatInput.value = "";
+  if(aiChatInput) aiChatInput.value = "";
   alert("已清除全部对话历史，开启新会话");
 }
 
 // 显示/隐藏加载提示
-function showAiLoading(){ aiLoadingToast.classList.add('show'); }
-function hideAiLoading(){ aiLoadingToast.classList.remove('show'); }
+function showAiLoading(){ if(aiLoadingToast) aiLoadingToast.classList.add('show'); }
+function hideAiLoading(){ if(aiLoadingToast) aiLoadingToast.classList.remove('show'); }
 
 // 获取选中内容 / 全文内容
 function getAiInputText(type){
   const sel = window.getSelection().toString().trim();
   if(type !== 'summary' && sel) return sel;
   // 全文
-  if(currentEditMode === 'rich') return richBox.innerText;
-  return mdBox.value;
+  if(currentEditMode === 'rich' && richBox) return richBox.innerText;
+  if(mdBox) return mdBox.value;
+  return '';
 }
 
 // 通用流式请求核心函数（区分一次性任务 / 连续对话）
 async function aiRequest(messages, isChatMode = false){
-// aiMenu.classList.remove('show');
   if(!aiConfig.key) return alert("请先点击 ⚙ AI配置 填入API Key");
 
   // 终止上一次请求
@@ -527,7 +534,7 @@ async function aiRequest(messages, isChatMode = false){
     let resultText = '';
 
     // 定位光标插入位置
-    if(currentEditMode === 'rich'){
+    if(currentEditMode === 'rich' && richBox){
       richBox.focus();
       const sel = window.getSelection();
       if(!sel.rangeCount || sel.isCollapsed){
@@ -556,7 +563,7 @@ async function aiRequest(messages, isChatMode = false){
           // 实时写入编辑器
           if(currentEditMode === 'rich'){
             document.execCommand('insertText', false, delta);
-          }else{
+          }else if(mdBox){
             mdBox.value += delta;
             mdBox.scrollTop = mdBox.scrollHeight;
           }
@@ -603,6 +610,7 @@ async function aiRun(type){
 
 // 新增：自由连续对话发送函数
 async function sendAiChat(){
+  if(!aiChatInput) return;
   const userMsg = aiChatInput.value.trim();
   if(!userMsg) return alert("请输入对话内容");
   // 将用户提问加入历史
@@ -619,6 +627,7 @@ async function sendAiChat(){
 }
 
 // ========== AI对话输入框快捷键：回车发送，Shift+回车换行 ==========
+if(aiChatInput){
 aiChatInput.addEventListener('keydown', function(e) {
   if (e.isComposing) return;
   if (e.key === 'Enter') {
@@ -627,6 +636,7 @@ aiChatInput.addEventListener('keydown', function(e) {
     sendAiChat();
   }
 });
+}
 
 // AI快捷工具折叠展开
 const aiQuickToggle = document.getElementById('aiQuickToggle');
@@ -634,6 +644,7 @@ const aiQuickWrap = document.getElementById('aiQuickWrap');
 const aiArrow = document.getElementById('aiArrow');
 let aiQuickOpen = false;
 
+if(aiQuickToggle){
 aiQuickToggle.addEventListener('click', function(e){
   e.stopPropagation();
   aiQuickOpen = !aiQuickOpen;
@@ -645,6 +656,7 @@ aiQuickToggle.addEventListener('click', function(e){
     aiArrow.textContent = '▼';
   }
 });
+}
 
 
 
@@ -697,6 +709,7 @@ function pickTagColorAtIndex(idx){
   setTimeout(()=>ci.click(),50);
 }
 function renderTagsChips(){
+  if(!tagsInputWrap) return;
   Array.from(tagsInputWrap.querySelectorAll('.tag-chip')).forEach(n=>n.remove());
   currentTags.forEach((t,i)=>{
     const c=getTagColor(t);
@@ -716,9 +729,10 @@ function renderTagsChips(){
     const txt=document.createElement('span'); txt.className='tag-chip-text'; txt.textContent=t;
     const rm=document.createElement('span'); rm.className='tag-chip-remove'; rm.style.cssText=`color:${textColor};background:${bgColor};`;
     rm.addEventListener('click',e=>{ e.stopPropagation(); removeTagAt(i); });
-    chip.append(dot,txt,rm);
-    tagsInputWrap.insertBefore(chip, tagChipInput);
-  });
+chip.append(dot,txt,rm);
+tagsInputWrap.insertBefore(chip, tagChipInput);
+});
+
 }
 function addTag(r){
   let s=String(r||'').trim(); if(!s||s.length>20)return;
@@ -1915,4 +1929,5 @@ window.NoteCarousel = { initAll: initAllCarousels, initOne: initOneCarousel };
 </script>
 </body>
 </html>
+
 
