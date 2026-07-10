@@ -578,12 +578,14 @@ async function waitNoteData(){
 
 function loadNoteData(){
   if(window.NOTE_DATA && Array.isArray(window.NOTE_DATA)){
-    dataList = JSON.parse(JSON.stringify(window.NOTE_DATA));
+    // 过滤掉id、title不存在的无效空笔记
+    dataList = JSON.parse(JSON.stringify(window.NOTE_DATA)).filter(item => {
+      return item && item.id && item.title;
+    });
     dataList.forEach(item => {
       if (!Array.isArray(item.tags) && item.type) {
         item.tags = [item.type];
       }
-      // 先转译完整HTML，再提取首图+纯文本预览
       const fullRenderHtml = mdToHtml(item.content);
       item._renderHtml = fullRenderHtml;
       item._preview = getPureTextPreview(fullRenderHtml);
@@ -592,6 +594,9 @@ function loadNoteData(){
   }else{
     dataList = JSON.parse(localStorage.getItem(LOCAL_NOTE_KEY) || '[]');
   }
+  // 二次校验过滤缓存里的脏数据
+  dataList = dataList.filter(item => item && item.id && item.title);
+
   if(isAdminLoggedIn()) logoutBtn.style.display = 'inline-block';
   if(dataList.length === 0){
     wrap.innerHTML = '<div class="empty-tip">暂无笔记</div>';
