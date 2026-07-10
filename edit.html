@@ -1468,66 +1468,146 @@ function openNetImageModal(){
   setTimeout(()=> listWrap.querySelector('.net-url')?.focus(), 80);
 }
 netImgBtn.onclick = openNetImageModal;
+function openBatchModal(items = []) {
+  if(document.getElementById('batchImgModal')) return;
+  const mask = document.createElement('div');
+  mask.id = 'batchImgModal';
+  mask.className = 'net-img-mask';
+  mask.innerHTML = `
+    <div class="net-img-box" style="max-width:520px;">
+      <h2>批量插入图片</h2>
+      <div id="batchRowList" style="display:flex;flex-direction:column;gap:8px;max-height:360px;overflow-y:auto;margin:10px 0;"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+        <button id="batchAddRow" style="background:#f0f9ff;border:1px solid #3b82f6;color:#2563eb;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:12px;">+ 添加一行</button>
+        <span style="font-size:11px;color:#64748b;">提示：文案留空则不显示 | 支持下拉或手动输入</span>
+      </div>
+      <div class="net-img-actions">
+        <button id="batchCancel" style="border:none;background:#f1f5f9;color:#334155;padding:6px 12px;border-radius:6px;cursor:pointer;">取消</button>
+        <button id="batchConfirm" style="border:none;background:#6366F1;color:#fff;padding:6px 12px;border-radius:6px;cursor:pointer;">确认插入</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(mask);
+
+  const listWrap = document.getElementById('batchRowList');
+  const addBtn = document.getElementById('batchAddRow');
+  const cancelBtn = document.getElementById('batchCancel');
+  const confirmBtn = document.getElementById('batchConfirm');
+
+  // 预置选项（可自定义，支持下拉+输入）
+  const dataListId = 'batchCaptionDl';
+  const dl = document.createElement('datalist');
+  dl.id = dataListId;
+  dl.innerHTML = `
+    <option value="无文案">
+    <option value="图1">
+    <option value="图2">
+    <option value="图3">
+    <option value="自定义">
+  `;
+  document.body.appendChild(dl);
+
+  function buildRow(prefill){
+    const row = document.createElement('div');
+    row.className = 'net-row';
+    row.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 28px;gap:6px;align-items:end;';
+    row.innerHTML = `
+      <div><label style="font-size:11px;color:#64748b;display:block;margin-bottom:2px;">图片链接</label><input class="b-url" type="url" placeholder="https://..." autocomplete="off"></div>
+      <div><label style="font-size:11px;color:#64748b;display:block;margin-bottom:2px;">图片文案</label><input class="b-alt" type="text" list="${dataListId}" placeholder="选或输"></div>
+      <button type="button" class="b-del" title="删除" style="background:#fee2e2;color:#dc2626;border:none;border-radius:6px;cursor:pointer;font-size:14px;height:32px;">×</button>
+    `;
+    if(prefill){
+      row.querySelector('.b-url').value = prefill.url || '';
+      row.querySelector('.b-alt').value = prefill.alt || '';
+    }
+    row.querySelector('.b-del').onclick = ()=>{
+      if(listWrap.children.length <= 1){ alert('至少保留一行'); return; }
+      row.remove();
+    };
+    return row;
+  }
+
+  items.length ? items.forEach(it => listWrap.appendChild(buildRow(it))) : listWrap.appendChild(buildRow());
+  addBtn.onclick = ()=> listWrap.appendChild(buildRow());
+
+  confirmBtn.onclick = ()=>{
+    const rows = Array.from(listWrap.querySelectorAll('.net-row'));
+    const validItems = [];
+    rows.forEach(row => {
+      const url = row.querySelector('.b-url').value.trim();
+      let alt = row.querySelector('.b-alt').value.trim();
+      if(url && /^https?:\/\//i.test(url)){
+        if(alt === '无文案' || !alt) alt = ''; // 留空或选无文案则不显示
+        validItems.push({url, alt});
+      }
+    });
+    if(!validItems.length) return alert('请至少填写一条有效的 https 链接');
+    closeBatch();
+    batchInsertImagesByUrls(validItems);
+  };
+
+  cancelBtn.onclick = closeBatch;
+  mask.onclick = e=>{ if(e.target===mask) closeBatch(); };
+
+  function closeBatch(){ mask.remove(); }
+  setTimeout(()=> listWrap.querySelector('.b-url')?.focus(), 80);
+}
 
 //========== 批量图床链接 ==========
-function batchInsertImagesByUrls(urls){
-  if(!urls.length) return 0;
+function batchInsertImagesByUrls(items){
+  if(!items.length) return 0;
   let count = 0;
-  if (isCarouselOn) {
-    urls.forEach(url => {
-      if (!url || !url.startsWith('http')) return;
-      insertImageToEditor(url, '配图');
+  items.forEach(item => {
+    const url = typeof item === 'string' ? item : item.url;
+    const alt = typeof item === 'string' ? '' : (item.alt || '');
+    if (!url || !url.startsWith('http')) return;
+
+    if (isCarouselOn) {
+      insertImageToEditor(url, alt);
       count++;
-    });
-    if (carouselImageQueue.length) {
-      clearTimeout(carouselCloseTimer);
-      flushCarousel();
-    }
-  } else {
-    urls.forEach(url => {
-      if (!url || !url.startsWith('http')) return;
+    } else {
       if(currentEditMode==='rich'){
         richBox.focus();
-        const html = `<img loading="lazy" src="${url}" alt="配图" style="max-width:100%;margin:6px 0;display:block;" onerror="this.src='';this.alt='图片加载失败';"><br>`;
+        const html = alt
+          ? `<figure style="text-align:center;margin:8px 0;"><img loading="lazy" src="${url}" alt="${alt}" style="max-width:100%;display:block;"><figcaption style="font-size:12px;color:#64748b;margin-top:4px;">${alt}</figcaption></figure><br>`
+          : `<img loading="lazy" src="${url}" alt="" style="max-width:100%;margin:6px 0;display:block;" onerror="this.style.display='none';"><br>`;
         document.execCommand('insertHTML', false, html);
       } else {
-        mdBox.value += `![配图](${url})\n\n`;
+        mdBox.value += alt ? `![${alt}](${url})\n\n` : `![](${url})\n\n`;
       }
       count++;
-    });
-    if(currentEditMode==='md') { saveMdRecord(); renderMdPreview(); calcWordCount(); }
-    if(currentEditMode==='rich' && richRecordStack){
-      richRecordStack.splice(richRecordIndex+1);
-      richRecordStack.push(richBox.innerHTML);
-      if(richRecordStack.length>RICH_RECORD_MAX) richRecordStack.shift();
-      richRecordIndex=richRecordStack.length-1;
-      calcWordCount();
     }
+  });
+
+  if(isCarouselOn && carouselImageQueue.length){
+    clearTimeout(carouselCloseTimer);
+    flushCarousel();
+  } else if(currentEditMode==='md'){
+    saveMdRecord(); renderMdPreview(); calcWordCount();
+  } else if(currentEditMode==='rich'){
+    richRecordStack.splice(richRecordIndex+1);
+    richRecordStack.push(richBox.innerHTML);
+    if(richRecordStack.length>RICH_RECORD_MAX) richRecordStack.shift();
+    richRecordIndex=richRecordStack.length-1;
+    calcWordCount();
   }
   return count;
 }
 
+
 document.getElementById('batchImgBtn').onclick = function(){
   navigator.clipboard.readText().then(clipText => {
     if(clipText){
-      const arr = clipText.split(/[\r\n]+/).map(u=>u.trim()).filter(u=>u.startsWith('http'));
-      if(arr.length > 0){
-        const n = batchInsertImagesByUrls(arr);
-        return alert(`从剪贴板批量插入了 ${n} 张图${isCarouselOn?'（轮播模式）':''}`);
-      }
+      const lines = clipText.split(/[\r\n]+/).map(l=>l.trim()).filter(Boolean);
+      const parsed = [];
+      lines.forEach(line => {
+        const [u, a] = line.split(/[|,]/).map(s=>s.trim());
+        if(u && u.startsWith('http')) parsed.push({url:u, alt:a||''});
+      });
+      if(parsed.length) return openBatchModal(parsed);
     }
-    askAndInsert();
-  }).catch(()=>{
-    askAndInsert();
-  });
-
-  function askAndInsert(){
-    const urls = prompt("批量粘贴图床链接，一行一张：", "");
-    if(!urls) return;
-    const arr = urls.split(/[\r\n]+/).map(u=>u.trim()).filter(u=>u.startsWith('http'));
-    const n = batchInsertImagesByUrls(arr);
-    alert(`插入了 ${n} 张图片${isCarouselOn?'（轮播模式）':''}`);
-  }
+    openBatchModal([]);
+  }).catch(()=> openBatchModal([]));
 };
 
 //========== 生成推送命令 ==========
