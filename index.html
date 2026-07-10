@@ -5,18 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="referrer" content="no-referrer-when-downgrade">
 <title>笔记目录</title>
-
-<!-- 百度统计植入 -->
-<script>
-var _hmt = _hmt || [];
-(function() {
-  var hm = document.createElement("script");
-  hm.src = "https://hm.baidu.com/hm.js?ca17a2a9b68ee5bd7a2334d52e11381d";
-  var s = document.getElementsByTagName("script")[0]; 
-  s.parentNode.insertBefore(hm, s);
-})();
-</script>
-
 <style>
 *{
   margin: 0;
@@ -740,6 +728,18 @@ logoutBtn.addEventListener('click', () => {
   renderNotes();
 });
 </script>
+<!-- 访问统计 -->
+<script async src="https://busuanzi.ibruce.info/busuanzi/2.3/busuanzi.pure.mini.js"></script>
+
+<div style="text-align:center;padding:20px 0;font-size:12px;color:#888;border-top:1px solid #eee;margin-top:30px;">
+<span id="busuanzi_container_site_pv">
+  本站总访问量：<span id="busuanzi_value_site_pv"></span> 次
+</span>
+&nbsp;&nbsp;
+<span id="busuanzi_container_site_uv">
+  访客人数：<span id="busuanzi_value_site_uv"></span> 人
+</span>
+</div>
 
 </body>
 </html>
