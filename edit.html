@@ -1478,12 +1478,12 @@ function openBatchModal(items = []) {
       <h2>批量插入图片</h2>
       <div id="batchRowList" style="display:flex;flex-direction:column;gap:8px;max-height:360px;overflow-y:auto;margin:10px 0;"></div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-        <button id="batchAddRow" style="background:#f0f9ff;border:1px solid #3b82f6;color:#2563eb;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:12px;">+ 添加一行</button>
+        <button id="batchAddRow" type="button" style="background:#f0f9ff;border:1px solid #3b82f6;color:#2563eb;padding:5px 10px;border-radius:6px;cursor:pointer;font-size:12px;">+ 添加一行</button>
         <span style="font-size:11px;color:#64748b;">提示：文案留空则不显示 | 支持下拉或手动输入</span>
       </div>
       <div class="net-img-actions">
-        <button id="batchCancel" style="border:none;background:#f1f5f9;color:#334155;padding:6px 12px;border-radius:6px;cursor:pointer;">取消</button>
-        <button id="batchConfirm" style="border:none;background:#6366F1;color:#fff;padding:6px 12px;border-radius:6px;cursor:pointer;">确认插入</button>
+        <button id="batchCancel" type="button" style="border:none;background:#f1f5f9;color:#334155;padding:6px 12px;border-radius:6px;cursor:pointer;">取消</button>
+        <button id="batchConfirm" type="button" style="border:none;background:#6366F1;color:#fff;padding:6px 12px;border-radius:6px;cursor:pointer;">确认插入</button>
       </div>
     </div>
   `;
@@ -1494,22 +1494,15 @@ function openBatchModal(items = []) {
   const cancelBtn = document.getElementById('batchCancel');
   const confirmBtn = document.getElementById('batchConfirm');
 
-  // 预置选项（可自定义，支持下拉+输入）
   const dataListId = 'batchCaptionDl';
   const dl = document.createElement('datalist');
   dl.id = dataListId;
-  dl.innerHTML = `
-    <option value="无文案">
-    <option value="图1">
-    <option value="图2">
-    <option value="图3">
-    <option value="自定义">
-  `;
+  dl.innerHTML = `<option value="无文案"><option value="图1"><option value="图2"><option value="图3"><option value="自定义">`;
   document.body.appendChild(dl);
 
   function buildRow(prefill){
     const row = document.createElement('div');
-    row.className = 'net-row';
+    row.className = 'batch-row'; // 统一类名，避免查询失败
     row.style.cssText = 'display:grid;grid-template-columns:1fr 1fr 28px;gap:6px;align-items:end;';
     row.innerHTML = `
       <div><label style="font-size:11px;color:#64748b;display:block;margin-bottom:2px;">图片链接</label><input class="b-url" type="url" placeholder="https://..." autocomplete="off"></div>
@@ -1527,17 +1520,19 @@ function openBatchModal(items = []) {
     return row;
   }
 
-  items.length ? items.forEach(it => listWrap.appendChild(buildRow(it))) : listWrap.appendChild(buildRow());
+  if(items.length > 0) items.forEach(it => listWrap.appendChild(buildRow(it)));
+  else listWrap.appendChild(buildRow());
+  
   addBtn.onclick = ()=> listWrap.appendChild(buildRow());
 
   confirmBtn.onclick = ()=>{
-    const rows = Array.from(listWrap.querySelectorAll('.net-row'));
+    const rows = Array.from(listWrap.querySelectorAll('.batch-row'));
     const validItems = [];
     rows.forEach(row => {
       const url = row.querySelector('.b-url').value.trim();
       let alt = row.querySelector('.b-alt').value.trim();
       if(url && /^https?:\/\//i.test(url)){
-        if(alt === '无文案' || !alt) alt = ''; // 留空或选无文案则不显示
+        if(alt === '无文案' || !alt) alt = '';
         validItems.push({url, alt});
       }
     });
@@ -1549,9 +1544,10 @@ function openBatchModal(items = []) {
   cancelBtn.onclick = closeBatch;
   mask.onclick = e=>{ if(e.target===mask) closeBatch(); };
 
-  function closeBatch(){ mask.remove(); }
+  function closeBatch(){ mask.remove(); dl.remove(); }
   setTimeout(()=> listWrap.querySelector('.b-url')?.focus(), 80);
 }
+
 
 //========== 批量图床链接 ==========
 function batchInsertImagesByUrls(items){
@@ -1594,20 +1590,26 @@ function batchInsertImagesByUrls(items){
   return count;
 }
 
-
 document.getElementById('batchImgBtn').onclick = function(){
-  navigator.clipboard.readText().then(clipText => {
-    if(clipText){
-      const lines = clipText.split(/[\r\n]+/).map(l=>l.trim()).filter(Boolean);
-      const parsed = [];
-      lines.forEach(line => {
-        const [u, a] = line.split(/[|,]/).map(s=>s.trim());
-        if(u && u.startsWith('http')) parsed.push({url:u, alt:a||''});
-      });
-      if(parsed.length) return openBatchModal(parsed);
-    }
+  try {
+    navigator.clipboard.readText().then(clipText => {
+      if(clipText){
+        const lines = clipText.split(/[\r\n]+/).map(l=>l.trim()).filter(Boolean);
+        const parsed = [];
+        lines.forEach(line => {
+          const parts = line.split(/[|,]/);
+          const u = (parts[0]||'').trim();
+          const a = (parts[1]||'').trim();
+          if(u && u.startsWith('http')) parsed.push({url:u, alt:a});
+        });
+        if(parsed.length > 0) return openBatchModal(parsed);
+      }
+      openBatchModal([]);
+    }).catch(()=> openBatchModal([]));
+  } catch(e) {
+    console.warn("剪贴板读取受限，已打开空白弹窗", e);
     openBatchModal([]);
-  }).catch(()=> openBatchModal([]));
+  }
 };
 
 //========== 生成推送命令 ==========
