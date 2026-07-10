@@ -416,6 +416,14 @@ let currentTags = [], tagColorMap = {};
 let globalImgSerial = Number(localStorage.getItem("img_serial")||0);
 let searchIndex = 0, matchList = [], matchCase = false;
 let dragActive = false;
+// 新增：严格过滤空笔记（标题、内容、标签全为空则跳过）
+function isNoteEmpty(note) {
+  if (!note) return true;
+  const title = String(note.title || '').trim();
+  const content = String(note.content || '').replace(/<[^>]+>/g, '').trim();
+  const tags = Array.isArray(note.tags) ? note.tags.filter(t => t && String(t).trim()).length : 0;
+  return !title && !content && tags === 0;
+}
 
 // ========== 轮播全局变量 ==========
 let isCarouselOn = false;
@@ -1772,7 +1780,8 @@ document.getElementById('batchImgBtn').onclick = function(){
 //========== 生成推送命令 ==========
 document.getElementById('showTemplateBtn').onclick = async function(){
   syncFormToNoteList();
-  const currentNotes = list.filter(i => i && i.id);
+  // 👇 核心修改：增加 !isNoteEmpty(i) 过滤
+  const currentNotes = list.filter(i => i && i.id && !isNoteEmpty(i));
   const uniqueNotes = [];
   const idSet = new Set();
   currentNotes.forEach(note=>{
@@ -1857,7 +1866,10 @@ document.getElementById('showTemplateBtn').onclick = async function(){
 
 document.getElementById('downloadDataBtn').onclick = function(){
   syncFormToNoteList();
-  const finalJson = JSON.stringify(list, null, 2);
+  const validNotes = list.filter(n => n && n.id && !isNoteEmpty(n));
+  if(validNotes.length === 0) return alert("没有可导出的非空笔记");
+  
+  const finalJson = JSON.stringify(validNotes, null, 2);
   const jsContent = `window.NOTE_DATA = ${finalJson};\n`;
   const blob = new Blob([jsContent], {type: 'application/javascript'});
   const url = URL.createObjectURL(blob);
@@ -1868,7 +1880,7 @@ document.getElementById('downloadDataBtn').onclick = function(){
 
 document.getElementById('copyJsonBtn').onclick = async function(){
   syncFormToNoteList();
-  const validNotes = list.filter(n => n && n.id);
+  const validNotes = list.filter(n => n && n.id && !isNoteEmpty(n));
   const finalJson = JSON.stringify(validNotes, null, 2);
   const jsContent = `window.NOTE_DATA = ${finalJson};\n`;
   try {

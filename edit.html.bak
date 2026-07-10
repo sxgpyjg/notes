@@ -2148,14 +2148,14 @@ window.addEventListener("DOMContentLoaded", ()=>{
   document.addEventListener('touchend', dragEnd);
   document.addEventListener('touchcancel', dragEnd);
 
-    // 重新点开AI按钮，复位回原来位置
-    aiMainBtn.onclick = function(){
-      dragBox.style.position = '';
-      dragBox.style.left = '';
-      dragBox.style.top = '';
-      dragBox.style.bottom = ''; // 👈 必须补上这行，覆盖的CSS才会恢复
-    };
-  })();
+  // 重新点开AI按钮，复位回原来位置
+  aiMainBtn.addEventListener('click', function(){
+    dragBox.style.position = '';
+    dragBox.style.left = '';
+    dragBox.style.top = '';
+    dragBox.style.bottom = ''; // 👈 仅补上这行，CSS定位即可恢复
+  });
+})();
 
 
 // ========== 文字颜色 & 底色高亮功能（完整修复版） ==========
