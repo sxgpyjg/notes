@@ -1880,20 +1880,14 @@ document.getElementById('copyJsonBtn').onclick = async function(){
   }
 };
 
-// AI 面板统一控制（开关+复位防错位）
-if (aiMainBtn && aiMenu) {
-  aiMainBtn.addEventListener('click', function(e) {
+
+// AI 菜单绑定 + 点击空白关闭下拉面板
+if(aiMainBtn){
+  aiMainBtn.addEventListener('click',(e)=>{
     e.stopPropagation();
-    // 彻底清除拖拽残留的定位样式（关键补上 bottom）
-    aiMenu.style.position = '';
-    aiMenu.style.left = '';
-    aiMenu.style.top = '';
-    aiMenu.style.bottom = '';
-    // 切换显示状态
-    aiMenu.classList.toggle('show');
+    if(aiMenu) aiMenu.classList.toggle('show');
   });
 }
-
 
 // ========== 就粘贴在这里 ==========
 if(aiMenu){
@@ -2149,12 +2143,12 @@ window.addEventListener("DOMContentLoaded", ()=>{
   document.addEventListener('touchcancel', dragEnd);
 
   // 重新点开AI按钮，复位回原来位置
-    aiMainBtn.addEventListener('click', function(){
+  aiMainBtn.addEventListener('click', function(){
     dragBox.style.position = '';
     dragBox.style.left = '';
     dragBox.style.top = '';
-    dragBox.style.bottom = ''; // 👈 必须加上这行，否则面板会永久偏移
   });
+})();
 
 // ========== 文字颜色 & 底色高亮功能（完整修复版） ==========
 document.addEventListener('DOMContentLoaded', function () {
