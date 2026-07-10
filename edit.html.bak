@@ -1590,8 +1590,7 @@ function batchInsertImagesByUrls(items){
   return count;
 }
 
-//========== 批量图床链接（重构版：全量粘贴 → 自动列表 → 快捷填序号 → 批量插入）==========
-//========== 批量图床链接（增强版：预览 + 拖拽排序 + 快捷填序号）==========
+//========== 批量图床链接（增强版：预览 + 长按拖拽排序 + 快捷填序号）==========
 document.getElementById('batchImgBtn').onclick = function(){
   let clipText = "";
   try { clipText = navigator.clipboard.readTextSync?.() || ""; } catch(e){}
@@ -1616,9 +1615,10 @@ document.getElementById('batchImgBtn').onclick = function(){
         <div id="batchPreviewUrl" style="font-size:11px; color:#94a3b8; margin-top:4px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></div>
       </div>
 
-      <div id="batchResultArea" style="display:none;max-height:340px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:8px;padding:10px;background:#f8fafc;">
+      <!-- 修改max-height为140px，只展示3条卡片，预留底部按钮空间 -->
+      <div id="batchResultArea" style="display:none;max-height:140px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:8px;padding:10px;background:#f8fafc;">
         <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
-          <span style="font-size:13px;color:#64748b;">第二步：填写文案（留空则不显示） | 👆 支持上下拖动排序</span>
+          <span style="font-size:13px;color:#64748b;">第二步：填写文案（留空则不显示） | 👆 长按拖动排序</span>
           <div style="display:flex;gap:6px;">
             <button id="autoFillNums" style="padding:4px 10px;font-size:11px;background:#eef2ff;border:1px solid #6366F1;color:#6366F1;border-radius:4px;cursor:pointer;">🔢 自动填序号</button>
             <button id="clearAllCaps" style="padding:4px 10px;font-size:11px;background:#fef2f2;border:1px solid #ef4444;color:#ef4444;border-radius:4px;cursor:pointer;">清空文案</button>
@@ -1662,7 +1662,7 @@ document.getElementById('batchImgBtn').onclick = function(){
     previewImg.src = url;
   }
 
-  // 拖拽排序逻辑（兼容鼠标+手机触屏）
+  // 拖拽排序逻辑（仅保留原生拖拽，移除滑动自动换位）
   function setupDrag(row) {
     row.draggable = true;
     row.style.cursor = 'grab';
@@ -1687,36 +1687,19 @@ document.getElementById('batchImgBtn').onclick = function(){
       row.style.cursor = 'grab';
       dragItem = null;
     });
-    // 手机触屏拖拽
-    let touchStartY = 0;
-    row.addEventListener('touchstart', e => {
-      touchStartY = e.touches[0].clientY;
-      touchCurrent = row;
+
+    // 只保留触摸按下抬起样式，删掉touchmove换位代码
+    row.addEventListener('touchstart', () => {
       row.style.opacity = '0.5';
       row.style.zIndex = '10';
     }, {passive:true});
-    row.addEventListener('touchmove', e => {
-      const y = e.touches[0].clientY;
-      const diff = y - touchStartY;
-      if (Math.abs(diff) > 30) {
-        e.preventDefault();
-        const siblings = Array.from(rowsContainer.children);
-        const idx = siblings.indexOf(touchCurrent);
-        const targetIdx = Math.max(0, Math.min(siblings.length - 1, idx + (diff > 0 ? 1 : -1)));
-        if (idx !== targetIdx) {
-          rowsContainer.insertBefore(touchCurrent, siblings[targetIdx] || null);
-          touchStartY = y;
-        }
-      }
-    }, {passive:false});
     row.addEventListener('touchend', () => {
       row.style.opacity = '1';
       row.style.zIndex = '';
-      touchCurrent = null;
-    });
+    }, {passive:true});
   }
 
-  let dragItem = null, touchCurrent = null;
+  let dragItem = null;
 
   parseBtn.onclick = ()=>{
     const raw = document.getElementById('batchUrlInput').value;
