@@ -1881,12 +1881,18 @@ document.getElementById('copyJsonBtn').onclick = async function(){
 };
 
 
-// AI 菜单绑定 + 点击空白关闭下拉面板
+// AI 菜单统一控制（开关+清除拖拽残留样式）
 if(aiMainBtn){
-  aiMainBtn.addEventListener('click',(e)=>{
+  aiMainBtn.onclick = function(e){
     e.stopPropagation();
-    if(aiMenu) aiMenu.classList.toggle('show');
-  });
+    // 彻底清除拖拽产生的内联定位样式
+    aiMenu.style.position = '';
+    aiMenu.style.left = '';
+    aiMenu.style.top = '';
+    aiMenu.style.bottom = '';
+    // 切换显示状态
+    aiMenu.classList.toggle('show');
+  };
 }
 
 // ========== 就粘贴在这里 ==========
@@ -2142,13 +2148,15 @@ window.addEventListener("DOMContentLoaded", ()=>{
   document.addEventListener('touchend', dragEnd);
   document.addEventListener('touchcancel', dragEnd);
 
-  // 重新点开AI按钮，复位回原来位置
-  aiMainBtn.addEventListener('click', function(){
-    dragBox.style.position = '';
-    dragBox.style.left = '';
-    dragBox.style.top = '';
-  });
-})();
+    // 重新点开AI按钮，复位回原来位置
+    aiMainBtn.onclick = function(){
+      dragBox.style.position = '';
+      dragBox.style.left = '';
+      dragBox.style.top = '';
+      dragBox.style.bottom = ''; // 👈 必须补上这行，覆盖的CSS才会恢复
+    };
+  })();
+
 
 // ========== 文字颜色 & 底色高亮功能（完整修复版） ==========
 document.addEventListener('DOMContentLoaded', function () {
