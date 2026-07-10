@@ -1881,6 +1881,24 @@ document.getElementById('copyJsonBtn').onclick = async function(){
 };
 
 
+// ========== 统一修复：AI面板开关 + 拖拽复位防冲突 ==========
+if (aiMainBtn && aiMenu) {
+  aiMainBtn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    // 彻底清除拖拽残留的内联样式（补齐遗漏的 bottom）
+    aiMenu.style.position = '';
+    aiMenu.style.left = '';
+    aiMenu.style.top = '';
+    aiMenu.style.bottom = ''; 
+    
+    // 显式切换显示状态
+    if (aiMenu.classList.contains('show')) {
+      aiMenu.classList.remove('show');
+    } else {
+      aiMenu.classList.add('show');
+    }
+  });
+}
 
 
 // ========== 就粘贴在这里 ==========
@@ -2137,24 +2155,7 @@ window.addEventListener("DOMContentLoaded", ()=>{
   document.addEventListener('touchcancel', dragEnd);
 
   // 重新点开AI按钮，复位回原来位置
-  // ========== 统一修复：AI面板开关 + 拖拽复位防冲突 ==========
-if (aiMainBtn && aiMenu) {
-  aiMainBtn.addEventListener('click', function(e) {
-    e.stopPropagation();
-    // 彻底清除拖拽残留的内联样式（补齐遗漏的 bottom）
-    aiMenu.style.position = '';
-    aiMenu.style.left = '';
-    aiMenu.style.top = '';
-    aiMenu.style.bottom = ''; 
-    
-    // 显式切换显示状态
-    if (aiMenu.classList.contains('show')) {
-      aiMenu.classList.remove('show');
-    } else {
-      aiMenu.classList.add('show');
-    }
-  });
-}
+  
 
 // ========== 文字颜色 & 底色高亮功能（完整修复版） ==========
 document.addEventListener('DOMContentLoaded', function () {
