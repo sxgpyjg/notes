@@ -1590,26 +1590,121 @@ function batchInsertImagesByUrls(items){
   return count;
 }
 
+//========== 批量图床链接（重构版：全量粘贴 → 自动列表 → 快捷填序号 → 批量插入）==========
 document.getElementById('batchImgBtn').onclick = function(){
-  try {
-    navigator.clipboard.readText().then(clipText => {
-      if(clipText){
-        const lines = clipText.split(/[\r\n]+/).map(l=>l.trim()).filter(Boolean);
-        const parsed = [];
-        lines.forEach(line => {
-          const parts = line.split(/[|,]/);
-          const u = (parts[0]||'').trim();
-          const a = (parts[1]||'').trim();
-          if(u && u.startsWith('http')) parsed.push({url:u, alt:a});
-        });
-        if(parsed.length > 0) return openBatchModal(parsed);
-      }
-      openBatchModal([]);
-    }).catch(()=> openBatchModal([]));
-  } catch(e) {
-    console.warn("剪贴板读取受限，已打开空白弹窗", e);
-    openBatchModal([]);
+  // 尝试读取剪贴板（兼容部分浏览器限制）
+  let clipText = "";
+  try { clipText = navigator.clipboard.readTextSync?.() || ""; } catch(e){}
+
+  const mask = document.createElement('div');
+  mask.className = 'net-img-mask';
+  mask.innerHTML = `
+    <div class="net-img-box" style="max-width:620px;">
+      <h2>批量插入图片</h2>
+      <div style="margin-bottom:10px;">
+        <label style="font-size:13px;color:#475569;display:block;margin-bottom:4px;">第一步：粘贴所有图片链接（每行一个）</label>
+        <textarea id="batchUrlInput" style="width:100%;height:140px;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:13px;resize:vertical;outline:none;" placeholder="https://img1.com/a.jpg&#10;https://img2.com/b.png&#10;https://img3.com/c.webp"></textarea>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:12px;">
+        <button id="batchParseBtn" style="flex:1;background:#6366F1;color:#fff;border:none;border-radius:6px;padding:8px;cursor:pointer;font-weight:600;">📥 解析并生成列表</button>
+        <button id="batchCancel" style="background:#f1f5f9;border:none;border-radius:6px;padding:8px 16px;cursor:pointer;">取消</button>
+      </div>
+      
+      <div id="batchResultArea" style="display:none;max-height:320px;overflow-y:auto;border:1px solid #e2e8f0;border-radius:8px;padding:10px;background:#f8fafc;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+          <span style="font-size:13px;color:#64748b;">第二步：填写文案（留空则不显示）</span>
+          <div style="display:flex;gap:6px;">
+            <button id="autoFillNums" style="padding:4px 10px;font-size:11px;background:#eef2ff;border:1px solid #6366F1;color:#6366F1;border-radius:4px;cursor:pointer;">🔢 自动填序号</button>
+            <button id="clearAllCaps" style="padding:4px 10px;font-size:11px;background:#fef2f2;border:1px solid #ef4444;color:#ef4444;border-radius:4px;cursor:pointer;">清空文案</button>
+          </div>
+        </div>
+        <div id="batchRowsContainer"></div>
+        <div style="margin-top:14px;text-align:right;">
+          <button id="batchConfirmInsert" style="background:#6366F1;color:#fff;border:none;border-radius:6px;padding:8px 20px;cursor:pointer;font-weight:600;">✅ 确认批量插入 (0张)</button>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(mask);
+
+  // 自动填充剪贴板内容
+  setTimeout(()=>{
+    const ta = document.getElementById('batchUrlInput');
+    if(clipText && !ta.value) ta.value = clipText;
+    ta.focus();
+  }, 50);
+
+  const parseBtn = document.getElementById('batchParseBtn');
+  const cancelBtn = document.getElementById('batchCancel');
+  const resultArea = document.getElementById('batchResultArea');
+  const rowsContainer = document.getElementById('batchRowsContainer');
+  const confirmBtn = document.getElementById('batchConfirmInsert');
+  const autoFillBtn = document.getElementById('autoFillNums');
+  const clearCapBtn = document.getElementById('clearAllCaps');
+
+  parseBtn.onclick = ()=>{
+    const raw = document.getElementById('batchUrlInput').value;
+    const lines = raw.split(/[\r\n]+/).map(l=>l.trim()).filter(Boolean);
+    const validUrls = lines.filter(u=>/^https?:\/\//i.test(u));
+    
+    if(validUrls.length===0) return alert("未检测到有效的 https/http 链接");
+    if(validUrls.length !== lines.length) alert(`检测到 ${validUrls.length} 条有效链接，已过滤无效格式`);
+
+    rowsContainer.innerHTML = '';
+    validUrls.forEach((url, i)=>{
+      const row = document.createElement('div');
+      row.className = 'batch-row';
+      row.style.cssText = 'display:flex;gap:8px;align-items:center;margin-bottom:8px;padding:6px 8px;background:#fff;border-radius:6px;border:1px solid #e2e8f0;transition:all .15s;';
+      row.innerHTML = `
+        <span style="color:#6366F1;font-weight:700;min-width:22px;text-align:center;">${i+1}.</span>
+        <input type="text" readonly value="${url}" style="flex:1;border:none;background:transparent;font-size:12px;color:#475569;outline:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+        <input type="text" class="batch-cap" placeholder="留空不显示" style="width:110px;border:1px solid #cbd5e1;border-radius:4px;padding:4px 6px;font-size:12px;outline:none;transition:border .2s;">
+        <button class="batch-del" title="删除此行" style="background:#fee2e2;color:#dc2626;border:none;border-radius:4px;width:24px;height:24px;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;">×</button>
+      `;
+      // 聚焦文案框方便快速输入
+      row.querySelector('.batch-cap').focus();
+      row.querySelector('.batch-cap').addEventListener('focus', e=>e.target.select());
+      
+      row.querySelector('.batch-del').onclick = ()=> row.remove();
+      rowsContainer.appendChild(row);
+    });
+
+    resultArea.style.display = 'block';
+    updateCount();
+    // 滚动到底部
+    resultArea.scrollTop = resultArea.scrollHeight;
+  };
+
+  function updateCount(){
+    const total = rowsContainer.children.length;
+    confirmBtn.textContent = `✅ 确认批量插入 (${total}张)`;
   }
+
+  autoFillBtn.onclick = ()=>{
+    document.querySelectorAll('.batch-cap').forEach((inp, i)=> inp.value = `图${i+1}`);
+  };
+  clearCapBtn.onclick = ()=>{
+    document.querySelectorAll('.batch-cap').forEach(inp => inp.value = '');
+  };
+
+  confirmBtn.onclick = ()=>{
+    const items = [];
+    document.querySelectorAll('.batch-row').forEach(row=>{
+      const url = row.querySelector('input[readonly]').value.trim();
+      let cap = row.querySelector('.batch-cap').value.trim();
+      if(url && /^https?:\/\//i.test(url)){
+        // 核心逻辑：留空或填“无文案”则不显示文字
+        if(!cap || cap === '无文案') cap = '';
+        items.push({url, alt: cap});
+      }
+    });
+    if(items.length===0) return alert("没有可插入的图片");
+    mask.remove();
+    batchInsertImagesByUrls(items);
+  };
+
+  cancelBtn.onclick = ()=> mask.remove();
+  mask.onclick = e=>{ if(e.target===mask) mask.remove(); };
 };
 
 //========== 生成推送命令 ==========
