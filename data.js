@@ -1,16 +1,5 @@
 window.NOTE_DATA = [
   {
-    "id": 1783662323404,
-    "title": "",
-    "type": "",
-    "tags": [],
-    "tagColors": {},
-    "content": "",
-    "date": "2026-07-10 13:45:37",
-    "private": false,
-    "carousel": false
-  },
-  {
     "id": 1783661537340,
     "title": "销魂一瞬",
     "type": "",
