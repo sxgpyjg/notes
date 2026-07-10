@@ -1602,7 +1602,7 @@ document.getElementById('batchImgBtn').onclick = function(){
       <h2>批量插入图片</h2>
       <div style="margin-bottom:10px;">
         <label style="font-size:13px;color:#475569;display:block;margin-bottom:4px;">第一步：粘贴所有图片链接（每行一个）</label>
-        <textarea id="batchUrlInput" style="width:100%;height:120px;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:13px;resize:vertical;outline:none;" placeholder="https://img1.com/a.jpg&#10;https://img2.com/b.png&#10;https://img3.com/c.webp"></textarea>
+        <textarea id="batchUrlInput" style="width:100%;height:80px;padding:8px;border:1px solid #ddd;border-radius:6px;font-size:13px;resize:vertical;outline:none;" placeholder="https://img1.com/a.jpg&#10;https://img2.com/b.png&#10;https://img3.com/c.webp"></textarea>
       </div>
       <div style="display:flex;gap:8px;margin-bottom:12px;">
         <button id="batchParseBtn" style="flex:1;background:#6366F1;color:#fff;border:none;border-radius:6px;padding:8px;cursor:pointer;font-weight:600;">📥 解析并生成列表</button>
